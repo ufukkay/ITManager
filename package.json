@@ -1,0 +1,34 @@
+{
+  "name": "itmanager",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.6.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "fast-xml-parser": "^5.7.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.1.1",
+    "node-disk-info": "^1.3.0",
+    "os-utils": "^0.0.14",
+    "pdf-parse": "^2.4.5",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "axios": "^1.13.6",
+    "nodemon": "^3.1.14",
+    "pkg": "^5.8.1"
+  }
+}

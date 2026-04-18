@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>ITManager Agent - Kurulum</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #fff;
+            color: #202124;
+            overflow: hidden;
+            border: 1px solid #e8eaed;
+            border-radius: 12px;
+        }
+
+        .titlebar {
+            height: 40px;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            -webkit-app-region: drag;
+            border-bottom: 1px solid #e8eaed;
+        }
+
+        .titlebar-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #5f6368;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .titlebar-btns {
+            display: flex;
+            gap: 8px;
+            -webkit-app-region: no-drag;
+        }
+
+        .titlebar-btn {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-minimize { background: #f9ab00; }
+        .btn-close { background: #d93025; }
+
+        .content {
+            padding: 32px;
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo-section h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .logo-section p {
+            color: #5f6368;
+            font-size: 13px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #5f6368;
+            margin-bottom: 6px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .form-row .form-group { flex: 1; }
+        .form-row .form-group.small { flex: 0 0 100px; }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e8eaed;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #1a73e8;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: #1a73e8;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #174ea6;
+        }
+
+        .btn-secondary {
+            background: #f1f3f4;
+            color: #3c4043;
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #e8eaed;
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 13px;
+            min-height: 20px;
+        }
+
+        .status.success { color: #1e8e3e; }
+        .status.error { color: #d93025; }
+        .status.loading { color: #f9ab00; }
+    </style>
+</head>
+<body>
+    <div class="titlebar">
+        <div class="titlebar-title">
+            <span>⬡</span> ITManager Agent
+        </div>
+        <div class="titlebar-btns">
+            <button class="titlebar-btn btn-minimize" onclick="minimizeToTray()"></button>
+            <button class="titlebar-btn btn-close" onclick="minimizeToTray()"></button>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="logo-section">
+            <h1>⬡ ITManager Agent</h1>
+            <p>Sunucu izleme ajanını yapılandırın</p>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">SUNUCU IP ADRESİ</label>
+                <input type="text" id="serverIP" class="form-control" placeholder="10.0.1.50">
+            </div>
+            <div class="form-group small">
+                <label class="form-label">PORT</label>
+                <input type="text" id="serverPort" class="form-control" placeholder="3000" value="3000">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">RAPOR ARALIĞI (SANİYE)</label>
+            <input type="number" id="reportInterval" class="form-control" placeholder="60" value="60" min="10" max="600">
+        </div>
+
+        <button class="btn btn-secondary" onclick="testConnection()">🔗 Bağlantıyı Test Et</button>
+        <button class="btn btn-primary" onclick="saveAndStart()" style="margin-top: 10px;">💾 Kaydet & Başlat</button>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        // Mevcut config'i yükle
+        ipcRenderer.send('get-config');
+        ipcRenderer.on('current-config', (event, config) => {
+            if (config.serverIP) document.getElementById('serverIP').value = config.serverIP;
+            if (config.serverPort) document.getElementById('serverPort').value = config.serverPort;
+            if (config.reportInterval) document.getElementById('reportInterval').value = config.reportInterval;
+        });
+
+        function getFormData() {
+            return {
+                serverIP: document.getElementById('serverIP').value.trim(),
+                serverPort: document.getElementById('serverPort').value.trim(),
+                reportInterval: parseInt(document.getElementById('reportInterval').value) || 60
+            };
+        }
+
+        function setStatus(msg, type) {
+            const el = document.getElementById('status');
+            el.textContent = msg;
+            el.className = 'status ' + type;
+        }
+
+        function testConnection() {
+            const data = getFormData();
+            if (!data.serverIP) return setStatus('Sunucu IP adresini girin.', 'error');
+            setStatus('Bağlantı test ediliyor...', 'loading');
+            ipcRenderer.send('test-connection', data);
+        }
+
+        ipcRenderer.on('connection-result', (event, result) => {
+            if (result.success) {
+                setStatus('✅ Bağlantı başarılı!', 'success');
+            } else {
+                setStatus('❌ Sunucuya ulaşılamadı. IP ve portu kontrol edin.', 'error');
+            }
+        });
+
+        function saveAndStart() {
+            const data = getFormData();
+            if (!data.serverIP) return setStatus('Sunucu IP adresini girin.', 'error');
+            ipcRenderer.send('save-config', data);
+            setStatus('✅ Kaydedildi! Ajan arka planda çalışıyor.', 'success');
+            setTimeout(() => minimizeToTray(), 1500);
+        }
+
+        ipcRenderer.on('config-saved', () => {
+            setStatus('✅ Kaydedildi! Ajan arka planda çalışıyor.', 'success');
+        });
+
+        function minimizeToTray() {
+            ipcRenderer.send('minimize-to-tray');
+        }
+    </script>
+</body>
+</html>
