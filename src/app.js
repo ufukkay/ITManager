@@ -19,7 +19,10 @@ app.use(session({
     secret: process.env.SESSION_SECRET || 'itmanager-secret-key',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false } // HTTPS kullanılıyorsa true yapılmalı
+    cookie: { 
+        secure: false, // HTTPS kullanılıyorsa true yapılmalı
+        maxAge: 24 * 60 * 60 * 1000 // 1 gün (milisaniye cinsinden)
+    }
 }));
 
 
@@ -37,17 +40,24 @@ app.use((req, res, next) => {
 app.use('/auth', require('./modules/auth/routes'));
 
 // Yönetim Rotaları
-app.use('/admin', hasPermission('ADMIN_ACCESS'), require('./modules/admin/routes'));
+app.use('/admin', hasPermission('system:admin'), require('./modules/admin/routes'));
 
-// İzleme (Monitoring) Rotaları - 'wmic' hatası nedeniyle geçici olarak devre dışı
-// app.use('/monitoring', hasPermission('MONITORING_VIEW'), require('./modules/monitoring/routes'));
+// İzleme (Monitoring) Rotaları
+app.use('/monitoring', hasPermission('monitoring:view'), require('./modules/monitoring/routes'));
 
 // SIM Kart Takip Rotaları
-app.use('/sim-takip', hasPermission('SIM_TAKIP_VIEW'), require('./modules/simcardtracking/routes/index'));
+app.use('/sim-takip', hasPermission('sim:view'), require('./modules/simcardtracking/routes/index'));
 
 // HR Bildirim Rotaları (Personel Giriş/Çıkış)
-app.use('/hr-requests', hasPermission('HR_REQUESTS_VIEW'), require('./modules/hr-requests/routes/index'));
+app.use('/hr-requests', hasPermission('hr:view'), require('./modules/hr-requests/routes/index'));
+
+// M365 Lisans Yönetimi Rotaları
+app.use('/api/m365', require('./modules/m365/routes'));
+
+// Merkezi Master Data Rotaları
+app.use('/api/master-data', require('./modules/core/routes'));
 
 app.listen(PORT, () => {
     console.log(`ITManager server running at http://localhost:${PORT}`);
 });
+

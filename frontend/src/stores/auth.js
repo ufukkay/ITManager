@@ -12,10 +12,16 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     userName: (state) => state.user?.full_name || '',
     userId: (state) => state.user?.id || null,
-    isAdmin: (state) => state.user?.role_id === 1
+    isAdmin: (state) => state.user?.role_id === 1,
+    userRoleName: (state) => state.user?.role_name || '',
+    userPermissions: (state) => state.user?.permissions || []
   },
 
   actions: {
+    hasPermission(key) {
+      if (this.isAdmin) return true
+      return this.userPermissions.includes(key)
+    },
     async checkAuth() {
       this.loading = true
       try {
@@ -34,11 +40,11 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async login(username, password) {
+    async login(email, password) {
       this.loading = true
       this.error = null
       try {
-        const response = await api.post('/auth/api/login', { username, password })
+        const response = await api.post('/auth/api/login', { email, password })
         if (response.data.success && response.data.user) {
           this.user = response.data.user
           this.isAuthenticated = true

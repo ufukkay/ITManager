@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
+const db = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 
 // POST /api/reports/advanced - Gelişmiş rapor oluştur
@@ -85,3 +85,4 @@ router.post('/advanced', (req, res) => {
 });
 
 module.exports = router;
+

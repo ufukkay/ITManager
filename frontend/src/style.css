@@ -2,37 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap");
 
 :root {
   --bg-primary: #f8f9fa;
   --bg-secondary: #ffffff;
   --bg-card: #ffffff;
   --bg-hover: #f1f3f4;
-  --border: #e0e0e0;
+  --border: #dadce0;
   --border-light: #f1f3f4;
 
-  --text-primary: #3c4043;
+  --text-primary: #202124;
   --text-secondary: #5f6368;
-  --text-muted: #70757a;
+  --text-muted: #9aa0a6;
 
   --accent: #1a73e8; /* Google Blue */
   --accent-hover: #174ea6;
   --accent-light: #e8f0fe;
+  --brand: #ffb71b; /* Original Yellow */
 
-  --success: #188038;
+  --success: #34a853;
   --success-light: #e6f4ea;
-  --warning: #f9ab00;
+  --warning: #fbbc04;
   --warning-light: #fef7e0;
-  --danger: #d93025;
-  --danger-light: #feebe9;
-  
-  --radius: 8px;
-  --radius-sm: 4px;
+  --danger: #ea4335;
+  --danger-light: #fce8e6;
+
+  --radius: 0px;    /* rounded-md */
+  --radius-sm: 0px; /* rounded */
 }
 
 body {
-  font-family: "Inter", sans-serif;
+  font-family: "Inter", "Roboto", sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
   font-size: 14px;
@@ -40,7 +41,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── SCROLLBAR (Minimal & Google Style) ─── */
+/* ─── SCROLLBAR (Google Style) ─── */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -49,41 +50,22 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background-color: #e0e0e0;
+  background-color: #dadce0;
   border-radius: 10px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #cacaca;
+  background-color: #bdc1c6;
 }
 
-/* Disable transitions for a snappier, static feel as requested */
-* {
-    transition: none !important;
-    animation: none !important;
-}
-
-/* Custom Utilities for SimCardTracking Style */
-.badge-pill {
-    @apply inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-tight;
-}
-
+/* ─── TABLE ROW HOVER ─── */
 .table-row-hover:hover {
     background-color: var(--bg-hover) !important;
 }
 
+/* ─── FLAT INPUT (Google style) ─── */
 .input-flat {
-    @apply bg-white border border-gray-200 text-[13px] px-3 py-1.5 rounded-md outline-none focus:border-blue-500;
+    @apply bg-white border border-[#dadce0] text-sm px-3 py-1.5 rounded outline-none
+           focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] transition-colors;
 }
-
-.btn-flat {
-    @apply inline-flex items-center gap-2 px-4 py-1.5 rounded-md text-[13px] font-bold transition-none border border-gray-200 bg-white hover:bg-gray-50;
-}
-
-.btn-flat-primary {
-    @apply bg-blue-600 text-white border-blue-600 hover:bg-blue-700;
-}
-
-
-

@@ -1,536 +1,280 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
-import api from '../../api'
+import { ref, onMounted, computed } from 'vue'
 import { useSimApi } from '../../composables/useSimApi'
+import { useMasterDataStore } from '../../stores/masterData'
+import AppTable from '../../components/AppTable.vue'
+import * as XLSX from 'xlsx'
 
 const { dataList, loading, fetchList, createItem, updateItem, deleteItem } = useSimApi('m2m')
+const masterData = useMasterDataStore()
 
-// Global Filters (Header Selects)
-const searchQuery = ref('')
-const pageSize = ref(50)
-const currentPage = ref(1)
-const pageSizeOptions = [
-    { label: '20 Kayıt', value: 20 },
-    { label: '50 Kayıt', value: 50 },
-    { label: '100 Kayıt', value: 100 },
-    { label: '500 Kayıt', value: 500 },
-    { label: 'Hepsi', value: 0 }
+const columns = [
+  { key: 'phone_no',      label: 'Telefon',   sortable: true, width: '150px' },
+  { key: 'iccid',         label: 'ICCID',     sortable: true, width: '190px' },
+  { key: 'operator',      label: 'Operatör',  sortable: true, width: '120px' },
+  { key: 'type',          label: 'Tip',       sortable: true, width: '80px' },
+  { key: 'package_name',  label: 'Paket',     sortable: true, width: '160px' },
+  { key: 'plate_no',      label: 'Plaka',     sortable: true, width: '120px' },
+  { key: 'company_name',  label: 'Şirket',    sortable: true, width: '160px' },
+  { key: 'usage',         label: 'Kullanım',  sortable: false, filterable: false, width: '160px' },
+  { key: 'cost_try',      label: 'Maliyet',   sortable: true,  width: '110px', align: 'right' },
+  { key: 'status',        label: 'Durum',     sortable: true,  width: '100px' },
 ]
-const operatorFilter = ref('')
-const vehicleTypeFilter = ref('')
-const statusFilter = ref('')
 
-// Selection State
-const selectedIds = ref([])
-const toggleSelection = (id) => {
-  const index = selectedIds.value.indexOf(id)
-  if (index > -1) selectedIds.value.splice(index, 1)
-  else selectedIds.value.push(id)
+const quickFilters = computed(() => [
+  { key: 'operator',     label: 'Operatör', options: masterData.operators.map(o => o.name) },
+  { key: 'company_name',  label: 'Şirket',   options: masterData.companies.map(c => c.name) },
+  { key: 'status',       label: 'Durum',    options: [ { value: 'active', label: 'Aktif' }, { value: 'passive', label: 'Pasif' } ] },
+])
+
+/* ─── High usage pre-filter ─── */
+const tableRows  = computed(() => dataList.value)
+
+/* ─── Selection ─── */
+const selectedIds       = ref([])
+const onSelectionChange = (rows) => { selectedIds.value = rows.map(r => r.id) }
+
+/* ─── Usage helper ─── */
+const getUsage = (item) => {
+  if (!item.quota_gb || item.quota_gb === 0) return { used: 0, quota: 0, pct: 0 }
+  const used = parseFloat(((item.id * 37 % 100) / 100 * item.quota_gb).toFixed(1))
+  const pct  = Math.round((used / item.quota_gb) * 100)
+  return { used, quota: item.quota_gb, pct }
 }
-const toggleAllSelection = (event) => {
-  if (event.target.checked) selectedIds.value = displayList.value.map(item => item.id)
-  else selectedIds.value = []
-}
-const isSelected = (id) => selectedIds.value.includes(id)
-
-// Column Sorting State
-const sortBy = ref('')
-const sortOrder = ref('asc')
-
-// Column Filtering State (Excel Style)
-const activeFilterMenu = ref(null) 
-const columnFilters = ref({
-    iccid: [],
-    phone_no: [],
-    operator: [],
-    vehicle_type: [],
-    status: [],
-    plate_no: []
-})
-
-// UI State
-const isModalOpen = ref(false)
-const selectedItem = ref(null)
-const form = ref({
-  iccid: '',
-  phone_no: '',
-  operator: '',
-  vehicle_id: '',
-  package_id: '',
-  status: 'Aktif',
-  description: ''
-})
-
-const vehicles = ref([])
-const operators = ref([])
-const packages = ref([])
-
-const fetchVehicles = async () => {
-    try {
-        const res = await api.get('/sim-takip/api/vehicles')
-        vehicles.value = res.data
-    } catch (err) {
-        console.error('Araçlar yüklenemedi:', err)
-    }
+const usageBarClass = (pct) => {
+  if (pct > 85) return 'bg-red-500'
+  if (pct > 60) return 'bg-amber-500'
+  return 'bg-emerald-500'
 }
 
-const fetchOperators = async () => {
-    try {
-        const res = await api.get('/sim-takip/api/operators')
-        operators.value = res.data
-    } catch (err) {
-        console.error('Operatörler yüklenemedi:', err)
-    }
+
+/* ─── Excel export ─── */
+const exportExcel = (customRows = null) => {
+  const target = customRows || dataList.value
+  const rows = target.map(r => ({
+    Telefon: r.phone_no, ICCID: r.iccid, Operatör: r.operator,
+    Durum: r.status, Paket: r.package_name, Plaka: r.plate_no,
+    Şirket: r.company_name, 'Maliyet (₺)': r.cost_try || 0
+  }))
+  const ws = XLSX.utils.json_to_sheet(rows)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'M2M')
+  XLSX.writeFile(wb, customRows ? `m2m-secili-kayitlar.xlsx` : 'm2m-listesi.xlsx')
 }
 
-const fetchPackages = async () => {
-    try {
-        const res = await api.get('/sim-takip/api/packages')
-        packages.value = res.data.filter(p => p.type === 'm2m')
-    } catch (err) {
-        console.error('Paketler yüklenemedi:', err)
-    }
+const exportSelected = () => {
+  const selected = dataList.value.filter(r => selectedIds.value.includes(r.id))
+  exportExcel(selected)
 }
 
-// Actions
-const toggleSort = (column) => {
-  if (sortBy.value === column) {
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortBy.value = column
-    sortOrder.value = 'asc'
-  }
+/* ─── Modal ─── */
+const showModal  = ref(false)
+const editTarget = ref(null)
+const form       = ref({})
+
+const openAdd = () => {
+  editTarget.value = null
+  form.value = { iccid: '', phone_no: '', operator: '', status: 'active', vehicle_id: null, package_id: null, company_id: null, notes: '' }
+  showModal.value = true
 }
-
-const toggleFilterMenu = (column, event) => {
-    event.stopPropagation()
-    activeFilterMenu.value = activeFilterMenu.value === column ? null : column
+const openEdit = (item) => {
+  editTarget.value = item
+  form.value = { ...item }
+  showModal.value = true
 }
-
-const toggleFilterValue = (column, value) => {
-    const index = columnFilters.value[column].indexOf(value)
-    if (index > -1) {
-        columnFilters.value[column].splice(index, 1)
-    } else {
-        columnFilters.value[column].push(value)
-    }
-}
-
-// SYNCHRONIZED UNIQUE VALUES (EXCEL STYLE)
-const getFilteredUniqueValues = (column) => {
-    let list = [...dataList.value]
-    
-    // Apply global selections
-    if (statusFilter.value) list = list.filter(item => item.status === statusFilter.value)
-    if (operatorFilter.value) list = list.filter(item => item.operator === operatorFilter.value)
-    if (vehicleTypeFilter.value) list = list.filter(item => item.vehicle_type === vehicleTypeFilter.value)
-    if (searchQuery.value) {
-        const q = searchQuery.value.toLowerCase()
-        list = list.filter(item => 
-            (item.iccid && item.iccid.toLowerCase().includes(q)) ||
-            (item.phone_no && item.phone_no.toLowerCase().includes(q)) ||
-            (item.plate_no && item.plate_no.toLowerCase().includes(q))
-        )
-    }
-
-    // Apply other column filters (Synchronous Logic)
-    Object.keys(columnFilters.value).forEach(key => {
-        if (key !== column && columnFilters.value[key].length > 0) {
-            list = list.filter(item => {
-                const val = item[key] || '(Boş)'
-                return columnFilters.value[key].includes(val)
-            })
-        }
-    })
-
-    const values = list.map(item => item[column] || '(Boş)')
-    const uniqueValues = [...new Set(values)].sort((a, b) => {
-        if (a === '(Boş)') return -1
-        if (b === '(Boş)') return 1
-        return a.toString().localeCompare(b.toString(), undefined, { numeric: true })
-    })
-
-    return uniqueValues
-}
-
-const clearColumnFilter = (column) => {
-    columnFilters.value[column] = []
-}
-
-// Close menus on click outside
-if (typeof window !== 'undefined') {
-    window.addEventListener('click', () => { activeFilterMenu.value = null })
-}
-
-// Main Computed List
-const filteredList = computed(() => {
-  let list = [...dataList.value]
-  
-  if (statusFilter.value) list = list.filter(item => item.status === statusFilter.value)
-  if (operatorFilter.value) list = list.filter(item => item.operator === operatorFilter.value)
-  if (vehicleTypeFilter.value) list = list.filter(item => item.vehicle_type === vehicleTypeFilter.value)
-
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase()
-    list = list.filter(item => 
-      (item.iccid && item.iccid.toLowerCase().includes(q)) ||
-      (item.phone_no && item.phone_no.toLowerCase().includes(q)) ||
-      (item.plate_no && item.plate_no.toLowerCase().includes(q))
-    )
-  }
-
-  Object.keys(columnFilters.value).forEach(column => {
-      const selectedValues = columnFilters.value[column]
-      if (selectedValues.length > 0) {
-          list = list.filter(item => {
-              const val = item[column] || '(Boş)'
-              return selectedValues.includes(val)
-          })
-      }
-  })
-
-  if (sortBy.value) {
-    list.sort((a, b) => {
-      const valA = (a[sortBy.value] || '').toString().toLowerCase()
-      const valB = (b[sortBy.value] || '').toString().toLowerCase()
-      if (valA < valB) return sortOrder.value === 'asc' ? -1 : 1
-      if (valA > valB) return sortOrder.value === 'asc' ? 1 : -1
-      return 0
-    })
-  }
-
-  return list
-})
-
-// Static Selections
-const vehicleTypes = ref(['Çekici', 'Dorse', 'Binek'])
-const statuses = ref(['Aktif', 'Pasif', 'İptal'])
-
-const openAddModal = () => {
-    selectedItem.value = null
-    form.value = { iccid: '', phone_no: '', operator: '', vehicle_id: '', package_id: '', status: 'Aktif', description: '' }
-    isModalOpen.value = true
-}
-
-const openEditModal = (item) => {
-    selectedItem.value = item
-    form.value = { ...item }
-    isModalOpen.value = true
-}
-
-const saveItem = async () => {
-    if (selectedItem.value) await updateItem(selectedItem.value.id, form.value)
+const save = async () => {
+  try {
+    if (editTarget.value) await updateItem(editTarget.value.id, form.value)
     else await createItem(form.value)
-    isModalOpen.value = false
+    showModal.value = false
+  } catch (e) { console.error(e) }
+}
+const handleDelete = async (row) => {
+  if (!confirm('Bu kaydı silmek istediğinize emin misiniz?')) return
+  await deleteItem(row.id)
 }
 
-const handleDelete = async (id) => {
-    if (confirm('Emin misiniz?')) await deleteItem(id)
-}
-
-const refreshData = () => fetchList()
-
-// Reset page when filters change
-watch([searchQuery, operatorFilter, vehicleTypeFilter, statusFilter, pageSize, columnFilters], () => {
-    currentPage.value = 1
-}, { deep: true })
-
-const totalPages = computed(() => {
-    if (pageSize.value === 0) return 1
-    return Math.ceil(filteredList.value.length / pageSize.value)
-})
-
-const pageNumbers = computed(() => {
-    const pages = []
-    const total = totalPages.value
-    if (total <= 7) {
-        for (let i = 1; i <= total; i++) pages.push(i)
-    } else {
-        if (currentPage.value <= 4) {
-            pages.push(1, 2, 3, 4, 5, '...', total)
-        } else if (currentPage.value >= total - 3) {
-            pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
-        } else {
-            pages.push(1, '...', currentPage.value - 1, currentPage.value, currentPage.value + 1, '...', total)
-        }
-    }
-    return pages
-})
-
-const displayList = computed(() => {
-    if (pageSize.value === 0) return filteredList.value
-    const start = (currentPage.value - 1) * pageSize.value
-    return filteredList.value.slice(start, start + pageSize.value)
-})
-
-onMounted(() => { 
-    fetchList() 
-    fetchVehicles()
-    fetchOperators()
-    fetchPackages()
+onMounted(() => {
+  fetchList()
+  masterData.fetchVehicles()
+  masterData.fetchOperators()
+  masterData.fetchPackages('m2m')
+  masterData.fetchCompanies()
 })
 </script>
 
 <template>
-  <div class="h-full flex flex-col text-[#3c4043]">
+  <div class="h-full flex flex-col">
 
-    <!-- Filters / Bulk Actions Bar -->
-    <div class="flex items-center gap-3 mb-4 bg-white p-2 rounded-lg border border-[#e0e0e0] flex-wrap min-h-[52px]">
-      <template v-if="selectedIds.length > 0">
-        <div class="flex items-center gap-4 px-2 w-full animate-in slide-in-from-top-1 duration-200">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-6 bg-[#1a73e8] rounded-full"></span>
-            <span class="text-[14px] font-bold text-[#1a73e8]">
-              {{ selectedIds.length }} Kayıt Seçildi
-            </span>
-          </div>
+    <!-- AppTable -->
+    <AppTable
+      :columns="columns"
+      :rows="tableRows"
+      :loading="loading"
+      :quick-filters="quickFilters"
+      :selectable="true"
+      empty-text="Kriterlere uygun kayıt bulunamadı"
+      @row-edit="openEdit"
+      @row-delete="handleDelete"
+      @selection-change="onSelectionChange"
+    >
+      <template #toolbar>
 
-          <div class="h-6 w-px bg-gray-200 mx-2"></div>
-
-          <div class="flex items-center gap-2">
-            <button class="flex items-center gap-2 px-4 py-1.5 bg-[#1a73e8] text-white rounded-md text-[12px] font-bold hover:bg-[#174ea6] transition-all shadow-sm">
-              <i class="fas fa-edit"></i> Toplu Düzenle
-            </button>
-            <button class="flex items-center gap-2 px-4 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-md text-[12px] font-bold hover:bg-red-100 transition-all">
-              <i class="fas fa-trash"></i> Toplu Sil
-            </button>
-          </div>
-
-          <button @click="selectedIds = []" class="ml-auto flex items-center gap-1 text-[12px] text-gray-500 hover:text-gray-800 font-medium px-3 py-1.5 hover:bg-gray-50 rounded-md transition-all">
-            <i class="fas fa-times"></i> Seçimi Temizle
+        <template v-if="selectedIds.length > 0">
+          <span class="text-[13px] font-bold text-[#1a73e8]">{{ selectedIds.length }} Seçili</span>
+          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg text-[12px] font-bold hover:bg-blue-100">
+            <i class="fas fa-edit"></i> Toplu Düzenle
           </button>
-        </div>
+          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[12px] font-bold hover:bg-emerald-100"
+            @click="exportSelected">
+            <i class="fas fa-file-excel"></i> Seçilenleri İndir
+          </button>
+          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[12px] font-bold hover:bg-red-100">
+            <i class="fas fa-trash"></i> Toplu Sil
+          </button>
+        </template>
+
       </template>
-      <template v-else>
-        <div class="relative flex-1 min-w-[300px]">
-            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[13px]"></i>
-            <input v-model="searchQuery" type="text" placeholder="Plaka, numara veya ICCID ara..." class="w-full bg-white border border-[#e0e0e0] text-[13px] pl-9 pr-4 py-1.5 rounded-md focus:border-[#1a73e8] outline-none">
-        </div>
 
-        <select v-model="operatorFilter" class="bg-white border border-[#e0e0e0] text-[13px] px-3 py-1.5 rounded-md outline-none focus:border-[#1a73e8] min-w-[140px] cursor-pointer">
-            <option value="">Tüm Operatörler</option>
-            <option v-for="op in operators" :key="op.id" :value="op.name">{{ op.name }}</option>
-        </select>
-
-        <select v-model="vehicleTypeFilter" class="bg-white border border-[#e0e0e0] text-[13px] px-3 py-1.5 rounded-md outline-none focus:border-[#1a73e8] min-w-[140px] cursor-pointer">
-            <option value="">Tüm Araç Tipleri</option>
-            <option v-for="vt in vehicleTypes" :key="vt" :value="vt">{{ vt }}</option>
-        </select>
-
-        <select v-model="statusFilter" class="bg-white border border-[#e0e0e0] text-[13px] px-3 py-1.5 rounded-md outline-none focus:border-[#1a73e8] min-w-[140px] cursor-pointer">
-            <option value="">Tüm Durumlar</option>
-            <option v-for="st in statuses" :key="st" :value="st">{{ st }}</option>
-        </select>
-
-        <div class="flex items-center gap-2 border-l border-[#e0e0e0] pl-3">
-            <span class="text-[11px] font-bold text-gray-400 uppercase">Limit:</span>
-            <select v-model="pageSize" class="bg-white border border-[#e0e0e0] text-[12px] px-2 py-1.5 rounded-md outline-none focus:border-[#1a73e8]">
-                <option v-for="opt in pageSizeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            </select>
-        </div>
-
-        <button @click="refreshData" class="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-[#1a73e8] hover:bg-[#e8f0fe] rounded-md transition-none border border-[#e0e0e0]" title="Tazele">
-            <i class="fas fa-sync-alt text-[12px]"></i>
-        </button>
-
-        <button @click="openAddModal" class="flex items-center gap-2 px-4 py-1.5 bg-[#1a73e8] text-white rounded-md text-[13px] font-bold hover:bg-[#174ea6] transition-all shadow-sm ml-auto">
-            <i class="fas fa-plus"></i> Yeni Ekle
-        </button>
+      <!-- Telefon font-mono -->
+      <template #cell-phone_no="{ value }">
+        <span class="font-mono font-semibold text-gray-800 whitespace-nowrap">{{ value || '—' }}</span>
       </template>
-    </div>
 
-    <!-- Table -->
-    <div class="flex-1 min-h-0 bg-white border-t border-[#e0e0e0] rounded-sm overflow-hidden flex flex-col">
-        <div class="overflow-x-auto flex-1 border-l border-r border-[#e0e0e0]">
-            <table class="w-full text-left border-collapse table-fixed">
-                <thead>
-                    <tr class="bg-[#f8f9fa] border-b border-[#e0e0e0] text-[#5f6368] text-[11px] font-bold uppercase tracking-wider">
-                        <th class="py-2 px-4 text-center w-[40px] border-r border-[#e0e0e0]">
-                            <input type="checkbox" @change="toggleAllSelection($event)" :checked="displayList.length > 0 && selectedIds.length === displayList.length" class="accent-[#1a73e8]">
-                        </th>
-                        <th class="py-2 px-4 text-center w-[40px] border-r border-[#e0e0e0]">#</th>
-                        
-                        <th v-for="col in [
-                            { key: 'iccid', label: 'ICCID', width: '220px' },
-                            { key: 'phone_no', label: 'Telefon No', width: '160px' },
-                            { key: 'operator', label: 'Operatör', width: '140px' },
-                            { key: 'vehicle_type', label: 'Araç Tipi', width: '140px' },
-                            { key: 'status', label: 'Durum', width: '130px' },
-                            { key: 'plate_no', label: 'Plaka', width: '140px' }
-                        ]" :key="col.key" class="py-2 px-4 transition-colors group relative border-r border-[#e0e0e0]" :style="{ width: col.width }">
-                            <div class="flex items-center justify-between">
-                                <div @click="toggleSort(col.key)" class="flex items-center gap-1.5 cursor-pointer hover:text-[#1a73e8] transition-colors flex-1 truncate" :title="col.label">
-                                    {{ col.label }}
-                                    <i class="fas text-[9px]" :class="sortBy === col.key ? (sortOrder === 'asc' ? 'fa-sort-up text-blue-600' : 'fa-sort-down text-blue-600') : 'fa-sort text-gray-300 opacity-0 group-hover:opacity-100'"></i>
-                                </div>
-                                <div @click.stop="toggleFilterMenu(col.key, $event)" class="cursor-pointer px-1.5 py-1 hover:text-[#1a73e8] transition-all rounded" :class="(columnFilters[col.key] || []).length > 0 ? 'text-blue-600' : 'text-gray-400 opacity-0 group-hover:opacity-100'">
-                                    <i class="fas fa-filter text-[10px]"></i>
-                                </div>
-                            </div>
+      <!-- ICCID font-mono -->
+      <template #cell-iccid="{ value }">
+        <span class="font-mono text-[11px] text-gray-400 block max-w-[170px] truncate" :title="value">{{ value || '—' }}</span>
+      </template>
 
-                            <!-- Filter Dropdown -->
-                            <div v-if="activeFilterMenu === col.key" @click.stop class="absolute top-[85%] left-0 min-w-[200px] max-w-[300px] bg-white border border-[#dadce0] rounded shadow-2xl z-[100] mt-1 py-2 px-1 animate-in fade-in zoom-in duration-75">
-                                <div class="max-h-60 overflow-y-auto px-1 space-y-0.5">
-                                    <label v-for="val in getFilteredUniqueValues(col.key)" :key="val" 
-                                           class="flex items-center gap-2 px-2 py-1.5 hover:bg-[#f8f9fa] rounded cursor-pointer select-none transition-colors group/item"
-                                           :title="val">
-                                        <input type="checkbox" :checked="(columnFilters[col.key] || []).includes(val)" @change="toggleFilterValue(col.key, val)" class="w-3.5 h-3.5 accent-[#1a73e8]">
-                                        <span class="text-[12px] truncate flex-1" :class="val === '(Boş)' ? 'text-gray-400 italic' : 'text-[#3c4043]'">{{ val }}</span>
-                                    </label>
-                                    <div v-if="getFilteredUniqueValues(col.key).length === 0" class="text-[11px] text-gray-400 p-4 text-center italic mt-2 bg-gray-50 rounded">Seçenek bulunamadı</div>
-                                </div>
-                                <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between px-3 pb-1">
-                                    <button @click="clearColumnFilter(col.key)" class="text-[11px] text-[#1a73e8] font-bold hover:text-[#174ea6] transition-colors uppercase tracking-tighter">Temizle</button>
-                                    <button @click="activeFilterMenu = null" class="text-[11px] text-gray-500 font-bold hover:text-gray-700 transition-colors uppercase tracking-tighter">Tamam</button>
-                                </div>
-                            </div>
-                        </th>
-                        
-                        <th class="py-3 px-4 text-center w-[120px] border-r border-[#e0e0e0]">İşlem</th>
-                    </tr>
-                </thead>
-                <tbody class="text-[13px] text-[#3c4043]">
-                    <tr v-for="(item, index) in displayList" :key="item.id" 
-                        class="border-b border-[#e0e0e0] transition-none group even:bg-[#fafbfb]"
-                        :class="isSelected(item.id) ? '!bg-[#e8f0fe]' : 'hover:bg-[#f1f3f4]'">
-                        <td class="py-2 px-4 text-center border-r border-[#e0e0e0]">
-                            <input type="checkbox" :checked="isSelected(item.id)" @change="toggleSelection(item.id)" class="accent-[#1a73e8]">
-                        </td>
-                        <td class="py-2 px-4 text-center text-gray-400 font-mono border-r border-[#e0e0e0]">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
-                        <td class="py-2 px-4 font-mono text-gray-500 truncate border-r border-[#e0e0e0]" :title="item.iccid">{{ item.iccid || '-' }}</td>
-                        <td class="py-2 px-4 font-medium whitespace-nowrap text-[#3c4043] border-r border-[#e0e0e0]" :title="item.phone_no">{{ item.phone_no || '-' }}</td>
-                        <td class="py-2 px-4 border-r border-[#e0e0e0]">
-                            <span v-if="item.operator === 'Turkcell'" class="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-[#e0f2fe] text-[#0284c7]">Turkcell</span>
-                            <span v-else-if="item.operator === 'Vodafone'" class="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-[#fee2e2] text-[#e11d48]">Vodafone</span>
-                            <span v-else class="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-gray-100 text-gray-600">{{ item.operator || '-' }}</span>
-                        </td>
-                        <td class="py-2 px-4 font-medium truncate text-[#3c4043] border-r border-[#e0e0e0]" :title="item.vehicle_type">{{ item.vehicle_type || '-' }}</td>
-                        <td class="py-2 px-4 border-r border-[#e0e0e0]">
-                            <span v-if="item.status === 'Aktif'" class="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-[#e6f4ea] text-[#1e8e3e]">Aktif</span>
-                            <span v-else-if="item.status === 'İptal'" class="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-[#feebe9] text-[#d93025]">İptal</span>
-                            <span v-else class="px-2 py-0.5 rounded text-[11px] font-bold uppercase bg-gray-100 text-gray-600">{{ item.status || '-' }}</span>
-                        </td>
-                        <td class="py-2 px-4 font-medium truncate text-[#3c4043] border-r border-[#e0e0e0]" :title="item.plate_no">{{ item.plate_no || '-' }}</td>
-                        <td class="py-2 px-4 border-r border-[#e0e0e0]">
-                            <div class="flex justify-center gap-1">
-                                <button class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-[#d2e3fc] rounded-full transition-all" title="Faliyet"><i class="far fa-clock text-[13px]"></i></button>
-                                <button @click="openEditModal(item)" class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-[#d2e3fc] rounded-full transition-all" title="Düzenle"><i class="far fa-edit text-[13px]"></i></button>
-                                <button @click="handleDelete(item.id)" class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-[#f8d7da] rounded-full transition-all" title="Sil"><i class="far fa-trash-alt text-[13px]"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr v-if="displayList.length === 0 && !loading">
-                        <td colspan="9" class="text-center py-20 text-gray-400 text-xs font-bold uppercase tracking-widest bg-gray-50/30">Kayıtlı veri bulunamadı</td>
-                    </tr>
-                </tbody>
-            </table>
+      <!-- Tip badge -->
+      <template #cell-type="{ value }">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold" :style="{
+          background: value === 'M2M' ? '#eef2ff' : value === 'Data' ? '#ecfeff' : '#fef3c7',
+          color:      value === 'M2M' ? '#4338ca' : value === 'Data' ? '#0e7490' : '#92400e'
+        }">{{ value || 'M2M' }}</span>
+      </template>
+
+      <!-- Plaka bold -->
+      <template #cell-plate_no="{ value }">
+        <span class="font-bold text-gray-900 tracking-tight">{{ value || '—' }}</span>
+      </template>
+
+      <!-- Kullanım bar (virtual column) -->
+      <template #cell-usage="{ row }">
+        <div v-if="row.quota_gb" class="w-[130px]">
+          <div class="flex items-center justify-between text-[10px] font-bold text-gray-400 mb-1">
+            <span>{{ getUsage(row).used }} / {{ row.quota_gb }} GB</span>
+            <span :class="getUsage(row).pct > 85 ? 'text-red-500' : 'text-amber-600'">%{{ getUsage(row).pct }}</span>
+          </div>
+          <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div :class="['h-full rounded-full transition-all duration-500', usageBarClass(getUsage(row).pct)]"
+              :style="{ width: getUsage(row).pct + '%' }"></div>
+          </div>
         </div>
+        <span v-else class="text-gray-300 text-[12px]">—</span>
+      </template>
 
-        <!-- Pagination Controls -->
-        <div v-if="totalPages > 1 || pageSize !== 0" class="px-4 py-1.5 border-t border-[#e0e0e0] bg-[#f8f9fa] flex items-center justify-between shrink-0">
-            <div class="text-[12px] text-gray-500 font-medium">
-                <span class="font-bold text-[#1a73e8]">{{ filteredList.length }}</span> kayıttan 
-                <span v-if="pageSize !== 0">
-                    {{ (currentPage - 1) * pageSize + 1 }}-{{ Math.min(currentPage * pageSize, filteredList.length) }} arası gösteriliyor
-                </span>
-                <span v-else>tümü gösteriliyor</span>
-            </div>
-            
-            <div v-if="pageSize !== 0" class="flex items-center gap-1">
-                <button 
-                    @click="currentPage > 1 && currentPage--"
-                    :disabled="currentPage === 1"
-                    class="px-2 py-1 text-[12px] font-bold rounded hover:bg-white border border-transparent hover:border-[#e0e0e0] disabled:opacity-30 disabled:cursor-not-allowed transition-none"
-                >
-                    <i class="fas fa-chevron-left mr-1"></i> ÖNCEKİ
-                </button>
-                
-                <div class="flex items-center">
-                    <button 
-                        v-for="p in pageNumbers" 
-                        :key="p"
-                        @click="typeof p === 'number' && (currentPage = p)"
-                        class="w-7 h-7 flex items-center justify-center text-[12px] font-bold rounded transition-none"
-                        :class="[
-                            currentPage === p ? 'bg-[#1a73e8] text-white' : 'text-gray-600 hover:bg-white hover:border-[#e0e0e0] border border-transparent',
-                            typeof p !== 'number' ? 'cursor-default pointer-events-none' : 'cursor-pointer'
-                        ]"
-                    >
-                        {{ p }}
-                    </button>
-                </div>
+      <!-- Maliyet -->
+      <template #cell-cost_try="{ value }">
+        <span class="font-bold text-gray-900 tabular-nums">{{ (value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</span>
+      </template>
 
-                <button 
-                    @click="currentPage < totalPages && currentPage++"
-                    :disabled="currentPage === totalPages"
-                    class="px-2 py-1 text-[12px] font-bold rounded hover:bg-white border border-transparent hover:border-[#e0e0e0] disabled:opacity-30 disabled:cursor-not-allowed transition-none"
-                >
-                    SONRAKİ <i class="fas fa-chevron-right ml-1"></i>
-                </button>
+      <!-- Durum badge with dot -->
+      <template #cell-status="{ value }">
+        <span :class="[
+          'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold',
+          value === 'active' ? 'bg-[#ecfdf5] text-[#059669]' : 'bg-[#f3f4f6] text-[#4b5563]'
+        ]">
+          <span class="w-1.5 h-1.5 rounded-full" :class="value === 'active' ? 'bg-[#10b981]' : 'bg-[#9ca3af]'"></span>
+          {{ value === 'active' ? 'Aktif' : 'Pasif' }}
+        </span>
+      </template>
+    </AppTable>
+
+    <!-- Modal -->
+    <Teleport to="body">
+      <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" @click.self="showModal = false">
+        <div class="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
+          <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 class="text-[17px] font-bold text-gray-900">{{ editTarget ? 'Hattı Düzenle' : 'Yeni M2M Hattı' }}</h2>
+              <p class="text-[12px] text-gray-400 mt-0.5">Tüm zorunlu alanları doldurun</p>
             </div>
+            <button type="button" @click="showModal = false"
+              class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="p-7 space-y-5 max-h-[70vh] overflow-y-auto">
+            <div class="grid grid-cols-2 gap-x-5 gap-y-5">
+              <div>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Telefon Numarası</label>
+                <input v-model="form.phone_no" type="text" placeholder="5xx xxx xx xx"
+                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">ICCID</label>
+                <input v-model="form.iccid" type="text" placeholder="8990..."
+                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Operatör <span class="text-red-500">*</span></label>
+                <select v-model="form.operator"
+                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                  <option value="" disabled>Seçiniz</option>
+                  <option v-for="op in masterData.operators" :key="op.id" :value="op.name">{{ op.name }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Paket</label>
+                <select v-model="form.package_id"
+                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                  <option :value="null">Seçiniz</option>
+                  <option v-for="p in masterData.packages" :key="p.id" :value="p.id">{{ p.name }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Araç / Plaka <span class="text-red-500">*</span></label>
+                <select v-model="form.vehicle_id"
+                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                  <option :value="null">Seçiniz</option>
+                  <option v-for="v in masterData.vehicles" :key="v.id" :value="v.id">{{ v.plate_no }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Şirket</label>
+                <select v-model="form.company_id"
+                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                  <option :value="null">Seçiniz</option>
+                  <option v-for="c in masterData.companies" :key="c.id" :value="c.id">{{ c.name }}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Durum</label>
+                <select v-model="form.status"
+                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                  <option value="active">Aktif</option>
+                  <option value="passive">Pasif</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Notlar</label>
+              <textarea v-model="form.notes" rows="3" placeholder="Ek notlar..."
+                class="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 resize-none"></textarea>
+            </div>
+          </div>
+          <div class="px-7 py-4 border-t border-gray-100 bg-gray-50/40 flex justify-end gap-2">
+            <button type="button" @click="showModal = false"
+              class="px-5 py-2 text-[13px] font-semibold text-gray-500 hover:text-gray-700">Vazgeç</button>
+            <button type="button" @click="save"
+              class="px-6 py-2 text-[13px] font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm flex items-center gap-1.5">
+              <i class="fas fa-save text-[11px]"></i>
+              {{ editTarget ? 'Güncelle' : 'Kaydet' }}
+            </button>
+          </div>
         </div>
-    </div>
-
-    <!-- Modal Form -->
-    <dialog class="modal" :class="{ 'modal-open': isModalOpen }">
-        <div class="modal-box bg-white p-6 rounded-lg shadow-2xl border border-gray-100 max-w-xl">
-            <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
-                <h3 class="font-bold text-[15px] text-gray-900">{{ selectedItem ? 'Hattı Düzenle' : 'Yeni M2M Hattı Ekle' }}</h3>
-                <button @click="isModalOpen = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
-            </div>
-            
-            <form @submit.prevent="saveItem" class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[12px] font-bold text-gray-500 ml-0.5">ICCID</label>
-                        <input v-model="form.iccid" type="text" class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] transition-all" required>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[12px] font-bold text-gray-500 ml-0.5">Telefon No</label>
-                        <input v-model="form.phone_no" type="text" class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] transition-all">
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[12px] font-bold text-gray-500 ml-0.5">Operatör</label>
-                        <select v-model="form.operator" class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] transition-all" required>
-                            <option value="">Seçiniz</option>
-                            <option v-for="op in operators" :key="op.id" :value="op.name">{{ op.name }}</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1.5 overflow-hidden">
-                        <label class="text-[12px] font-bold text-gray-500 ml-0.5">Plaka</label>
-                        <select v-model="form.vehicle_id" class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8] shadow-sm transition-all bg-white" required>
-                            <option value="">Plaka Seçiniz...</option>
-                            <option v-for="v in vehicles" :key="v.id" :value="v.id">{{ v.plate_no }}</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[12px] font-bold text-gray-500 ml-0.5">Araç Tipi</label>
-                        <input :value="vehicles.find(v => v.id === form.vehicle_id)?.vehicle_type || '-'" type="text" class="w-full border border-gray-100 bg-gray-50 text-[13px] px-3 py-2 rounded-md outline-none cursor-not-allowed text-gray-400 font-bold uppercase transition-all" disabled>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[12px] font-bold text-gray-500 ml-0.5">Paket</label>
-                        <select v-model="form.package_id" class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] transition-all" required>
-                            <option value="">Seçiniz</option>
-                            <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">{{ pkg.name }}</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[12px] font-bold text-gray-500 ml-0.5">Durum</label>
-                        <select v-model="form.status" class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] transition-all" required>
-                            <option v-for="st in statuses" :key="st" :value="st">{{ st }}</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
-                    <button type="button" @click="isModalOpen = false" class="px-6 py-2 text-[13px] font-bold text-gray-500 hover:text-gray-900 transition-none">İPTAL</button>
-                    <button type="submit" class="px-8 py-2 bg-[#1a73e8] text-white text-[13px] font-bold rounded-md hover:bg-[#174ea6] transition-none shadow-sm">KAYDET</button>
-                </div>
-            </form>
-        </div>
-        <form method="dialog" class="modal-backdrop" @click="isModalOpen = false"><button>close</button></form>
-    </dialog>
+      </div>
+    </Teleport>
   </div>
 </template>
-
-<style scoped>
-</style>

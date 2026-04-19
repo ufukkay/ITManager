@@ -6,21 +6,21 @@ import { useAuthStore } from '../stores/auth'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const username = ref('')
+const email = ref('')
 const password = ref('')
 const isSubmitting = ref(false)
 const errorMessage = ref('')
 
 const handleLogin = async () => {
-  if (!username.value || !password.value) {
-    errorMessage.value = 'Lütfen kullanıcı adı ve şifrenizi girin.'
+  if (!email.value || !password.value) {
+    errorMessage.value = 'Lütfen e-posta ve şifrenizi girin.'
     return
   }
 
   isSubmitting.value = true
   errorMessage.value = ''
 
-  const success = await authStore.login(username.value, password.value)
+  const success = await authStore.login(email.value, password.value)
 
   if (success) {
     router.push('/')
@@ -43,9 +43,9 @@ const handleLogin = async () => {
         <!-- Logo Area -->
         <div class="text-center mb-10">
           <div class="inline-flex items-center justify-center w-14 h-14 bg-[#e8f0fe] text-[#1a73e8] rounded-full mb-4">
-            <i class="fas fa-satellite-dish text-2xl"></i>
+            <i class="fas fa-microchip text-2xl"></i>
           </div>
-          <h1 class="text-[24px] font-medium text-[#202124] tracking-tight">IT Manager Pro</h1>
+          <h1 class="text-[24px] font-medium text-[#202124] tracking-normal">IT Manager Pro</h1>
           <p class="text-[14px] text-[#5f6368] mt-2">Sisteme giriş yapın</p>
         </div>
 
@@ -59,17 +59,20 @@ const handleLogin = async () => {
           </div>
 
           <div class="space-y-1.5 text-left">
-            <label class="text-[13px] font-medium text-[#3c4043] ml-1">Kullanıcı Adı</label>
+            <label class="text-[13px] font-medium text-[#3c4043] ml-1">E-posta Adresi</label>
             <div class="relative">
-              <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[13px]"></i>
-              <input v-model="username" type="text"
+              <i class="fas fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[13px]"></i>
+              <input v-model="email" type="email"
                 class="w-full h-11 bg-white border border-[#dadce0] rounded px-10 text-[14px] outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] transition-all"
-                placeholder="Adınız veya sicil no" required autofocus />
+                placeholder="ornek@talay.com" required autofocus />
             </div>
           </div>
 
           <div class="space-y-1.5 text-left">
-            <label class="text-[13px] font-medium text-[#3c4043] ml-1">Şifre</label>
+            <div class="flex justify-between items-center ml-1">
+              <label class="text-[13px] font-medium text-[#3c4043]">Şifre</label>
+              <a href="#" class="text-[12px] text-[#1a73e8] hover:underline">Şifremi Unuttum?</a>
+            </div>
             <div class="relative">
               <i class="fas fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[13px]"></i>
               <input v-model="password" type="password"
@@ -89,7 +92,7 @@ const handleLogin = async () => {
           </button>
         </form>
 
-        <div class="mt-10 text-center text-[12px] text-[#70757a] font-medium uppercase tracking-widest opacity-50">
+        <div class="mt-10 text-center text-[12px] text-[#70757a] font-medium uppercase tracking-wide opacity-50">
           © {{ new Date().getFullYear() }} ITManager Platformu
         </div>
 

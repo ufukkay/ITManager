@@ -1,97 +1,86 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import api from '../api'
+import AppTable from '../components/AppTable.vue'
+import { useMasterDataStore } from '../stores/masterData'
 
-const servers = ref([])
-const selectedServerId = ref(null)
-const selectedServer = ref(null)
-const isPanelOpen = ref(false)
-const isModalOpen = ref(false)
+const props = defineProps({
+  type: { type: String, default: 'cloud' }
+})
+
+const masterData = useMasterDataStore()
 const loading = ref(true)
-
 let pollInterval = null
 
-// Form State
-const form = ref({
-    name: '',
-    ip_address: '',
-    os_version: ''
+/* --- Table Config --- */
+const columns = [
+  { key: 'name',          label: 'Sunucu Adı',   sortable: true, width: '180px' },
+  { key: 'ip_address',    label: 'IP Adresi',    sortable: true, width: '130px' },
+  { key: 'companies',     label: 'Şirket Ataması', sortable: false, width: '220px' },
+  { key: 'cpu_usage',     label: 'CPU',          sortable: true, width: '110px' },
+  { key: 'ram_usage',     label: 'RAM',          sortable: true, width: '110px' },
+  { key: 'disk_usage',    label: 'Disk',         sortable: false, width: '100px' },
+  { key: 'status',        label: 'Durum',        sortable: true, width: '100px' },
+]
+
+/* --- Data Processing --- */
+const tableRows = computed(() => {
+  return masterData.servers.filter(s => s.type === props.type)
 })
 
 const loadServers = async () => {
   try {
-    const res = await api.get('/monitoring/api/servers')
-    servers.value = res.data
+    await masterData.fetchServers()
     loading.value = false
-    
-    // Update selected server data if panel is open
-    if (selectedServerId.value) {
-        const active = servers.value.find(s => s.id === selectedServerId.value)
-        if (active) {
-            // Re-fetch detail
-            showDetail(active.id, false)
-        }
-    }
   } catch (err) {
     console.error('Failed to load servers:', err)
-    loading.value = false
   }
 }
 
-const showDetail = async (id, openPanel = true) => {
-  selectedServerId.value = id
-  try {
-    const res = await api.get(`/monitoring/api/server/${id}`)
-    selectedServer.value = res.data
-    if (openPanel) isPanelOpen.value = true
-  } catch (err) {
-    console.error('Failed to show detail:', err)
+/* --- Modal & Form --- */
+const showModal = ref(false)
+const editTarget = ref(null)
+const form = ref({ name: '', ip_address: '', os_version: '', description: '', companies: [], type: 'cloud' })
+
+const openEdit = (row) => {
+  editTarget.value = row
+  form.value = { 
+    ...row, 
+    companies: row.companies.map(c => ({ id: c.company_id, share_ratio: c.share_ratio })) 
   }
+  showModal.value = true
 }
 
-const handleAddServer = async () => {
+const save = async () => {
     try {
-        await api.post('/monitoring/api/servers', form.value)
-        closeModal()
-        await loadServers()
+        if (editTarget.value) {
+            await masterData.updateItem('servers', editTarget.value.id, form.value)
+        } else {
+            await masterData.createItem('servers', form.value)
+        }
+        showModal.value = false
+        loadServers()
     } catch (err) {
-        alert('Hata: Sunucu eklenemedi veya zaten mevcut.')
+        alert('Hata: ' + (err.response?.data?.error || err.message))
     }
 }
 
-const handleDelete = async (id) => {
-    if (!confirm('Bu sunucuyu listeden çıkarmak istediğinize emin misiniz?')) return
-    try {
-        await api.delete(`/monitoring/api/server/${id}`)
-        closePanel()
-        await loadServers()
-    } catch (err) {
-        console.error('Delete failed:', err)
-    }
+const handleDelete = async (row) => {
+    if (!confirm('Bu sunucuyu silmek istediğinize emin misiniz?')) return
+    await masterData.deleteItem('servers', row.id)
+    loadServers()
 }
 
-const closeModal = () => {
-    isModalOpen.value = false
-    form.value = { name: '', ip_address: '', os_version: '' }
+const addCompanyToForm = () => {
+    form.value.companies.push({ id: '', share_ratio: 0 })
 }
-
-const closePanel = () => {
-    isPanelOpen.value = false
-    // Delay clearing selected server to allow transition to finish
-    setTimeout(() => {
-        if (!isPanelOpen.value) selectedServerId.value = null
-    }, 400)
-}
-
-const getHexClass = (srv) => {
-    let status = srv.status
-    if (srv.name === 'Local Machine') status += ' online'
-    if (srv.cpu_usage > 90 || srv.pending_updates > 5) status = 'critical'
-    return status
+const removeCompanyFromForm = (index) => {
+    form.value.companies.splice(index, 1)
 }
 
 onMounted(() => {
     loadServers()
+    masterData.fetchCompanies()
     pollInterval = setInterval(loadServers, 5000)
 })
 
@@ -101,152 +90,139 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative min-h-full">
-    <div class="welcome-section mb-8">
-      <h1 class="text-3xl font-black mb-2 animate-in fade-in slide-in-from-left">Sunucu İzleme <i class="fas fa-search"></i></h1>
-      <p class="text-base-content/60 font-medium max-w-2xl">Dinamik bal peteği paneli ile sistem sağlığını anlık olarak takip edin. Mavi sunucu yerel makinenizdir.</p>
-    </div>
+  <div class="h-full flex flex-col">
+    <!-- Table Section (Full Width, No Header) -->
+    <div class="flex-1 min-h-0 bg-white shadow-sm overflow-hidden">
+      <AppTable
+        :columns="columns"
+        :rows="tableRows"
+        :loading="loading"
+        :actions="true"
+        @row-edit="openEdit"
+        @row-delete="handleDelete"
+      >
+        <!-- Custom Cells -->
+        <template #cell-name="{ value }">
+          <div class="flex items-center gap-2.5">
+             <i class="fas fa-server text-gray-400 text-[13px]"></i>
+             <span class="font-bold text-gray-900">{{ value }}</span>
+          </div>
+        </template>
 
-    <div class="flex justify-end gap-3 mb-12">
-      <a href="/downloads/ITManagerAgent-Setup.zip" class="btn btn-outline" download>
-          <i class="fas fa-download"></i> Windows Ajanı İndir
-      </a>
-      <button @click="isModalOpen = true" class="btn btn-primary shadow-lg shadow-primary/20">
-          <i class="fas fa-plus"></i> Yeni Sunucu Ekle
-      </button>
-    </div>
+        <template #cell-ip_address="{ value }">
+           <span class="font-mono text-[13px] text-gray-600">{{ value }}</span>
+        </template>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="flex justify-center items-center py-20">
-        <span class="loading loading-dots loading-lg text-primary"></span>
-    </div>
+        <template #cell-companies="{ row }">
+          <div class="flex flex-wrap gap-1">
+            <span v-for="c in row.companies" :key="c.company_id" 
+                  class="px-2 py-0.5 rounded-lg bg-gray-50 border border-gray-100 text-[10px] font-bold text-gray-600">
+              {{ c.name }} (%{{ c.share_ratio }})
+            </span>
+            <span v-if="!row.companies || row.companies.length === 0" class="text-gray-300 italic text-[11px]">Şirket atanmamış</span>
+          </div>
+        </template>
 
-    <!-- Honeycomb Grid -->
-    <div v-else class="flex flex-wrap gap-4 justify-center md:justify-start">
-        <div 
-            v-for="srv in servers" 
-            :key="srv.id"
-            @click="showDetail(srv.id)"
-            class="w-32 h-36 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110 shadow-xl clip-hexagon animate-in zoom-in-50"
-            :class="{
-                'bg-blue-600 outline-blue-400': getHexClass(srv).includes('online') && srv.name === 'Local Machine',
-                'bg-emerald-500 outline-emerald-400': getHexClass(srv).includes('online') && srv.name !== 'Local Machine' && !getHexClass(srv).includes('critical'),
-                'bg-rose-500 outline-rose-400 animate-pulse': getHexClass(srv).includes('critical'),
-                'bg-base-300 outline-base-content/20 grayscale': getHexClass(srv).includes('offline')
-            }"
-            style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);"
-        >
-            <div class="text-white text-xs font-extrabold mb-1 text-center px-2 line-clamp-1">{{ srv.name }}</div>
-            <div class="text-white text-xl font-black drop-shadow-md">{{ srv.cpu_usage }}%</div>
-            <div class="text-white/80 text-[10px] mt-1 font-bold">RAM: {{ srv.ram_usage }}%</div>
-        </div>
-    </div>
-
-    <!-- Side Panel -->
-    <div 
-        class="fixed top-0 right-0 h-screen w-full sm:w-[400px] bg-base-100/95 backdrop-blur-xl border-l border-base-200 shadow-2xl z-[100] transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] flex flex-col"
-        :class="isPanelOpen ? 'translate-x-0' : 'translate-x-full'"
-    >
-        <div class="flex justify-between items-center p-6 border-b border-base-200">
-            <h3 class="text-xl font-bold">{{ selectedServer?.name || 'Sunucu Detayı' }}</h3>
-            <button @click="closePanel" class="btn btn-ghost btn-circle btn-sm">
-                <i class="fas fa-times text-lg"></i>
-            </button>
-        </div>
-        
-        <div class="flex-1 overflow-y-auto p-6" v-if="selectedServer">
-            <!-- Server Info Cards -->
-            <div class="bg-base-200/50 p-4 rounded-xl mb-6 space-y-3 font-medium text-sm">
-              <div class="flex justify-between border-b border-base-300 pb-2">
-                  <span class="text-base-content/60">IP Adresi</span>
-                  <span>{{ selectedServer.ip_address }}</span>
-              </div>
-              <div class="flex justify-between border-b border-base-300 pb-2">
-                  <span class="text-base-content/60">İşletim Sistemi</span>
-                  <span>{{ selectedServer.os_version || 'Bilinmiyor' }}</span>
-              </div>
-              <div class="flex justify-between pb-1">
-                  <span class="text-base-content/60">Disk Boyutu</span>
-                  <span>{{ selectedServer.disk_usage || '--' }}</span>
-              </div>
+        <template #cell-cpu_usage="{ value }">
+          <div class="w-[80px]">
+            <div class="flex justify-between text-[10px] font-bold mb-1">
+              <span :class="value > 85 ? 'text-red-500' : 'text-gray-400'">%{{ value }}</span>
             </div>
+            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div class="h-full bg-blue-500 rounded-full" :style="{ width: value + '%' }"></div>
+            </div>
+          </div>
+        </template>
 
-            <!-- Resource Progress -->
-            <div class="space-y-6">
+        <template #cell-ram_usage="{ value }">
+          <div class="w-[80px]">
+            <div class="flex justify-between text-[10px] font-bold mb-1">
+              <span :class="value > 85 ? 'text-red-500' : 'text-gray-400'">%{{ value }}</span>
+            </div>
+            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div class="h-full bg-emerald-500 rounded-full" :style="{ width: value + '%' }"></div>
+            </div>
+          </div>
+        </template>
+
+        <template #cell-disk_usage="{ value }">
+           <span class="font-bold text-gray-600 text-[13px]">{{ value || '--' }}</span>
+        </template>
+
+        <template #cell-status="{ value }">
+          <span :class="[
+            'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold',
+            value === 'online' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'
+          ]">
+            <span class="w-1.5 h-1.5 rounded-full" :class="value === 'online' ? 'bg-emerald-500' : 'bg-gray-400'"></span>
+            {{ value === 'online' ? 'Aktif' : 'Pasif' }}
+          </span>
+        </template>
+      </AppTable>
+    </div>
+
+    <!-- Edit Modal (Teleport body) -->
+    <Teleport to="body">
+      <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" @click.self="showModal = false">
+        <div class="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+          <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 class="text-[17px] font-bold text-gray-900">Sunucu Detayı & Maliyet Payı</h2>
+              <p class="text-[12px] text-gray-400 mt-0.5">Sistem bilgilerini ve sahiplik oranlarını düzenleyin</p>
+            </div>
+            <button type="button" @click="showModal = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+          </div>
+
+          <div class="p-7 space-y-6 max-h-[75vh] overflow-y-auto">
+            <div class="grid grid-cols-2 gap-5">
+              <div class="col-span-2">
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Sunucu Adı</label>
+                <input v-model="form.name" type="text" class="w-full h-10 px-3 border border-gray-200 rounded-lg outline-none bg-gray-50" readonly>
+              </div>
               <div>
-                <div class="flex justify-between text-sm font-bold mb-2">
-                  <span>CPU Kullanımı</span>
-                  <span class="text-primary">{{ selectedServer.cpu_usage }}%</span>
-                </div>
-                <progress class="progress progress-primary w-full h-3" :value="selectedServer.cpu_usage" max="100"></progress>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Sunucu Tipi</label>
+                <select v-model="form.type" class="w-full h-10 px-3 border border-gray-200 rounded-lg outline-none bg-white text-[13px]">
+                   <option value="cloud">Cloud</option>
+                   <option value="vodafone">Vodafone</option>
+                   <option value="local">Local</option>
+                </select>
               </div>
-
               <div>
-                <div class="flex justify-between text-sm font-bold mb-2">
-                  <span>RAM Kullanımı</span>
-                  <span class="text-success">{{ selectedServer.ram_usage }}%</span>
+                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">IP Adresi</label>
+                <input v-model="form.ip_address" type="text" class="w-full h-10 px-3 border border-gray-200 rounded-lg outline-none focus:border-blue-500" placeholder="10.0.x.x">
+              </div>
+            </div>
+
+            <div class="border-t border-gray-100 pt-6">
+              <div class="flex items-center justify-between mb-4">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Şirket Paylaşımı & Maliyet Payı (%)</label>
+                <button @click="addCompanyToForm" type="button" class="text-[11px] font-bold text-blue-600 hover:underline">+ Şirket Ekle</button>
+              </div>
+              
+              <div class="space-y-3">
+                <div v-for="(comp, index) in form.companies" :key="index" class="flex gap-3 items-center">
+                  <select v-model="comp.id" class="flex-1 h-10 px-3 border border-gray-200 rounded-lg outline-none bg-white text-[13px]">
+                    <option value="" disabled>Şirket Seçin</option>
+                    <option v-for="c in masterData.companies" :key="c.id" :value="c.id">{{ c.name }}</option>
+                  </select>
+                  <div class="w-24 relative">
+                    <input v-model.number="comp.share_ratio" type="number" class="w-full h-10 pl-3 pr-6 border border-gray-200 rounded-lg outline-none focus:border-blue-500 text-[13px]">
+                    <span class="absolute right-2 top-2.5 text-[12px] text-gray-400">%</span>
+                  </div>
+                  <button @click="removeCompanyFromForm(index)" class="w-10 h-10 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><i class="fas fa-trash-alt"></i></button>
                 </div>
-                <progress class="progress progress-success w-full h-3" :value="selectedServer.ram_usage" max="100"></progress>
-              </div>
-
-              <div class="p-4 rounded-xl border flex items-center justify-between" 
-                    :class="selectedServer.pending_updates > 0 ? 'bg-warning/10 border-warning/20' : 'bg-success/5 border-success/10'">
-                <span class="font-bold text-sm flex items-center gap-2">
-                    <i :class="selectedServer.pending_updates > 0 ? 'fas fa-exclamation-circle text-warning' : 'fas fa-check-circle text-success'"></i>
-                    Bekleyen Güncellemeler
-                </span>
-                <span class="font-black text-lg" :class="selectedServer.pending_updates > 0 ? 'text-warning' : 'text-success'">
-                    {{ selectedServer.pending_updates }}
-                </span>
               </div>
             </div>
+          </div>
 
-            <div class="text-xs text-center text-base-content/40 mt-8 font-medium">
-              Son güncelleme: {{ new Date().toLocaleTimeString() }}
-            </div>
-        </div>
-
-        <div class="p-6 border-t border-base-200" v-if="selectedServer && selectedServer.name !== 'Local Machine'">
-            <button @click="handleDelete(selectedServer.id)" class="btn btn-error btn-outline w-full">
-                <i class="fas fa-trash-alt"></i> Sunucuyu Sil
+          <div class="px-7 py-4 border-t border-gray-100 bg-gray-50/40 flex justify-end gap-2">
+            <button @click="showModal = false" class="px-5 py-2 text-[13px] font-semibold text-gray-500 hover:text-gray-700">Vazgeç</button>
+            <button @click="save" class="px-6 py-2 text-[13px] font-bold bg-[#1a73e8] text-white rounded-lg hover:bg-blue-700 shadow-sm flex items-center gap-1.5">
+              <i class="fas fa-save text-[11px]"></i> Güncelle
             </button>
+          </div>
         </div>
-    </div>
-    
-    <!-- Backdrop for Panel -->
-    <div v-if="isPanelOpen" @click="closePanel" class="fixed inset-0 bg-base-300/20 backdrop-blur-sm z-50"></div>
-
-    <!-- Add Server Modal -->
-    <dialog class="modal" :class="{ 'modal-open': isModalOpen }">
-        <div class="modal-box p-8">
-            <h3 class="font-black text-2xl mb-6">Yeni Sunucu Ekle</h3>
-            <form @submit.prevent="handleAddServer" class="space-y-4">
-                <div class="form-control">
-                    <label class="label font-bold text-sm">Sunucu Adı</label>
-                    <input v-model="form.name" type="text" class="input input-bordered focus:input-primary w-full" placeholder="Örn: WEB-SRV-01" required>
-                </div>
-                <div class="form-control">
-                    <label class="label font-bold text-sm">IP Adresi</label>
-                    <input v-model="form.ip_address" type="text" class="input input-bordered focus:input-primary w-full" placeholder="10.0.x.x" required>
-                </div>
-                <div class="form-control">
-                    <label class="label font-bold text-sm">OS Sürümü</label>
-                    <input v-model="form.os_version" type="text" class="input input-bordered focus:input-primary w-full" placeholder="Windows Server 2022">
-                </div>
-                <div class="modal-action mt-8">
-                    <button type="button" @click="closeModal" class="btn btn-ghost w-1/3">İptal</button>
-                    <button type="submit" class="btn btn-primary w-2/3 shadow-lg shadow-primary/20">Kaydet</button>
-                </div>
-            </form>
-        </div>
-        <form method="dialog" class="modal-backdrop" @click="closeModal"><button>close</button></form>
-    </dialog>
+      </div>
+    </Teleport>
   </div>
 </template>
-
-<style scoped>
-/* Hexagon hover glow effect */
-.clip-hexagon:hover {
-    box-shadow: 0 0 25px rgba(59, 130, 246, 0.5); /* Primary glow */
-}
-</style>

@@ -1,4 +1,4 @@
-const db = require('../database/db');
+const db = require('../../../database/db');
 
 /**
  * Logs a user activity to the database.
@@ -31,3 +31,4 @@ function logActivity(req, action, module, targetId = null, details = null) {
 }
 
 module.exports = { logActivity };
+

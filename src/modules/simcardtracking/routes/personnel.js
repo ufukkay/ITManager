@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
+const db = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
 
@@ -44,7 +44,7 @@ router.get('/:id', (req, res) => {
   res.json(row);
 });
 
-router.post('/', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.post('/', hasPermission('sim:edit'), (req, res) => {
   console.log('[DEBUG] POST /api/personnel Body:', req.body);
   const { first_name, last_name, department_id, company_id, phone, notes } = req.body;
   if (!first_name || !last_name) return res.status(400).json({ message: 'Ad ve soyad zorunludur.' });
@@ -64,7 +64,7 @@ router.post('/', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
   }
 });
 
-router.put('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.put('/:id', hasPermission('sim:edit'), (req, res) => {
   try {
     const fields = [];
     const params = [];
@@ -101,7 +101,7 @@ router.put('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
   }
 });
 
-router.delete('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.delete('/:id', hasPermission('sim:edit'), (req, res) => {
   try {
     const id = req.params.id;
 
@@ -127,3 +127,4 @@ router.delete('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
 });
 
 module.exports = router;
+

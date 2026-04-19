@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
+const db = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
 
@@ -8,7 +8,7 @@ router.get('/', (req, res) => {
   res.json(db.prepare('SELECT * FROM operators ORDER BY name').all());
 });
 
-router.post('/', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.post('/', hasPermission('sim:edit'), (req, res) => {
   const { name } = req.body;
   console.log('[API] New Operator Request:', name);
   if (!name) return res.status(400).json({ message: 'Operatör adı zorunludur.' });
@@ -30,7 +30,7 @@ router.post('/', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
   }
 });
 
-router.put('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.put('/:id', hasPermission('sim:edit'), (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ message: 'Operatör adı zorunludur.' });
   
@@ -49,7 +49,7 @@ router.put('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
   }
 });
 
-router.delete('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.delete('/:id', hasPermission('sim:edit'), (req, res) => {
   const result = db.prepare('DELETE FROM operators WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ message: 'Operatör bulunamadı.' });
 
@@ -58,3 +58,4 @@ router.delete('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
 });
 
 module.exports = router;
+

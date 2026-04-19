@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const xlsx = require('xlsx');
-const db = require('../database/db');
+const db = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
 
@@ -210,7 +210,7 @@ router.get('/history/:phoneNo', (req, res) => {
 });
 
 // POST /api/invoices/upload
-router.post('/upload', hasPermission('SIM_TAKIP_EDIT'), upload.array('file'), async (req, res) => {
+router.post('/upload', hasPermission('sim:edit'), upload.array('file'), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) return res.status(400).json({ message: 'Dosya yüklenmedi.' });
     
@@ -293,7 +293,7 @@ router.post('/upload', hasPermission('SIM_TAKIP_EDIT'), upload.array('file'), as
 });
 
 // POST /api/invoices/bulk-delete
-router.post('/bulk-delete', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.post('/bulk-delete', hasPermission('sim:edit'), (req, res) => {
   try {
     const { ids } = req.body;
     if (!ids || !ids.length) return res.status(400).json({ message: 'Silinecek ID listesi boş.' });
@@ -313,7 +313,7 @@ router.post('/bulk-delete', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
 });
 
 // POST /api/invoices/bulk-delete-summaries
-router.post('/bulk-delete-summaries', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.post('/bulk-delete-summaries', hasPermission('sim:edit'), (req, res) => {
   try {
     const { summaries } = req.body;
     if (!summaries || !summaries.length) return res.status(400).json({ message: 'Silinecek liste boş.' });
@@ -337,3 +337,4 @@ router.post('/bulk-delete-summaries', hasPermission('SIM_TAKIP_EDIT'), (req, res
 });
 
 module.exports = router;
+

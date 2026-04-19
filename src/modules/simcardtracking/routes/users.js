@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
+const db = require('../../../database/db');
 const { authMiddleware, adminOnly } = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 const { logActivity } = require('../middleware/logger');
@@ -76,3 +76,4 @@ router.put('/me/password', (req, res) => {
 });
 
 module.exports = router;
+

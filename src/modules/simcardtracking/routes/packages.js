@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
+const db = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
 
@@ -21,7 +21,7 @@ router.get('/', (req, res) => {
 });
 
 // Yeni paket ekle
-router.post('/', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.post('/', hasPermission('sim:edit'), (req, res) => {
   try {
     const { name, type, operator_id, price, data_limit, sms_limit, minutes_limit, features } = req.body;
     if (!name || !type || !operator_id) {
@@ -53,7 +53,7 @@ router.post('/', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
 });
 
 // Paket güncelle
-router.put('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.put('/:id', hasPermission('sim:edit'), (req, res) => {
   try {
     const body = req.body;
     const fields = [];
@@ -93,7 +93,7 @@ router.put('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
 });
 
 // Paket sil
-router.delete('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.delete('/:id', hasPermission('sim:edit'), (req, res) => {
   try {
     const id = req.params.id;
     
@@ -129,3 +129,4 @@ router.delete('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
 });
 
 module.exports = router;
+

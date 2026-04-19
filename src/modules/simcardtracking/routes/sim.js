@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
+const db = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
 
 // GET /api/sim/search?q=...
-router.get('/search', hasPermission('SIM_TAKIP_VIEW'), (req, res) => {
+router.get('/search', hasPermission('sim:view'), (req, res) => {
   const { q } = req.query;
   if (!q) return res.status(400).json({ message: 'Arama terimi gerekli.' });
 
@@ -49,7 +49,7 @@ router.get('/search', hasPermission('SIM_TAKIP_VIEW'), (req, res) => {
 
 
 // POST /api/sim/transfer
-router.post('/transfer', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.post('/transfer', hasPermission('sim:edit'), (req, res) => {
   const { id, currentType, targetType, targetData } = req.body;
 
   if (!id || !currentType || !targetType) {
@@ -150,3 +150,4 @@ router.post('/transfer', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
 
 
 module.exports = router;
+

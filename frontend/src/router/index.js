@@ -14,11 +14,35 @@ const routes = [
     component: () => import('../views/DashboardView.vue'),
     meta: { layout: 'main', requiresAuth: true }
   },
+  // Sunucu İzleme (Nested Routes)
   {
     path: '/monitoring',
-    name: 'monitoring',
-    component: () => import('../views/MonitoringView.vue'),
-    meta: { layout: 'main', requiresAuth: true }
+    component: () => import('../layouts/MonitoringLayout.vue'),
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true },
+    children: [
+      {
+        path: '',
+        redirect: '/monitoring/cloud'
+      },
+      {
+        path: 'cloud',
+        name: 'monitoring-cloud',
+        component: () => import('../views/MonitoringView.vue'),
+        props: { type: 'cloud' }
+      },
+      {
+        path: 'vodafone',
+        name: 'monitoring-vodafone',
+        component: () => import('../views/MonitoringView.vue'),
+        props: { type: 'vodafone' }
+      },
+      {
+        path: 'local',
+        name: 'monitoring-local',
+        component: () => import('../views/MonitoringView.vue'),
+        props: { type: 'local' }
+      }
+    ]
   },
   {
     path: '/admin/permissions',
@@ -26,17 +50,24 @@ const routes = [
     component: () => import('../views/PermissionsView.vue'),
     meta: { layout: 'main', requiresAuth: true }
   },
+  // İK Bildirimleri (Nested Layout)
   {
     path: '/hr-requests',
-    name: 'hr-requests',
-    component: () => import('../views/hr-requests/PersonnelRequestsView.vue'),
-    meta: { layout: 'main', requiresAuth: true }
+    component: () => import('../layouts/HRLayout.vue'),
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true },
+    children: [
+      {
+        path: '',
+        name: 'hr-requests',
+        component: () => import('../views/hr-requests/PersonnelRequestsView.vue')
+      }
+    ]
   },
   // SIM Takip (Nested Routes)
   {
     path: '/sim-takip',
     component: () => import('../layouts/SimTrackingLayout.vue'),
-    meta: { requiresAuth: true },
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true },
     children: [
       {
         path: '',
@@ -56,28 +87,100 @@ const routes = [
         path: 'voice',
         name: 'sim-voice',
         component: () => import('../views/sim-tracking/VoiceView.vue')
-      },
-      {
-        path: 'reports',
-        name: 'sim-reports',
-        component: () => import('../views/sim-tracking/ReportsView.vue')
-      },
-      {
-        path: 'invoices',
-        name: 'sim-invoices',
-        component: () => import('../views/sim-tracking/InvoicesView.vue')
-      },
-      {
-        path: 'settings',
-        name: 'sim-settings',
-        component: () => import('../views/sim-tracking/SettingsView.vue')
-      },
-      {
-        path: 'logs',
-        name: 'sim-logs',
-        component: () => import('../views/sim-tracking/LogsView.vue')
       }
     ]
+  },
+  // Lisans Yönetimi
+  {
+    path: '/licensing',
+    component: () => import('../layouts/LicensingLayout.vue'),
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true },
+    children: [
+      {
+        path: '',
+        redirect: '/licensing/m365'
+      },
+      {
+        path: 'm365',
+        name: 'license-m365',
+        component: () => import('../views/m365/M365LicensesView.vue')
+      },
+      {
+        path: 'itarian',
+        name: 'license-itarian',
+        component: () => import('../views/m365/ItarianLicensesView.vue')
+      }
+    ]
+  },
+  // Master Data (Şirket, Personel, Organizasyon) - Unified Console
+  {
+    path: '/master-data',
+    component: () => import('../views/master-data/MasterDataLayout.vue'),
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true },
+    children: [
+      {
+        path: '',
+        name: 'master-home',
+        component: () => import('../views/master-data/MasterDataDashboardView.vue')
+      },
+      {
+        path: 'personnel',
+        name: 'master-personnel',
+        component: () => import('../views/master-data/PersonnelListView.vue')
+      },
+      {
+        path: 'organization',
+        name: 'master-organization',
+        component: () => import('../views/master-data/OrganizationView.vue')
+      },
+      {
+        path: 'vehicles',
+        name: 'master-vehicles',
+        component: () => import('../views/master-data/VehicleListView.vue')
+      },
+      {
+        path: 'locations',
+        name: 'master-locations',
+        component: () => import('../views/master-data/LocationListView.vue')
+      },
+      {
+        path: 'servers',
+        name: 'master-servers',
+        component: () => import('../views/master-data/ServerListView.vue')
+      },
+      {
+        path: 'services',
+        name: 'master-services',
+        component: () => import('../views/master-data/ServiceListView.vue')
+      },
+      // Hızlı İşlemler
+      {
+        path: 'actions/add-org',
+        name: 'master-action-add-org',
+        component: () => import('../views/master-data/QuickActions.vue'),
+        props: { mode: 'add-org' }
+      },
+      {
+        path: 'actions/assign',
+        name: 'master-action-assign',
+        component: () => import('../views/master-data/QuickActions.vue'),
+        props: { mode: 'assign' }
+      }
+    ]
+  },
+  // Maliyet Yönetimi (Masraf Yansıtma)
+  {
+    path: '/cost-management',
+    name: 'cost-management',
+    component: () => import('../views/cost-management/InvoicesView.vue'),
+    meta: { layout: 'main', requiresAuth: true }
+  },
+  // Raporlar ve Analitik
+  {
+    path: '/reports',
+    name: 'reports',
+    component: () => import('../views/reports/ReportsView.vue'),
+    meta: { layout: 'main', requiresAuth: true }
   },
   {
     path: '/:pathMatch(.*)*',

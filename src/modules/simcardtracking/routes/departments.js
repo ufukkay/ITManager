@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
+const db = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
 
@@ -13,7 +13,7 @@ router.get('/', (req, res) => {
   }
 });
 
-router.post('/', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.post('/', hasPermission('sim:edit'), (req, res) => {
   const { name, notes } = req.body;
   if (!name) return res.status(400).json({ message: 'İsim zorunludur.' });
   
@@ -31,7 +31,7 @@ router.post('/', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
   }
 });
 
-router.put('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.put('/:id', hasPermission('sim:edit'), (req, res) => {
   const { name, notes } = req.body;
   try {
     const result = db.prepare('UPDATE departments SET name=?, notes=? WHERE id=?')
@@ -46,7 +46,7 @@ router.put('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
   }
 });
 
-router.delete('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.delete('/:id', hasPermission('sim:edit'), (req, res) => {
   const result = db.prepare('DELETE FROM departments WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ message: 'Departman bulunamadı.' });
 
@@ -55,3 +55,4 @@ router.delete('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
 });
 
 module.exports = router;
+

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
+const db = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
 
@@ -18,7 +18,7 @@ router.get('/:id', (req, res) => {
   res.json(row);
 });
 
-router.post('/', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.post('/', hasPermission('sim:edit'), (req, res) => {
   const { name, address, notes } = req.body;
   if (!name) return res.status(400).json({ message: 'Lokasyon adı zorunludur.' });
   const existing = db.prepare('SELECT id FROM locations WHERE name = ?').get(name);
@@ -29,7 +29,7 @@ router.post('/', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
   res.status(201).json({ id: result.lastInsertRowid, message: 'Lokasyon eklendi.' });
 });
 
-router.put('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.put('/:id', hasPermission('sim:edit'), (req, res) => {
   const { name, address, notes } = req.body;
   const result = db.prepare('UPDATE locations SET name=?, address=?, notes=? WHERE id=?').run(name, address, notes, req.params.id);
   if (result.changes === 0) return res.status(404).json({ message: 'Lokasyon bulunamadı.' });
@@ -38,7 +38,7 @@ router.put('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
   res.json({ message: 'Lokasyon güncellendi.' });
 });
 
-router.delete('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.delete('/:id', hasPermission('sim:edit'), (req, res) => {
   const result = db.prepare('DELETE FROM locations WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ message: 'Lokasyon bulunamadı.' });
 
@@ -47,3 +47,4 @@ router.delete('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
 });
 
 module.exports = router;
+

@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sade M2M Tablo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f4f6f9; color: #1f2328; padding: 1.25rem; overflow-x: hidden; }
+        .tick { font-variant-numeric: tabular-nums; }
+        .usage-bar-bg { background-color: #e5e7eb; border-radius: 9999px; height: 6px; }
+        .usage-bar-fill { height: 100%; border-radius: 9999px; transition: width .5s ease; }
+
+        th.col-hd { -webkit-user-select: none; user-select: none; white-space: nowrap; }
+        th.col-hd:hover { background: #f1f5f9; }
+
+        .sort-icon { opacity: .3; transition: opacity .15s; }
+        th.col-hd:hover .sort-icon { opacity: 1; }
+        th.col-hd.asc .sort-icon, th.col-hd.desc .sort-icon { opacity: 1; }
+        th.col-hd.asc  .ic-asc  { color: #3b82f6; }
+        th.col-hd.desc .ic-desc { color: #3b82f6; }
+
+        /* Filtre butonu */
+        .fil-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 18px; height: 18px; border-radius: 4px;
+            cursor: pointer; color: #9ca3af; flex-shrink: 0;
+            transition: background .12s, color .12s;
+        }
+        .fil-btn:hover { background: #e5e7eb; color: #374151; }
+        .fil-btn.active { color: #2563eb; background: #dbeafe; }
+
+        /* Panel - body'e mount edilir, fixed pozisyon */
+        #fil-panel-container {
+            position: fixed;
+            z-index: 99999;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,.13);
+            min-width: 210px;
+            max-width: 270px;
+            display: none;
+        }
+        #fil-panel-container.open { display: block; }
+        .fil-list { max-height: 210px; overflow-y: auto; padding: 4px 0; }
+        .fil-list label {
+            display: flex; align-items: center; gap: 8px;
+            padding: 5px 12px; font-size: 12.5px; color: #374151;
+            cursor: pointer;
+        }
+        .fil-list label:hover { background: #f9fafb; }
+        .fil-list label.empty-row { color: #9ca3af; font-style: italic; }
+        .fil-search {
+            width: 100%; border: none; border-bottom: 1px solid #f0f0f0;
+            padding: 8px 12px; font-size: 12px; outline: none;
+            border-radius: 8px 8px 0 0; color: #1f2328; font-family: inherit;
+        }
+        .fil-search:focus { border-bottom-color: #3b82f6; }
+        .fil-all-row { padding: 6px 12px; border-bottom: 1px solid #f0f0f0; }
+        .fil-all-row label { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #374151; cursor: pointer; }
+        .fil-empty-row { padding: 5px 12px; border-bottom: 1px solid #f0f0f0; background: #fafafa; display: none; }
+        .fil-empty-row.visible { display: block; }
+        .fil-empty-row label { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b7280; cursor: pointer; font-style: italic; }
+        .fil-empty-row label:hover { color: #374151; }
+        .fil-footer { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px; border-top: 1px solid #f0f0f0; }
+        .fil-footer button { font-size: 12px; padding: 4px 14px; border-radius: 6px; border: 1px solid #e5e7eb; cursor: pointer; font-family: inherit; }
+        .btn-apply { background: #2563eb; color: #fff; border-color: #2563eb; }
+        .btn-apply:hover { background: #1d4ed8; }
+        .btn-reset { background: #fff; color: #6b7280; }
+        .btn-reset:hover { background: #f3f4f6; }
+
+        /* Hızlı filtre select */
+        .qs { font-size: 12.5px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; padding: 5px 10px; color: #374151; outline: none; cursor: pointer; }
+        .qs:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,.15); }
+        .gs-wrap { position: relative; }
+        .gs-wrap input { padding-left: 30px; font-size: 12.5px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; outline: none; padding-right: 10px; padding-top: 6px; padding-bottom: 6px; width: 220px; color: #1f2328; }
+        .gs-wrap input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,.15); }
+        .gs-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 11px; pointer-events: none; }
+
+        /* Satır aksiyon butonları — filtre butonu ile aynı stil */
+        .row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
+        .row-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 22px; height: 22px; border-radius: 5px; border: none;
+            cursor: pointer; font-size: 10px; color: #9ca3af;
+            background: transparent; transition: background .12s, color .12s;
+        }
+        .row-btn:hover { background: #e5e7eb; color: #374151; }
+        .row-btn-delete:hover { background: #fee2e2; color: #b91c1c; }
+    </style>
+</head>
+<body>
+
+<!-- Filtre paneli — body'e mount, fixed pozisyon -->
+<div id="fil-panel-container">
+    <input type="text" class="fil-search" id="fil-search-input" placeholder="Değer ara…">
+    <div class="fil-all-row">
+        <label><input type="checkbox" id="fil-check-all" class="accent-blue-600"> Tümünü Seç</label>
+    </div>
+    <div class="fil-empty-row" id="fil-empty-row">
+        <label>
+            <input type="checkbox" id="fil-check-empty" class="accent-blue-600">
+            <span><i class="fas fa-minus-circle text-[10px] mr-1 text-gray-400"></i>(Boş)</span>
+        </label>
+    </div>
+    <div class="fil-list" id="fil-list"></div>
+    <div class="fil-footer">
+        <button type="button" class="btn-reset" id="fil-btn-reset">Sıfırla</button>
+        <button type="button" class="btn-apply" id="fil-btn-apply">Uygula</button>
+    </div>
+</div>
+
+<!-- Üst bar -->
+<div class="w-full mx-auto mb-3 flex flex-wrap items-center gap-2">
+    <div class="gs-wrap">
+        <i class="fas fa-search"></i>
+        <input id="globalSearch" type="text" placeholder="Tüm sütunlarda ara…">
+    </div>
+
+    <!-- Hızlı filtreler -->
+    <select id="qs-operator" title="Operatör filtrele" class="qs">
+        <option value="">Tüm Operatörler</option>
+        <option>Turkcell</option>
+        <option>Vodafone</option>
+        <option>Türk Telekom</option>
+    </select>
+    <select id="qs-tip" title="Tip filtrele" class="qs">
+        <option value="">Tüm Tipler</option>
+        <option>M2M</option>
+        <option>Voice</option>
+    </select>
+    <select id="qs-durum" title="Durum filtrele" class="qs">
+        <option value="">Tüm Durumlar</option>
+        <option>Aktif</option>
+        <option>Pasif</option>
+        <option>Askıda</option>
+    </select>
+    <button type="button" id="btn-clear-all" title="Tüm filtreleri temizle"
+        class="text-[12px] text-gray-500 hover:text-gray-800 px-3 py-1.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50">
+        <i class="fas fa-times mr-1"></i>Temizle
+    </button>
+
+    <div id="activeFilters" class="flex flex-wrap gap-1.5"></div>
+    <span id="resultCount" class="ml-auto text-[12px] text-gray-400 font-medium"></span>
+</div>
+
+<div class="w-full mx-auto bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+    <div class="overflow-x-auto">
+        <table id="mainTable" class="w-full text-left" style="min-width: 1500px">
+            <thead>
+                <tr class="text-[11px] text-gray-500 uppercase tracking-wider border-b border-gray-100 bg-gray-50/60 font-semibold">
+                    <th class="px-3 py-2.5 w-10 text-center" scope="col" aria-label="Tümünü seç">
+                        <input type="checkbox" id="selectAll" title="Tümünü seç" aria-label="Tümünü seç" class="accent-blue-600">
+                    </th>
+                    <!-- filtre butonu SOLDA, sonra metin, sonra sort ok -->
+                    <th class="px-3 py-2.5 col-hd" data-key="phone" style="width:160px">
+                        <div class="flex items-center gap-1">
+                            <span class="fil-btn" data-key="phone" title="Telefon filtrele"><i class="fas fa-filter text-[9px]"></i></span>
+                            <span class="sort-trigger flex items-center gap-1 cursor-pointer">Telefon <span class="sort-icon flex flex-col leading-none text-[8px]"><i class="ic-asc fas fa-caret-up"></i><i class="ic-desc fas fa-caret-down"></i></span></span>
+                        </div>
+                    </th>
+                    <th class="px-3 py-2.5 col-hd" data-key="iccid" style="width:190px">
+                        <div class="flex items-center gap-1">
+                            <span class="fil-btn" data-key="iccid" title="ICCID filtrele"><i class="fas fa-filter text-[9px]"></i></span>
+                            <span class="sort-trigger flex items-center gap-1 cursor-pointer">ICCID <span class="sort-icon flex flex-col leading-none text-[8px]"><i class="ic-asc fas fa-caret-up"></i><i class="ic-desc fas fa-caret-down"></i></span></span>
+                        </div>
+                    </th>
+                    <th class="px-3 py-2.5 col-hd" data-key="operator" style="width:120px">
+                        <div class="flex items-center gap-1">
+                            <span class="fil-btn" data-key="operator" title="Operatör filtrele"><i class="fas fa-filter text-[9px]"></i></span>
+                            <span class="sort-trigger flex items-center gap-1 cursor-pointer">Operatör <span class="sort-icon flex flex-col leading-none text-[8px]"><i class="ic-asc fas fa-caret-up"></i><i class="ic-desc fas fa-caret-down"></i></span></span>
+                        </div>
+                    </th>
+                    <th class="px-3 py-2.5 col-hd" data-key="tip" style="width:80px">
+                        <div class="flex items-center gap-1">
+                            <span class="fil-btn" data-key="tip" title="Tip filtrele"><i class="fas fa-filter text-[9px]"></i></span>
+                            <span class="sort-trigger flex items-center gap-1 cursor-pointer">Tip <span class="sort-icon flex flex-col leading-none text-[8px]"><i class="ic-asc fas fa-caret-up"></i><i class="ic-desc fas fa-caret-down"></i></span></span>
+                        </div>
+                    </th>
+                    <th class="px-3 py-2.5 col-hd" data-key="paket" style="width:140px">
+                        <div class="flex items-center gap-1">
+                            <span class="fil-btn" data-key="paket" title="Paket filtrele"><i class="fas fa-filter text-[9px]"></i></span>
+                            <span class="sort-trigger flex items-center gap-1 cursor-pointer">Paket <span class="sort-icon flex flex-col leading-none text-[8px]"><i class="ic-asc fas fa-caret-up"></i><i class="ic-desc fas fa-caret-down"></i></span></span>
+                        </div>
+                    </th>
+                    <th class="px-3 py-2.5 col-hd" data-key="plaka" style="width:110px">
+                        <div class="flex items-center gap-1">
+                            <span class="fil-btn" data-key="plaka" title="Plaka filtrele"><i class="fas fa-filter text-[9px]"></i></span>
+                            <span class="sort-trigger flex items-center gap-1 cursor-pointer">Plaka <span class="sort-icon flex flex-col leading-none text-[8px]"><i class="ic-asc fas fa-caret-up"></i><i class="ic-desc fas fa-caret-down"></i></span></span>
+                        </div>
+                    </th>
+                    <th class="px-3 py-2.5 col-hd" data-key="personel" style="width:140px">
+                        <div class="flex items-center gap-1">
+                            <span class="fil-btn" data-key="personel" title="Personel filtrele"><i class="fas fa-filter text-[9px]"></i></span>
+                            <span class="sort-trigger flex items-center gap-1 cursor-pointer">Personel <span class="sort-icon flex flex-col leading-none text-[8px]"><i class="ic-asc fas fa-caret-up"></i><i class="ic-desc fas fa-caret-down"></i></span></span>
+                        </div>
+                    </th>
+                    <th class="px-3 py-2.5 col-hd" data-key="dept" style="width:120px">
+                        <div class="flex items-center gap-1">
+                            <span class="fil-btn" data-key="dept" title="Departman filtrele"><i class="fas fa-filter text-[9px]"></i></span>
+                            <span class="sort-trigger flex items-center gap-1 cursor-pointer">Departman <span class="sort-icon flex flex-col leading-none text-[8px]"><i class="ic-asc fas fa-caret-up"></i><i class="ic-desc fas fa-caret-down"></i></span></span>
+                        </div>
+                    </th>
+                    <th class="px-3 py-2.5 col-hd" data-key="sirket" style="width:140px">
+                        <div class="flex items-center gap-1">
+                            <span class="fil-btn" data-key="sirket" title="Şirket filtrele"><i class="fas fa-filter text-[9px]"></i></span>
+                            <span class="sort-trigger flex items-center gap-1 cursor-pointer">Şirket <span class="sort-icon flex flex-col leading-none text-[8px]"><i class="ic-asc fas fa-caret-up"></i><i class="ic-desc fas fa-caret-down"></i></span></span>
+                        </div>
+                    </th>
+                    <th class="px-3 py-2.5" style="width:180px">Kullanım</th>
+                    <th class="px-3 py-2.5 col-hd" data-key="cost" style="width:100px">
+                        <div class="flex items-center gap-1">
+                            <span class="fil-btn" data-key="cost" title="Maliyet filtrele"><i class="fas fa-filter text-[9px]"></i></span>
+                            <span class="sort-trigger flex items-center gap-1 cursor-pointer">Maliyet <span class="sort-icon flex flex-col leading-none text-[8px]"><i class="ic-asc fas fa-caret-up"></i><i class="ic-desc fas fa-caret-down"></i></span></span>
+                        </div>
+                    </th>
+                    <th class="px-3 py-2.5 col-hd" data-key="lastUse" style="width:120px">
+                        <div class="flex items-center gap-1">
+                            <span class="fil-btn" data-key="lastUse" title="Son Kullanım filtrele"><i class="fas fa-filter text-[9px]"></i></span>
+                            <span class="sort-trigger flex items-center gap-1 cursor-pointer">Son Kullanım <span class="sort-icon flex flex-col leading-none text-[8px]"><i class="ic-asc fas fa-caret-up"></i><i class="ic-desc fas fa-caret-down"></i></span></span>
+                        </div>
+                    </th>
+                    <th class="px-3 py-2.5 col-hd" data-key="durum" style="width:100px">
+                        <div class="flex items-center gap-1">
+                            <span class="fil-btn" data-key="durum" title="Durum filtrele"><i class="fas fa-filter text-[9px]"></i></span>
+                            <span class="sort-trigger flex items-center gap-1 cursor-pointer">Durum <span class="sort-icon flex flex-col leading-none text-[8px]"><i class="ic-asc fas fa-caret-up"></i><i class="ic-desc fas fa-caret-down"></i></span></span>
+                        </div>
+                    </th>
+                    <th class="px-3 py-2.5" style="width:95px" scope="col" aria-label="İşlemler"></th>
+                </tr>
+            </thead>
+            <tbody id="tableBody" class="text-[12.5px] divide-y divide-gray-100"></tbody>
+        </table>
+    </div>
+    <div class="flex items-center justify-between px-4 py-2.5 border-t border-gray-100 bg-gray-50/40">
+        <div id="pageInfo" class="text-[12px] text-gray-500 font-medium"></div>
+        <div class="flex items-center gap-2">
+            <button type="button" id="prevBtn" title="Önceki sayfa" aria-label="Önceki sayfa" onclick="changePage(-1)"
+                class="w-8 h-8 rounded border border-gray-200 bg-white text-gray-400 disabled:opacity-30">
+                <i class="fas fa-angle-left"></i>
+            </button>
+            <span id="pageDisplay" class="px-3 text-[12px] font-bold text-gray-900"></span>
+            <button type="button" id="nextBtn" title="Sonraki sayfa" aria-label="Sonraki sayfa" onclick="changePage(1)"
+                class="w-8 h-8 rounded border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 shadow-sm">
+                <i class="fas fa-angle-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+const PER_PAGE = 10;
+let currentPage = 1;
+let sortKey = null;
+let sortDir = 'asc';
+
+// colFilters: { key → Set<string> } — eğer key yoksa filtre yok demek
+const colFilters = {};
+
+// Hızlı filtre state
+const quickFilters = { operator: '', tip: '', durum: '' };
+
+// Açık panel state
+let openPanelKey = null;
+let pendingSet = new Set();
+
+const EMPTY_MARKER = '—';
+
+const RAW_DATA = [
+    { phone:'+90 539 812 8628', iccid:'899010000000000123', operator:'Turkcell',    tip:'M2M',   paket:'M2M 1GB',   plaka:'34 ABC 123', personel:'—',           dept:'Operasyon', sirket:'Talay Logistics', used:124,  total:180,   cost:245.50, lastUse:'2024-04-18', durum:'Aktif'  },
+    { phone:'+90 532 100 2233', iccid:'899010000000000456', operator:'Vodafone',     tip:'Voice', paket:'Ses 500',   plaka:'06 DEF 456', personel:'Ahmet Yılmaz',dept:'Satış',     sirket:'Arko Nakliyat',   used:45,   total:100,   cost:89.90,  lastUse:'2024-04-17', durum:'Aktif'  },
+    { phone:'+90 542 300 5566', iccid:'899010000000000789', operator:'Türk Telekom', tip:'M2M',   paket:'M2M 5GB',   plaka:'35 GHI 789', personel:'—',           dept:'Lojistik',  sirket:'Talay Logistics', used:3,    total:5120,  cost:310.00, lastUse:'2024-04-15', durum:'Pasif'  },
+    { phone:'+90 551 400 7788', iccid:'899010000000001011', operator:'Turkcell',    tip:'M2M',   paket:'M2M 2GB',   plaka:'16 JKL 321', personel:'—',           dept:'Operasyon', sirket:'Beta Kargo',      used:1900, total:2048,  cost:175.00, lastUse:'2024-04-18', durum:'Aktif'  },
+    { phone:'+90 533 500 9900', iccid:'899010000000001213', operator:'Vodafone',     tip:'Voice', paket:'Ses 1000',  plaka:'—',          personel:'Mehmet Demir',dept:'Muhasebe',  sirket:'Arko Nakliyat',   used:210,  total:1000,  cost:130.50, lastUse:'2024-04-16', durum:'Aktif'  },
+    { phone:'+90 544 600 1122', iccid:'899010000000001415', operator:'Turkcell',    tip:'M2M',   paket:'M2M 500MB', plaka:'34 MNO 654', personel:'—',           dept:'Teknik',    sirket:'Talay Logistics', used:450,  total:512,   cost:55.00,  lastUse:'2024-04-12', durum:'Askıda' },
+    { phone:'+90 537 700 3344', iccid:'899010000000001617', operator:'Türk Telekom', tip:'M2M',   paket:'M2M 10GB',  plaka:'06 PQR 987', personel:'—',           dept:'Lojistik',  sirket:'Delta Taşıma',    used:2048, total:10240, cost:490.00, lastUse:'2024-04-19', durum:'Aktif'  },
+    { phone:'+90 505 800 5566', iccid:'899010000000001819', operator:'Vodafone',     tip:'Voice', paket:'Ses 200',   plaka:'—',          personel:'Ayşe Kaya',   dept:'İK',        sirket:'Beta Kargo',      used:80,   total:200,   cost:65.00,  lastUse:'2024-04-14', durum:'Aktif'  },
+    { phone:'+90 530 900 7788', iccid:'899010000000002021', operator:'Turkcell',    tip:'M2M',   paket:'M2M 1GB',   plaka:'07 STU 147', personel:'—',           dept:'Operasyon', sirket:'Delta Taşıma',    used:1000, total:1024,  cost:245.50, lastUse:'2024-04-10', durum:'Pasif'  },
+    { phone:'+90 541 010 9900', iccid:'899010000000002223', operator:'Türk Telekom', tip:'Voice', paket:'Ses 500',   plaka:'—',          personel:'Can Öztürk',  dept:'Satış',     sirket:'Talay Logistics', used:340,  total:500,   cost:99.90,  lastUse:'2024-04-18', durum:'Aktif'  },
+    { phone:'+90 538 111 2233', iccid:'899010000000002425', operator:'Vodafone',     tip:'M2M',   paket:'M2M 2GB',   plaka:'17 VWX 258', personel:'—',           dept:'Teknik',    sirket:'Arko Nakliyat',   used:512,  total:2048,  cost:155.00, lastUse:'2024-04-13', durum:'Aktif'  },
+    { phone:'+90 552 222 3344', iccid:'899010000000002627', operator:'Turkcell',    tip:'M2M',   paket:'M2M 5GB',   plaka:'34 YZA 369', personel:'—',           dept:'Lojistik',  sirket:'Beta Kargo',      used:4900, total:5120,  cost:320.00, lastUse:'2024-04-19', durum:'Askıda' },
+];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function durumBadge(d) {
+    const m = { Aktif:{bg:'#ecfdf5',c:'#059669',dot:'#10b981'}, Pasif:{bg:'#f3f4f6',c:'#6b7280',dot:'#9ca3af'}, Askıda:{bg:'#fffbeb',c:'#d97706',dot:'#f59e0b'} };
+    const s = m[d] || m.Pasif;
+    return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold" style="background:${s.bg};color:${s.c}"><span class="w-1.5 h-1.5 rounded-full" style="background:${s.dot}"></span>${d}</span>`;
+}
+function tipBadge(t) {
+    return t === 'M2M'
+        ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[#eef2ff] text-[#4338ca]">M2M</span>`
+        : `<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[#f0fdf4] text-[#15803d]">Voice</span>`;
+}
+function usageBar(used, total) {
+    const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+    const col = pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500';
+    const tc  = pct >= 90 ? 'text-red-600' : pct >= 70 ? 'text-amber-600' : 'text-emerald-600';
+    const disp = total >= 1024 ? `${(used/1024).toFixed(1)} / ${(total/1024).toFixed(0)} GB` : `${used} / ${total} MB`;
+    return `<div class="flex flex-col gap-1"><div class="flex justify-between text-[10px] font-semibold text-gray-400"><span>${disp}</span><span class="${tc}">${pct}%</span></div><div class="usage-bar-bg"><div class="usage-bar-fill ${col}" style="width:${pct}%"></div></div></div>`;
+}
+
+// Boş değerler (—) en üste, geri kalanlar A-Z
+function uniqueVals(key) {
+    const all = [...new Set(RAW_DATA.map(r => String(r[key])))];
+    const empty = all.filter(v => v === EMPTY_MARKER || v === '' || v === 'null' || v === 'undefined');
+    const rest  = all.filter(v => !empty.includes(v)).sort((a, b) => a.localeCompare(b, 'tr'));
+    return [...empty, ...rest];
+}
+
+// ─── Filtre & Sıralama ────────────────────────────────────────────────────────
+function getFilteredSorted() {
+    const q = document.getElementById('globalSearch').value.toLowerCase();
+
+    let data = RAW_DATA.filter(r => {
+        // Global search
+        if (q) {
+            const hay = Object.values(r).join(' ').toLowerCase();
+            if (!hay.includes(q)) return false;
+        }
+        // Hızlı filtreler
+        if (quickFilters.operator && r.operator !== quickFilters.operator) return false;
+        if (quickFilters.tip      && r.tip      !== quickFilters.tip)      return false;
+        if (quickFilters.durum    && r.durum     !== quickFilters.durum)    return false;
+        // Kolon filtreleri
+        for (const [key, allowed] of Object.entries(colFilters)) {
+            if (!allowed.has(String(r[key]))) return false;
+        }
+        return true;
+    });
+
+    if (sortKey) {
+        data.sort((a, b) => {
+            let va = a[sortKey], vb = b[sortKey];
+            if (typeof va === 'number') return sortDir === 'asc' ? va - vb : vb - va;
+            return sortDir === 'asc'
+                ? String(va).localeCompare(String(vb), 'tr')
+                : String(vb).localeCompare(String(va), 'tr');
+        });
+    }
+    return data;
+}
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+function render() {
+    const data  = getFilteredSorted();
+    const total = data.length;
+    const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+    currentPage = Math.min(currentPage, pages);
+    const slice = data.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
+
+    document.getElementById('tableBody').innerHTML = slice.length === 0
+        ? `<tr><td colspan="15" class="px-4 py-10 text-center text-gray-400 text-[13px]"><i class="fas fa-inbox mr-2"></i>Sonuç bulunamadı</td></tr>`
+        : slice.map(r => `
+        <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-3 py-2 text-center"><input type="checkbox" class="accent-blue-600 row-check"></td>
+            <td class="px-3 py-2 font-mono text-gray-800 font-semibold whitespace-nowrap">${r.phone}</td>
+            <td class="px-3 py-2 font-mono text-gray-500 text-[11px] whitespace-nowrap">${r.iccid}</td>
+            <td class="px-3 py-2 text-gray-700 whitespace-nowrap">${r.operator}</td>
+            <td class="px-3 py-2">${tipBadge(r.tip)}</td>
+            <td class="px-3 py-2 text-gray-700 whitespace-nowrap">${r.paket}</td>
+            <td class="px-3 py-2 font-semibold text-gray-900 whitespace-nowrap">${r.plaka}</td>
+            <td class="px-3 py-2 text-gray-700 whitespace-nowrap">${r.personel}</td>
+            <td class="px-3 py-2 text-gray-600 whitespace-nowrap">${r.dept}</td>
+            <td class="px-3 py-2 text-gray-600 whitespace-nowrap">${r.sirket}</td>
+            <td class="px-3 py-2">${usageBar(r.used, r.total)}</td>
+            <td class="px-3 py-2 text-right font-semibold tick text-gray-900 whitespace-nowrap">${r.cost.toFixed(2).replace('.',',')} ₺</td>
+            <td class="px-3 py-2 text-gray-500 whitespace-nowrap">${r.lastUse.split('-').reverse().join('.')}</td>
+            <td class="px-3 py-2">${durumBadge(r.durum)}</td>
+            <td class="px-3 py-2">
+                <div class="row-actions">
+                    <button type="button" class="row-btn" title="Geçmişi Göster" aria-label="Geçmişi Göster">
+                        <i class="fas fa-clock-rotate-left"></i>
+                    </button>
+                    <button type="button" class="row-btn" title="Düzenle" aria-label="Düzenle">
+                        <i class="fas fa-pen"></i>
+                    </button>
+                    <button type="button" class="row-btn row-btn-delete" title="Sil" aria-label="Sil">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>`).join('');
+
+    const from = total === 0 ? 0 : (currentPage - 1) * PER_PAGE + 1;
+    const to   = Math.min(currentPage * PER_PAGE, total);
+    document.getElementById('pageInfo').textContent    = `Sayfa başına ${PER_PAGE} · ${from}–${to} / ${total} sonuç`;
+    document.getElementById('pageDisplay').textContent = `${currentPage} / ${pages}`;
+    document.getElementById('resultCount').textContent = `${total} kayıt`;
+    document.getElementById('prevBtn').disabled = currentPage === 1;
+    document.getElementById('nextBtn').disabled = currentPage === pages;
+
+    renderActiveTags();
+    updateFilBtnState();
+}
+
+function changePage(dir) {
+    const pages = Math.max(1, Math.ceil(getFilteredSorted().length / PER_PAGE));
+    currentPage = Math.max(1, Math.min(pages, currentPage + dir));
+    render();
+}
+
+// ─── Aktif filtre etiketleri ──────────────────────────────────────────────────
+const COL_LABELS = {
+    phone:'Telefon', iccid:'ICCID', operator:'Operatör', tip:'Tip', paket:'Paket',
+    plaka:'Plaka', personel:'Personel', dept:'Departman', sirket:'Şirket',
+    cost:'Maliyet', lastUse:'Son Kullanım', durum:'Durum'
+};
+
+function renderActiveTags() {
+    const box = document.getElementById('activeFilters');
+    box.innerHTML = '';
+    for (const [key, set] of Object.entries(colFilters)) {
+        const vals  = [...set];
+        const label = COL_LABELS[key] || key;
+        const tag   = document.createElement('span');
+        tag.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200';
+        tag.innerHTML = `${label}: ${vals.slice(0,2).join(', ')}${vals.length > 2 ? ` +${vals.length-2}` : ''}
+            <button type="button" title="Filtreyi kaldır" aria-label="Filtreyi kaldır" class="ml-1 text-blue-400 hover:text-blue-700" onclick="removeColFilter('${key}')">
+                <i class="fas fa-times text-[9px]"></i>
+            </button>`;
+        box.appendChild(tag);
+    }
+}
+
+function updateFilBtnState() {
+    document.querySelectorAll('.fil-btn').forEach(btn => {
+        btn.classList.toggle('active', !!colFilters[btn.dataset.key]);
+    });
+}
+
+function removeColFilter(key) {
+    delete colFilters[key];
+    currentPage = 1;
+    render();
+}
+
+// ─── Excel filtre paneli (body'e mount, fixed) ────────────────────────────────
+const panel     = document.getElementById('fil-panel-container');
+const filSearch = document.getElementById('fil-search-input');
+const filList   = document.getElementById('fil-list');
+const checkAll   = document.getElementById('fil-check-all');
+const emptyRow   = document.getElementById('fil-empty-row');
+const checkEmpty = document.getElementById('fil-check-empty');
+
+// fil-list'teki değerler (boş olmayanlar) — data-idx ile eşleşir
+let currentPanelVals = [];
+// Tüm değerler (boş + dolu) — pendingSet ve syncCheckAll için
+let currentAllVals   = [];
+
+function isEmptyVal(v) {
+    return v === EMPTY_MARKER || v === '' || v === 'null' || v === 'undefined';
+}
+
+function openPanel(key, triggerEl) {
+    closePanel();
+    openPanelKey = key;
+
+    const allVals    = uniqueVals(key);          // boş önce, sonra A-Z
+    const emptyVals  = allVals.filter(isEmptyVal);
+    const listVals   = allVals.filter(v => !isEmptyVal(v));
+    currentAllVals   = allVals;
+    currentPanelVals = listVals;
+
+    const currentSet = colFilters[key] || new Set(allVals);
+    pendingSet       = new Set(currentSet);
+
+    // "(Boş)" satırı — sütunda boş değer varsa göster
+    if (emptyVals.length > 0) {
+        emptyRow.classList.add('visible');
+        checkEmpty.checked = emptyVals.every(v => pendingSet.has(v));
+    } else {
+        emptyRow.classList.remove('visible');
+        checkEmpty.checked     = false;
+    }
+
+    // Liste — sadece dolu değerler
+    filSearch.value   = '';
+    filList.innerHTML = listVals.map((v, i) =>
+        `<label>
+            <input type="checkbox" class="accent-blue-600 panel-cb" data-idx="${i}" ${pendingSet.has(v) ? 'checked' : ''}>
+            <span class="truncate">${v}</span>
+        </label>`
+    ).join('');
+
+    syncCheckAll();
+
+    // Liste checkbox olayları
+    filList.querySelectorAll('.panel-cb').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const v = currentPanelVals[+cb.dataset.idx];
+            if (cb.checked) pendingSet.add(v);
+            else            pendingSet.delete(v);
+            syncCheckAll();
+        });
+    });
+
+    // Paneli konumlandır
+    const rect = triggerEl.getBoundingClientRect();
+    panel.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
+    panel.style.left = (rect.left   + window.scrollX)     + 'px';
+    panel.classList.add('open');
+
+    setTimeout(() => document.addEventListener('click', outsideClick), 0);
+}
+
+function closePanel() {
+    if (!openPanelKey) return;
+    panel.classList.remove('open');
+    openPanelKey = null;
+    document.removeEventListener('click', outsideClick);
+}
+
+function outsideClick(e) {
+    if (!panel.contains(e.target) && !e.target.closest('.fil-btn')) closePanel();
+}
+
+function syncCheckAll() {
+    const total    = currentAllVals.length;
+    const selected = pendingSet.size;
+    checkAll.checked       = selected === total;
+    checkAll.indeterminate = selected > 0 && selected < total;
+    // Boş checkbox senkronu
+    const emptyVals = currentAllVals.filter(isEmptyVal);
+    if (emptyVals.length > 0)
+        checkEmpty.checked = emptyVals.every(v => pendingSet.has(v));
+}
+
+// (Boş) checkbox
+checkEmpty.addEventListener('change', () => {
+    currentAllVals.filter(isEmptyVal).forEach(v => {
+        if (checkEmpty.checked) pendingSet.add(v);
+        else                    pendingSet.delete(v);
+    });
+    syncCheckAll();
+});
+
+// Tümünü seç
+checkAll.addEventListener('change', () => {
+    if (checkAll.checked) currentAllVals.forEach(v => pendingSet.add(v));
+    else                  pendingSet.clear();
+    filList.querySelectorAll('.panel-cb').forEach(cb => cb.checked = checkAll.checked);
+    checkEmpty.checked = checkAll.checked;
+    syncCheckAll();
+});
+
+// Panel arama
+filSearch.addEventListener('input', () => {
+    const q = filSearch.value.toLowerCase();
+    filList.querySelectorAll('label').forEach((lbl, i) => {
+        const val = currentPanelVals[i] || '';
+        const txt = (lbl.querySelector('span').textContent + ' ' + val).toLowerCase();
+        lbl.style.display = txt.includes(q) ? '' : 'none';
+    });
+});
+
+// Uygula
+document.getElementById('fil-btn-apply').addEventListener('click', () => {
+    const key = openPanelKey;
+    if (pendingSet.size === 0 || pendingSet.size === currentAllVals.length) delete colFilters[key];
+    else colFilters[key] = new Set(pendingSet);
+    currentPage = 1;
+    closePanel();
+    render();
+});
+
+// Sıfırla
+document.getElementById('fil-btn-reset').addEventListener('click', () => {
+    const key = openPanelKey;
+    delete colFilters[key];
+    currentPage = 1;
+    closePanel();
+    render();
+});
+
+// Filtre butonu tıklama
+document.querySelectorAll('.fil-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (openPanelKey === btn.dataset.key) closePanel();
+        else openPanel(btn.dataset.key, btn);
+    });
+});
+
+// ─── Sıralama ─────────────────────────────────────────────────────────────────
+document.querySelectorAll('.sort-trigger').forEach(trigger => {
+    trigger.addEventListener('click', () => {
+        const th  = trigger.closest('th.col-hd');
+        if (!th)  return;
+        const key = th.dataset.key;
+        if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+        else { sortKey = key; sortDir = 'asc'; }
+        document.querySelectorAll('th.col-hd').forEach(t => t.classList.remove('asc','desc'));
+        th.classList.add(sortDir);
+        currentPage = 1;
+        render();
+    });
+});
+
+// ─── Global search ────────────────────────────────────────────────────────────
+document.getElementById('globalSearch').addEventListener('input', () => { currentPage = 1; render(); });
+
+// ─── Hızlı filtreler ─────────────────────────────────────────────────────────
+document.getElementById('qs-operator').addEventListener('change', function() { quickFilters.operator = this.value; currentPage = 1; render(); });
+document.getElementById('qs-tip').addEventListener('change',      function() { quickFilters.tip      = this.value; currentPage = 1; render(); });
+document.getElementById('qs-durum').addEventListener('change',    function() { quickFilters.durum    = this.value; currentPage = 1; render(); });
+
+// ─── Tümünü temizle ──────────────────────────────────────────────────────────
+document.getElementById('btn-clear-all').addEventListener('click', () => {
+    document.getElementById('globalSearch').value = '';
+    document.getElementById('qs-operator').value  = '';
+    document.getElementById('qs-tip').value        = '';
+    document.getElementById('qs-durum').value      = '';
+    quickFilters.operator = quickFilters.tip = quickFilters.durum = '';
+    for (const k of Object.keys(colFilters)) delete colFilters[k];
+    currentPage = 1;
+    render();
+});
+
+// ─── Tümünü seç checkbox ─────────────────────────────────────────────────────
+document.getElementById('selectAll').addEventListener('change', function() {
+    document.querySelectorAll('.row-check').forEach(cb => cb.checked = this.checked);
+});
+
+render();
+</script>
+</body>
+</html>

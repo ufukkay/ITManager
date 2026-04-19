@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
+const db = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 
-router.use(hasPermission('ADMIN_ACCESS'));
+router.use(hasPermission('system:admin'));
 
 // GET /api/logs
 router.get('/', (req, res) => {
@@ -37,3 +37,4 @@ router.get('/', (req, res) => {
 });
 
 module.exports = router;
+

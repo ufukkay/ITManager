@@ -11,18 +11,24 @@ const hasPermission = (permissionKey) => {
         }
 
         const userRole = req.session.user.role_id;
+        const userId = req.session.user.id;
         
-        // Rolün istenen yetkiye sahip olup olmadığını kontrol et
-        const permission = db.prepare(`
-            SELECT p.permission_key 
-            FROM permissions p
-            JOIN role_permissions rp ON p.id = rp.permission_id
-            WHERE rp.role_id = ? AND p.permission_key = ?
-        `).get(userRole, permissionKey);
+        // Admin her zaman geçer
+        if (userRole === 1) return next();
 
-        if (!permission && req.session.user.role_id !== 1) { // 1 = Admin, her zaman izin verilir veya yetki kontrolü yapılır
+        // Yetki kontrolü: Rol yetkisi VAR MI ya da Kullanıcıya özel atanmış MI?
+        const permission = db.prepare(`
+            SELECT p.id 
+            FROM permissions p
+            LEFT JOIN role_permissions rp ON p.id = rp.permission_id AND rp.role_id = ?
+            LEFT JOIN user_permissions up ON p.id = up.permission_id AND up.user_id = ?
+            WHERE p.permission_key = ? 
+            AND (rp.permission_id IS NOT NULL OR up.granted = 1)
+        `).get(userRole, userId, permissionKey);
+
+        if (!permission) {
             // Eğer API isteğiyse JSON dön
-            if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+            if (req.xhr || req.headers.accept?.indexOf('json') > -1) {
                 return res.status(403).json({ message: 'Yetkiniz bulunmamaktadır.' });
             }
             return res.status(403).send('Bu işlem için yetkiniz bulunmamaktadır.');
@@ -35,3 +41,4 @@ const hasPermission = (permissionKey) => {
 module.exports = {
     hasPermission
 };
+

@@ -28,6 +28,18 @@ export default defineConfig({
       '/sim-takip/api': {
         target: 'http://localhost:3001',
         changeOrigin: true
+      },
+      '/hr-requests': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
+      },
+      '/api/m365': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
+      },
+      '/api/master-data': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
       }
     }
   }

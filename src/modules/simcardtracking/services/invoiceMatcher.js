@@ -1,4 +1,4 @@
-const db = require('../database/db');
+const db = require('../../../database/db');
 
 const normalizePhone = (value) => {
   if (!value) return '';
@@ -20,18 +20,19 @@ function findPersonnelByPhone(phoneNo) {
     // 1. Ses hatları tablosunda ara (atanmış bir personel var mı? + Paket bilgisi)
     let res = db.prepare(`
       SELECT 
-        sv.assigned_to as name, 
+        p.first_name || ' ' || p.last_name as name, 
         dept.name as department_name, 
         comp.name as company_name, 
         pk.name as package_name
       FROM sim_voice sv
+      LEFT JOIN personnel p ON sv.personnel_id = p.id
       LEFT JOIN departments dept ON sv.department_id = dept.id
       LEFT JOIN companies comp ON sv.company_id = comp.id
       LEFT JOIN packages pk ON sv.package_id = pk.id
       WHERE ${VOICE_PHONE_EXPR} = ? LIMIT 1
     `).get(cleanPhone);
 
-    if (res) {
+    if (res && res.name) {
       return {
         name: res.name || '',
         costCenter: res.department_name || '',
@@ -96,3 +97,4 @@ module.exports = {
   findPersonnelByPhone,
   normalizePhone
 };
+

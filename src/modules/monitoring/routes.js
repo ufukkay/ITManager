@@ -10,3 +10,4 @@ router.delete('/api/server/:id', monitoringController.deleteServer);
 router.get('/api/server/:id', monitoringController.getServerDetail);
 
 module.exports = router;
+

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database/db');
+const db = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
 const fs = require('fs');
@@ -57,7 +57,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/data
-router.post('/', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.post('/', hasPermission('sim:edit'), (req, res) => {
   const { iccid, phone_no, operator, status, location_id, company_id, notes, package_id } = req.body;
   if (!operator) return res.status(400).json({ message: 'Operatör zorunludur.' });
   if (!location_id) return res.status(400).json({ message: 'Lokasyon seçimi zorunludur.' });
@@ -95,7 +95,7 @@ router.post('/', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
 });
 
 // PUT /api/data/:id
-router.put('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.put('/:id', hasPermission('sim:edit'), (req, res) => {
   const { iccid, phone_no, operator, status, location_id, company_id, notes, package_id } = req.body;
 
   // Duplicate check
@@ -133,7 +133,7 @@ router.put('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
   }
 });
 
-router.delete('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.delete('/:id', hasPermission('sim:edit'), (req, res) => {
   const result = db.prepare('DELETE FROM sim_data WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ message: 'Kayıt bulunamadı.' });
   
@@ -142,7 +142,7 @@ router.delete('/:id', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
 });
 
 // POST /api/data/bulk-delete
-router.post('/bulk-delete', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.post('/bulk-delete', hasPermission('sim:edit'), (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: 'Geçersiz ID listesi.' });
   const placeholders = ids.map(() => '?').join(',');
@@ -154,7 +154,7 @@ router.post('/bulk-delete', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
 });
 
 // POST /api/data/bulk-update
-router.post('/bulk-update', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
+router.post('/bulk-update', hasPermission('sim:edit'), (req, res) => {
   const { ids, data } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: 'Geçersiz ID listesi.' });
   if (!data || Object.keys(data).length === 0) return res.status(400).json({ message: 'Güncellenecek veri bulunamadı.' });
@@ -181,3 +181,4 @@ router.post('/bulk-update', hasPermission('SIM_TAKIP_EDIT'), (req, res) => {
 });
 
 module.exports = router;
+

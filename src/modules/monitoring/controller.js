@@ -58,7 +58,17 @@ setTimeout(() => {
 exports.getServers = (req, res) => {
     try {
         const servers = db.prepare('SELECT * FROM servers ORDER BY name ASC').all();
-        res.json(servers);
+        // Şirket atamalarını ekle
+        const enrichedServers = servers.map(srv => {
+            const companies = db.prepare(`
+                SELECT sc.company_id, c.name, sc.share_ratio 
+                FROM server_companies sc
+                JOIN companies c ON sc.company_id = c.id
+                WHERE sc.server_id = ?
+            `).all(srv.id);
+            return { ...srv, companies };
+        });
+        res.json(enrichedServers);
     } catch (err) {
         res.status(500).json({ error: 'Sunucular alınamadı' });
     }
@@ -66,18 +76,38 @@ exports.getServers = (req, res) => {
 
 exports.addServer = (req, res) => {
     try {
-        const { name, ip_address, os_version } = req.body;
-        // Eğer aynı isimde sunucu varsa güncelle, yoksa ekle (UPSERT)
-        const info = db.prepare(`
-            INSERT INTO servers (name, ip_address, os_version) 
-            VALUES (?, ?, ?)
-            ON CONFLICT(name) DO UPDATE SET ip_address = excluded.ip_address, os_version = excluded.os_version
-        `).run(name, ip_address, os_version || 'Windows Server');
+        const { name, ip_address, os_version, description, companies, type } = req.body;
         
-        res.json({ id: info.lastInsertRowid, message: 'Sunucu başarıyla eklendi/güncellendi' });
+        const transaction = db.transaction(() => {
+            // Upsert Server
+            const info = db.prepare(`
+                INSERT INTO servers (name, ip_address, os_version, description, type) 
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET 
+                    ip_address = excluded.ip_address, 
+                    os_version = excluded.os_version,
+                    description = excluded.description,
+                    type = excluded.type
+            `).run(name, ip_address, os_version || 'Windows Server', description || '', type || 'cloud');
+
+            const serverId = info.lastInsertRowid || db.prepare('SELECT id FROM servers WHERE name = ?').get(name).id;
+
+            // Şirket atamalarını güncelle
+            if (companies && Array.isArray(companies)) {
+                db.prepare('DELETE FROM server_companies WHERE server_id = ?').run(serverId);
+                const insertShare = db.prepare('INSERT INTO server_companies (server_id, company_id, share_ratio) VALUES (?, ?, ?)');
+                for (const comp of companies) {
+                    insertShare.run(serverId, comp.id, comp.share_ratio || (100 / companies.length));
+                }
+            }
+            return serverId;
+        });
+
+        const serverId = transaction();
+        res.json({ id: serverId, message: 'Sunucu başarıyla kaydedildi' });
     } catch (err) {
-        console.error('Add server error:', err);
-        res.status(500).json({ error: 'Sunucu kaydedilirken bir hata oluştu: ' + err.message });
+        console.error('Save server error:', err);
+        res.status(500).json({ error: 'Sunucu kaydedilirken hata oluştu: ' + err.message });
     }
 };
 
@@ -103,7 +133,7 @@ exports.getServerDetail = (req, res) => {
 
 exports.reportAgentData = (req, res) => {
     try {
-        const { name, cpu_usage, ram_usage, pending_updates, os_version, status } = req.body;
+        const { name, cpu_usage, ram_usage, pending_updates, os_version, status, type } = req.body;
         
         // İsme göre sunucuyu bul ve verilerini güncelle
         const check = db.prepare('SELECT id FROM servers WHERE name = ?').get(name);
@@ -111,15 +141,15 @@ exports.reportAgentData = (req, res) => {
         if (check) {
             db.prepare(`
                 UPDATE servers 
-                SET cpu_usage = ?, ram_usage = ?, pending_updates = ?, os_version = ?, status = ?, last_online = CURRENT_TIMESTAMP 
+                SET cpu_usage = ?, ram_usage = ?, pending_updates = ?, os_version = ?, status = ?, type = ?, last_online = CURRENT_TIMESTAMP 
                 WHERE id = ?
-            `).run(cpu_usage, ram_usage, pending_updates, os_version, status, check.id);
+            `).run(cpu_usage, ram_usage, pending_updates, os_version, status, type || 'cloud', check.id);
         } else {
             // Eğer sunucu listede yoksa otomatik ekle
             db.prepare(`
-                INSERT INTO servers (name, cpu_usage, ram_usage, pending_updates, os_version, status) 
-                VALUES (?, ?, ?, ?, ?, ?)
-            `).run(name, cpu_usage, ram_usage, pending_updates, os_version, status);
+                INSERT INTO servers (name, cpu_usage, ram_usage, pending_updates, os_version, status, type) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `).run(name, cpu_usage, ram_usage, pending_updates, os_version, status, type || 'cloud');
         }
         
         res.json({ success: true });
@@ -130,3 +160,4 @@ exports.reportAgentData = (req, res) => {
 };
 
 // exports.renderPage = (req, res) => { ... } // Removed EJS version
+
