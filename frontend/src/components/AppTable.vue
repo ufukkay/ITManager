@@ -34,6 +34,9 @@ const props = defineProps({
 
   /** Boş durum metni */
   emptyText: { type: String, default: 'Sonuç bulunamadı' },
+
+  /** Başlangıç filtreleri (URL param vb. için) */
+  initialFilters: { type: Object, default: () => ({ search: '', quick: {} }) }
 })
 
 const emit = defineEmits(['row-history', 'row-edit', 'row-delete', 'selection-change', 'bulk-export'])
@@ -87,41 +90,53 @@ const pageTo = computed(() =>
 )
 
 // ── Seçim ─────────────────────────────────────────────────────────────────────
-const selectedKeys = ref(new Set())
+const selectedKeys = ref([]) // Set yerine Array kullanarak reaktiviteyi garantile
 
 function rowKey(r) {
-  return r.id ?? r._id ?? JSON.stringify(r)
+  return r.id ?? r._id ?? String(JSON.stringify(r))
 }
 
 const allSelected = computed(() =>
   pageRows.value.length > 0 &&
-  pageRows.value.every(r => selectedKeys.value.has(rowKey(r)))
+  pageRows.value.every(r => selectedKeys.value.includes(rowKey(r)))
 )
 const someSelected = computed(() =>
-  pageRows.value.some(r => selectedKeys.value.has(rowKey(r))) && !allSelected.value
+  pageRows.value.some(r => selectedKeys.value.includes(rowKey(r))) && !allSelected.value
 )
 
 const selectAllEl = ref(null)
 watch(someSelected, v => { if (selectAllEl.value) selectAllEl.value.indeterminate = v }, { immediate: true })
 
 function toggleAll(checked) {
-  pageRows.value.forEach(r =>
-    checked ? selectedKeys.value.add(rowKey(r)) : selectedKeys.value.delete(rowKey(r))
-  )
+  const pageKeys = pageRows.value.map(r => rowKey(r))
+  if (checked) {
+    // Mevcut sayfa anahtarlarını ekle (duplike olmasın)
+    const next = new Set([...selectedKeys.value, ...pageKeys])
+    selectedKeys.value = [...next]
+  } else {
+    // Mevcut sayfa anahtarlarını çıkar
+    selectedKeys.value = selectedKeys.value.filter(k => !pageKeys.includes(k))
+  }
   emitSelection()
 }
 
 function toggleRow(r, checked) {
-  checked ? selectedKeys.value.add(rowKey(r)) : selectedKeys.value.delete(rowKey(r))
+  const key = rowKey(r)
+  if (checked) {
+    if (!selectedKeys.value.includes(key)) selectedKeys.value.push(key)
+  } else {
+    selectedKeys.value = selectedKeys.value.filter(k => k !== key)
+  }
   emitSelection()
 }
 
 function emitSelection() {
-  emit('selection-change', props.rows.filter(r => selectedKeys.value.has(rowKey(r))))
+  const selectedRows = props.rows.filter(r => selectedKeys.value.includes(rowKey(r)))
+  emit('selection-change', selectedRows)
 }
 
 function bulkExport() {
-  const selectedRows = props.rows.filter(r => selectedKeys.value.has(rowKey(r)))
+  const selectedRows = props.rows.filter(r => selectedKeys.value.includes(rowKey(r)))
   emit('bulk-export', selectedRows)
 }
 
@@ -207,7 +222,19 @@ function outsideClick(e) {
   closePanel()
 }
 
-onMounted(()  => document.addEventListener('click', outsideClick, true))
+onMounted(()  => {
+  document.addEventListener('click', outsideClick, true)
+  
+  // Başlangıç filtrelerini uygula
+  if (props.initialFilters) {
+    if (props.initialFilters.search) globalSearch.value = props.initialFilters.search
+    if (props.initialFilters.quick) {
+      Object.entries(props.initialFilters.quick).forEach(([key, val]) => {
+        quickValues.value[key] = val
+      })
+    }
+  }
+})
 onUnmounted(() => document.removeEventListener('click', outsideClick, true))
 
 function togglePanelVal(v, checked) {
@@ -404,7 +431,7 @@ function resetPanel() {
                 <input
                   type="checkbox"
                   class="accent-blue-600"
-                  :checked="selectedKeys.has(rowKey(row))"
+                  :checked="selectedKeys.includes(rowKey(row))"
                   @change="e => toggleRow(row, e.target.checked)"
                 >
               </td>

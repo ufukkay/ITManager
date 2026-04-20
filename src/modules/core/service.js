@@ -3,7 +3,12 @@ const { db } = require('../../database/db');
 class MasterDataService {
     // --- COMPANIES ---
     static async getAllCompanies() {
-        return db.prepare("SELECT * FROM companies ORDER BY name ASC").all();
+        return db.prepare(`
+            SELECT c.*, 
+                   (SELECT COUNT(*) FROM personnel WHERE company_id = c.id) as personnel_count
+            FROM companies c 
+            ORDER BY c.name ASC
+        `).all();
     }
 
     static async getCompanyById(id) {
@@ -12,69 +17,113 @@ class MasterDataService {
 
     static async createCompany(data) {
         const { name, tax_number, notes } = data;
-        const info = db.prepare("INSERT INTO companies (name, tax_number, notes) VALUES (?, ?, ?)")
-            .run(name, tax_number, notes);
+        
+        // Mükerrer Kontrolü
+        const existingName = db.prepare("SELECT id FROM companies WHERE LOWER(name) = LOWER(?)").get(name);
+        if (existingName) throw new Error("Bu isimde bir şirket zaten kayıtlı.");
+        
+        if (tax_number) {
+            const existingTax = db.prepare("SELECT id FROM companies WHERE tax_number = ?").get(tax_number);
+            if (existingTax) throw new Error("Bu vergi numarası ile başka bir şirket kayıtlı.");
+        }
+
+        // --- Şirket ID (1+) Otomatik Atama ---
+        const lastRow = db.prepare("SELECT MAX(company_id) as max_id FROM companies").get();
+        const company_id = Math.max(lastRow.max_id || 0, 0) + 1;
+
+        const info = db.prepare("INSERT INTO companies (company_id, name, tax_number, notes) VALUES (?, ?, ?, ?)")
+            .run(company_id, name, tax_number, notes);
         return info.lastInsertRowid;
     }
 
     static async updateCompany(id, data) {
-        const { name, tax_number, notes } = data;
-        db.prepare("UPDATE companies SET name = ?, tax_number = ?, notes = ? WHERE id = ?")
-            .run(name, tax_number, notes, id);
+        const { company_id, name, tax_number, notes } = data;
+        db.prepare("UPDATE companies SET company_id = ?, name = ?, tax_number = ?, notes = ? WHERE id = ?")
+            .run(company_id, name, tax_number, notes, id);
     }
 
     static async deleteCompany(id) {
-        db.prepare("DELETE FROM companies WHERE id = ?").run(id);
+        const transaction = db.transaction(() => {
+            db.prepare("UPDATE personnel SET company_id = NULL WHERE company_id = ?").run(id);
+            db.prepare("DELETE FROM companies WHERE id = ?").run(id);
+        });
+        transaction();
     }
 
     // --- DEPARTMENTS ---
-    static async getAllDepartments(companyId = null) {
-        if (companyId) {
-            return db.prepare("SELECT * FROM departments WHERE company_id = ? ORDER BY name ASC").all(companyId);
-        }
-        return db.prepare("SELECT * FROM departments ORDER BY name ASC").all();
+    static async getAllDepartments() {
+        return db.prepare(`
+            SELECT d.*, 
+                   (SELECT COUNT(*) FROM personnel WHERE department_id = d.id) as personnel_count
+            FROM departments d 
+            ORDER BY d.name ASC
+        `).all();
     }
 
     static async createDepartment(data) {
-        const { name, company_id, notes } = data;
-        const info = db.prepare("INSERT INTO departments (name, company_id, notes) VALUES (?, ?, ?)")
-            .run(name, company_id, notes);
+        const { name, notes } = data;
+        
+        // Mükerrer Kontrolü
+        const existing = db.prepare("SELECT id FROM departments WHERE LOWER(name) = LOWER(?)").get(name);
+        if (existing) throw new Error("Bu isimde bir departman zaten kayıtlı.");
+
+        // --- Departman ID (100+) Otomatik Atama ---
+        const lastRow = db.prepare("SELECT MAX(dept_id) as max_id FROM departments").get();
+        const dept_id = Math.max(lastRow.max_id || 99, 99) + 1;
+
+        const info = db.prepare("INSERT INTO departments (dept_id, name, notes) VALUES (?, ?, ?)")
+            .run(dept_id, name, notes);
         return info.lastInsertRowid;
     }
 
     static async updateDepartment(id, data) {
-        const { name, company_id, notes } = data;
-        db.prepare("UPDATE departments SET name = ?, company_id = ?, notes = ? WHERE id = ?")
-            .run(name, company_id, notes, id);
+        const { dept_id, name, notes } = data;
+        db.prepare("UPDATE departments SET dept_id = ?, name = ?, notes = ? WHERE id = ?")
+            .run(dept_id, name, notes, id);
     }
 
     static async deleteDepartment(id) {
-        db.prepare("DELETE FROM departments WHERE id = ?").run(id);
+        const transaction = db.transaction(() => {
+            db.prepare("UPDATE personnel SET department_id = NULL WHERE department_id = ?").run(id);
+            db.prepare("DELETE FROM departments WHERE id = ?").run(id);
+        });
+        transaction();
     }
 
     // --- COST CENTERS ---
-    static async getAllCostCenters(companyId = null) {
-        if (companyId) {
-            return db.prepare("SELECT * FROM cost_centers WHERE company_id = ? ORDER BY name ASC").all(companyId);
-        }
-        return db.prepare("SELECT * FROM cost_centers ORDER BY name ASC").all();
+    static async getAllCostCenters() {
+        return db.prepare(`
+            SELECT cc.*, 
+                   (SELECT COUNT(*) FROM personnel WHERE cost_center_id = cc.id) as personnel_count
+            FROM cost_centers cc 
+            ORDER BY cc.name ASC
+        `).all();
     }
 
     static async createCostCenter(data) {
-        const { code, name, company_id } = data;
-        const info = db.prepare("INSERT INTO cost_centers (code, name, company_id) VALUES (?, ?, ?)")
-            .run(code, name, company_id);
+        const { code, name, notes } = data;
+
+        // Mükerrer Kontrolü
+        const existingCode = db.prepare("SELECT id FROM cost_centers WHERE LOWER(code) = LOWER(?)").get(code);
+        if (existingCode) throw new Error("Bu kod ile bir masraf yeri zaten kayıtlı.");
+
+        const info = db.prepare("INSERT INTO cost_centers (code, name, notes) VALUES (?, ?, ?)")
+            .run(code, name, notes);
         return info.lastInsertRowid;
     }
 
     static async updateCostCenter(id, data) {
-        const { code, name, company_id } = data;
-        db.prepare("UPDATE cost_centers SET code = ?, name = ?, company_id = ? WHERE id = ?")
-            .run(code, name, company_id, id);
+        const { code, name, notes } = data;
+        db.prepare("UPDATE cost_centers SET code = ?, name = ?, notes = ? WHERE id = ?")
+            .run(code, name, notes, id);
     }
 
     static async deleteCostCenter(id) {
-        db.prepare("DELETE FROM cost_centers WHERE id = ?").run(id);
+        const transaction = db.transaction(() => {
+            db.prepare("UPDATE personnel SET cost_center_id = NULL WHERE cost_center_id = ?").run(id);
+            db.prepare("DELETE FROM cost_centers WHERE id = ?").run(id);
+        });
+        transaction();
     }
 
     // --- PERSONNEL ---
@@ -108,26 +157,88 @@ class MasterDataService {
     }
 
     static async createPersonnel(data) {
-        const { first_name, last_name, email, phone, company_id, department_id, cost_center_id, notes } = data;
+        let { first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes } = data;
+        
+        // --- Mükerrer Kayıt Kontrolü ---
+        // 1. Email varsa kontrol et
+        if (email && email.trim()) {
+            const existing = db.prepare("SELECT id FROM personnel WHERE email = ?").get(email);
+            if (existing) throw new Error("Bu e-posta adresi ile kayıtlı bir personel zaten var.");
+        }
+        
+        // 2. Ad + Soyad + Şirket kombosu kontrolü
+        const existingName = db.prepare(`
+            SELECT id FROM personnel 
+            WHERE LOWER(first_name) = LOWER(?) AND LOWER(last_name) = LOWER(?) AND company_id = ?
+        `).get(first_name, last_name, company_id);
+        
+        if (existingName) throw new Error("Bu isim ve şirket ile bir personel zaten kayıtlı.");
+
+        // --- Sicil No (1000+) Otomatik Atama ---
+        const lastRow = db.prepare("SELECT MAX(employee_id) as max_id FROM personnel").get();
+        const employee_id = Math.max(lastRow.max_id || 999, 999) + 1;
+
         const info = db.prepare(`
-            INSERT INTO personnel (first_name, last_name, email, phone, company_id, department_id, cost_center_id, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(first_name, last_name, email, phone, company_id, department_id, cost_center_id, notes);
+            INSERT INTO personnel (employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status || 'active', notes);
         return info.lastInsertRowid;
     }
 
     static async updatePersonnel(id, data) {
-        const { first_name, last_name, email, phone, company_id, department_id, cost_center_id, status, notes } = data;
+        console.log(`[MasterDataService] updatePersonnel: updating id ${id}`, data);
+        const { employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes } = data;
         db.prepare(`
             UPDATE personnel SET 
-                first_name = ?, last_name = ?, email = ?, phone = ?, 
+                employee_id = ?, first_name = ?, last_name = ?, title = ?, email = ?, phone = ?, 
                 company_id = ?, department_id = ?, cost_center_id = ?, 
-                status = ?, notes = ?
+                hire_date = ?, exit_date = ?, status = ?, notes = ?
             WHERE id = ?
-        `).run(first_name, last_name, email, phone, company_id, department_id, cost_center_id, status, notes, id);
+        `).run(employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes, id);
     }
     static async deletePersonnel(id) {
-        db.prepare("DELETE FROM personnel WHERE id = ?").run(id);
+        const transaction = db.transaction(() => {
+            db.prepare("UPDATE sim_m2m SET personnel_id = NULL WHERE personnel_id = ?").run(id);
+            db.prepare("UPDATE sim_voice SET personnel_id = NULL WHERE personnel_id = ?").run(id);
+            db.prepare("UPDATE invoices SET personnel_id = NULL WHERE personnel_id = ?").run(id);
+            db.prepare("DELETE FROM m365_allocation_users WHERE personnel_id = ?").run(id);
+            db.prepare("DELETE FROM personnel WHERE id = ?").run(id);
+        });
+        transaction();
+    }
+
+    static async bulkDeletePersonnel(ids) {
+        if (!Array.isArray(ids) || ids.length === 0) return;
+        const transaction = db.transaction((ids) => {
+            const nullStmtM2M    = db.prepare("UPDATE sim_m2m SET personnel_id = NULL WHERE personnel_id = ?");
+            const nullStmtVoice  = db.prepare("UPDATE sim_voice SET personnel_id = NULL WHERE personnel_id = ?");
+            const nullStmtInv    = db.prepare("UPDATE invoices SET personnel_id = NULL WHERE personnel_id = ?");
+            const delStmtM365    = db.prepare("DELETE FROM m365_allocation_users WHERE personnel_id = ?");
+            const delStmt        = db.prepare("DELETE FROM personnel WHERE id = ?");
+            for (const id of ids) {
+                nullStmtM2M.run(id);
+                nullStmtVoice.run(id);
+                nullStmtInv.run(id);
+                delStmtM365.run(id);
+                delStmt.run(id);
+            }
+        });
+        transaction(ids);
+    }
+
+    static async bulkUpdatePersonnel(ids, data) {
+        if (!Array.isArray(ids) || ids.length === 0) return;
+        const keys = Object.keys(data);
+        if (keys.length === 0) return;
+
+        const setClause = keys.map(k => `${k} = ?`).join(', ');
+        const values = Object.values(data);
+
+        const transaction = db.transaction((ids, vals) => {
+            const stmt = db.prepare(`UPDATE personnel SET ${setClause} WHERE id = ?`);
+            for (const id of ids) stmt.run(...vals, id);
+        });
+        transaction(ids, values);
     }
 
     // --- VEHICLES ---
@@ -272,14 +383,15 @@ class MasterDataService {
         const { name, ip_address, os_version, description, type, companies } = data;
         const transaction = db.transaction(() => {
             const info = db.prepare(`
-                INSERT INTO servers (name, ip_address, os_version, description, type) 
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO servers (name, ip_address, os_version, description, type, status) 
+                VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(name) DO UPDATE SET 
                     ip_address = excluded.ip_address, 
                     os_version = excluded.os_version,
                     description = excluded.description,
-                    type = excluded.type
-            `).run(name, ip_address, os_version || 'Windows Server', description || '', type || 'cloud');
+                    type = excluded.type,
+                    status = excluded.status
+            `).run(name, ip_address, os_version || 'Windows Server', description || '', type || 'cloud', data.status || 'online');
 
             const serverId = info.lastInsertRowid || db.prepare('SELECT id FROM servers WHERE name = ?').get(name).id;
 
@@ -297,12 +409,14 @@ class MasterDataService {
     }
 
     static async updateServer(id, data) {
-        const { name, ip_address, os_version, description, type, companies } = data;
+        const { name, ip_address, os_version, description, type, status, companies } = data;
         const transaction = db.transaction(() => {
             db.prepare(`
-                UPDATE servers SET name = ?, ip_address = ?, os_version = ?, description = ?, type = ?
+                UPDATE servers SET 
+                    name = ?, ip_address = ?, os_version = ?, 
+                    description = ?, type = ?, status = ?
                 WHERE id = ?
-            `).run(name, ip_address, os_version, description, type, id);
+            `).run(name, ip_address, os_version, description, type, status || 'online', id);
 
             if (companies && Array.isArray(companies)) {
                 db.prepare('DELETE FROM server_companies WHERE server_id = ?').run(id);
@@ -318,6 +432,86 @@ class MasterDataService {
     static async deleteServer(id) {
         db.prepare("DELETE FROM server_companies WHERE server_id = ?").run(id);
         db.prepare("DELETE FROM servers WHERE id = ?").run(id);
+    }
+
+    // --- IMPACT ANALYSIS ---
+    static async getDeleteImpact(type, id) {
+        const tableMap = {
+            'companies': 'companies',
+            'departments': 'departments',
+            'cost-centers': 'cost_centers',
+            'personnel': 'personnel',
+            'vehicles': 'vehicles',
+            'locations': 'locations',
+            'operators': 'operators',
+            'packages': 'packages',
+            'licenses': 'm365_licenses',
+            'servers': 'servers',
+            'hr-requests': 'hr_requests'
+        };
+
+        const identifyingColumns = {
+            'companies': 'name',
+            'departments': 'name',
+            'cost_centers': "code || ' - ' || name",
+            'personnel': "first_name || ' ' || last_name",
+            'vehicles': 'plate_no',
+            'locations': 'name',
+            'operators': 'name',
+            'packages': 'name',
+            'm365_licenses': 'name',
+            'servers': "name || ' (' || ip_address || ')'",
+            'sim_m2m': 'phone_no',
+            'sim_data': 'phone_no',
+            'sim_voice': 'phone_no',
+            'invoices': "period || ' (' || phone_no || ')'",
+            'hr_requests': "full_name || ' (' || type || ')'",
+            'm365_allocations': 'id',
+            'm365_allocation_users': 'user_name',
+            'server_companies': 'share_ratio'
+        };
+
+        const tableDocNames = {
+            'sim_m2m': 'M2M Hatları',
+            'sim_voice': 'Ses Hatları',
+            'sim_data': 'Data Hatları',
+            'invoices': 'Faturalar',
+            'personnel': 'Personeller',
+            'hr_requests': 'İK Talepleri',
+            'm365_allocation_users': 'M365 Kullanıcı Atamaları',
+            'server_companies': 'Sunucu Maliyet Paylaşımları',
+            'packages': 'Hizmet Paketleri',
+            'vehicles': 'Araçlar',
+            'locations': 'Lokasyonlar'
+        };
+
+        const targetTable = tableMap[type] || type;
+        const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'").all();
+        const results = [];
+
+        for (const t of tables) {
+            if (t.name === targetTable) continue;
+
+            const foreignKeys = db.prepare(`PRAGMA foreign_key_list(${t.name})`).all();
+            const relevantFKs = foreignKeys.filter(fk => fk.table === targetTable);
+
+            for (const fk of relevantFKs) {
+                const count = db.prepare(`SELECT COUNT(*) as count FROM ${t.name} WHERE ${fk.from} = ?`).get(id).count;
+                
+                if (count > 0) {
+                    const labelColumn = identifyingColumns[t.name] || 'id';
+                    const samples = db.prepare(`SELECT ${labelColumn} as label FROM ${t.name} WHERE ${fk.from} = ? LIMIT 5`).all(id);
+                    
+                    results.push({
+                        table: tableDocNames[t.name] || t.name.charAt(0).toUpperCase() + t.name.slice(1),
+                        count: count,
+                        samples: samples.map(s => s.label)
+                    });
+                }
+            }
+        }
+
+        return results;
     }
 }
 

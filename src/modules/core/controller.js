@@ -151,6 +151,24 @@ class MasterDataController {
         }
     }
 
+    static async bulkDeletePersonnel(req, res) {
+        try {
+            await MasterDataService.bulkDeletePersonnel(req.body.ids);
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async bulkUpdatePersonnel(req, res) {
+        try {
+            await MasterDataService.bulkUpdatePersonnel(req.body.ids, req.body.data);
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
     // Araclar
     static async getVehicles(req, res) {
         try {
@@ -370,6 +388,16 @@ class MasterDataController {
         try {
             await MasterDataService.deleteServer(req.params.id);
             res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async getDeleteImpact(req, res) {
+        try {
+            const { type, id } = req.params;
+            const data = await MasterDataService.getDeleteImpact(type, id);
+            res.json(data);
         } catch (e) {
             res.status(500).json({ error: e.message });
         }

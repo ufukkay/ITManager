@@ -93,6 +93,28 @@ const initDb = () => {
   `).run();
 
   // Servers table
+  try {
+    const columns = db.prepare("PRAGMA table_info(servers)").all();
+    if (columns.length > 0) {
+        if (!columns.some(c => c.name === 'status')) {
+            console.log("Adding status to servers table...");
+            db.prepare("ALTER TABLE servers ADD COLUMN status TEXT DEFAULT 'online'").run();
+        }
+        if (!columns.some(c => c.name === 'description')) {
+            console.log("Adding description to servers table...");
+            db.prepare("ALTER TABLE servers ADD COLUMN description TEXT").run();
+        }
+        if (!columns.some(c => c.name === 'type')) {
+            console.log("Adding type to servers table...");
+            db.prepare("ALTER TABLE servers ADD COLUMN type TEXT DEFAULT 'cloud'").run();
+        }
+        if (!columns.some(c => c.name === 'created_at')) {
+            console.log("Adding created_at to servers table...");
+            db.prepare("ALTER TABLE servers ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP").run();
+        }
+    }
+  } catch (e) { console.log("Servers table migration skipped:", e.message); }
+
   db.prepare(
     `
         CREATE TABLE IF NOT EXISTS servers (
@@ -107,7 +129,8 @@ const initDb = () => {
             status TEXT DEFAULT 'online',
             description TEXT,
             type TEXT DEFAULT 'cloud',
-            last_online DATETIME DEFAULT CURRENT_TIMESTAMP
+            last_online DATETIME DEFAULT CURRENT_TIMESTAMP,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `,
   ).run();
@@ -164,9 +187,26 @@ const initDb = () => {
   // --- CORE MASTER DATA TABLES ---
   
   // Companies table (Master)
+  try {
+    const columns = db.prepare("PRAGMA table_info(companies)").all();
+    const hasCompanyIdCol = columns.some(c => c.name === 'company_id');
+
+    if (!hasCompanyIdCol && columns.length > 0) {
+        console.log("Adding company_id to companies table...");
+        db.prepare("ALTER TABLE companies ADD COLUMN company_id INTEGER").run();
+        const comps = db.prepare("SELECT id FROM companies ORDER BY id").all();
+        let startId = 1;
+        const updateStmt = db.prepare("UPDATE companies SET company_id = ? WHERE id = ?");
+        comps.forEach(c => {
+            updateStmt.run(startId++, c.id);
+        });
+    }
+  } catch (e) { console.log("Companies check skipped:", e.message); }
+
   db.prepare(`
     CREATE TABLE IF NOT EXISTS companies (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        company_id INTEGER UNIQUE,
         name TEXT UNIQUE NOT NULL,
         tax_number TEXT,
         notes TEXT,
@@ -174,41 +214,90 @@ const initDb = () => {
     )
   `).run();
 
-  // Departments table (Master)
+  // Departments table (Master - Global)
+  try {
+    const columns = db.prepare("PRAGMA table_info(departments)").all();
+    const hasDeptId = columns.some(c => c.name === 'dept_id');
+    const hasCompanyId = columns.some(c => c.name === 'company_id');
+
+    if (hasCompanyId && columns.length > 0) {
+        console.log("Resetting departments table for global schema...");
+        db.prepare("PRAGMA foreign_keys = OFF").run();
+        db.prepare("DROP TABLE departments").run();
+        db.prepare("PRAGMA foreign_keys = ON").run();
+    } else if (!hasDeptId && columns.length > 0) {
+        console.log("Adding dept_id to departments table...");
+        db.prepare("ALTER TABLE departments ADD COLUMN dept_id INTEGER").run();
+        const deps = db.prepare("SELECT id FROM departments ORDER BY id").all();
+        let startId = 100;
+        const updateStmt = db.prepare("UPDATE departments SET dept_id = ? WHERE id = ?");
+        deps.forEach(d => {
+            updateStmt.run(startId++, d.id);
+        });
+    }
+  } catch (e) { console.log("Departments check skipped:", e.message); }
+
   db.prepare(`
     CREATE TABLE IF NOT EXISTS departments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        company_id INTEGER,
+        dept_id INTEGER UNIQUE,
+        name TEXT UNIQUE NOT NULL,
         notes TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(company_id) REFERENCES companies(id)
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run();
 
-  // Cost Centers table (Master)
+  // Cost Centers table (Master - Global)
+  try {
+    const columns = db.prepare("PRAGMA table_info(cost_centers)").all();
+    const hasCompanyId = columns.some(c => c.name === 'company_id');
+    if (hasCompanyId && columns.length > 0) {
+        console.log("Resetting cost_centers table for global schema...");
+        db.prepare("PRAGMA foreign_keys = OFF").run();
+        db.prepare("DROP TABLE cost_centers").run();
+        db.prepare("PRAGMA foreign_keys = ON").run();
+    }
+  } catch (e) { console.log("Cost centers check skipped:", e.message); }
+
   db.prepare(`
     CREATE TABLE IF NOT EXISTS cost_centers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        code TEXT,
+        code TEXT UNIQUE NOT NULL,
         name TEXT NOT NULL,
-        company_id INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(company_id) REFERENCES companies(id)
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run();
 
   // Personnel table (Master)
+  // Check if we need to reset/update schema
+  try {
+    const columns = db.prepare("PRAGMA table_info(personnel)").all();
+    const hasEmployeeId = columns.some(c => c.name === 'employee_id');
+    if (!hasEmployeeId && columns.length > 0) {
+        console.log("Resetting personnel table for new schema...");
+        db.prepare("PRAGMA foreign_keys = OFF").run();
+        db.prepare("DROP TABLE personnel").run();
+        db.prepare("PRAGMA foreign_keys = ON").run();
+    }
+  } catch (e) {
+    console.log("Personnel table check skipped:", e.message);
+  }
+
   db.prepare(`
     CREATE TABLE IF NOT EXISTS personnel (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        employee_id INTEGER UNIQUE,
         first_name TEXT NOT NULL,
         last_name TEXT NOT NULL,
+        title TEXT,
         email TEXT,
         phone TEXT,
         company_id INTEGER,
         department_id INTEGER,
         cost_center_id INTEGER,
+        hire_date DATE,
+        exit_date DATE,
         status TEXT DEFAULT 'active',
         notes TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -366,6 +455,15 @@ const initDb = () => {
         UNIQUE(company_id, license_id)
     )
   `).run();
+  
+  // Migration for m365_allocation_users (Adding personnel_id if missing)
+  try {
+    const columns = db.prepare("PRAGMA table_info(m365_allocation_users)").all();
+    if (columns.length > 0 && !columns.some(c => c.name === 'personnel_id')) {
+        console.log("Adding personnel_id to m365_allocation_users table...");
+        db.prepare("ALTER TABLE m365_allocation_users ADD COLUMN personnel_id INTEGER REFERENCES personnel(id)").run();
+    }
+  } catch (e) { console.log("m365_allocation_users migration skipped:", e.message); }
   
   db.prepare(`
     CREATE TABLE IF NOT EXISTS m365_allocation_users (

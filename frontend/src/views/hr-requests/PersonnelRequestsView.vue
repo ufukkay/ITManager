@@ -3,7 +3,12 @@ import { ref, onMounted, computed, inject, watch } from 'vue'
 import api from '../../api'
 import AppTable from '../../components/AppTable.vue'
 import { useMasterDataStore } from '../../stores/masterData'
+import { useToast } from '../../composables/useToast'
+import { useConfirm } from '../../composables/useConfirm'
 import * as XLSX from 'xlsx'
+
+const { showToast } = useToast()
+const { ask, startLoading, stopLoading } = useConfirm()
 
 const masterData = useMasterDataStore()
 
@@ -67,11 +72,25 @@ const updateStatus = async (id, newStatus) => {
 
 /* ── Delete ── */
 const handleDelete = async (row) => {
-  if (!confirm('Bu talebi silmek istediğinize emin misiniz?')) return
-  try {
-    await api.delete(`/hr-requests/${row.id}`)
-    fetchData()
-  } catch (err) { console.error(err) }
+  const impact = await masterData.getDeleteImpact('hr-requests', row.id)
+  const confirmed = await ask({
+    title: 'Talebi Sil',
+    message: `"${row.full_name}" için oluşturulan talebi silmek istediğinize emin misiniz?`,
+    confirmLabel: 'Evet, Sil',
+    impact: impact
+  })
+  if (confirmed) {
+    try {
+      startLoading()
+      await api.delete(`/hr-requests/${row.id}`)
+      showToast('Talep başarıyla silindi', 'success')
+      fetchData()
+    } catch (err) {
+      showToast('Hata: ' + err.message, 'error')
+    } finally {
+      stopLoading()
+    }
+  }
 }
 
 /* ── Excel export ── */
@@ -139,16 +158,21 @@ const openEdit = (row) => {
 
 const save = async () => {
   try {
+    startLoading()
     const payload = { ...form.value, type: formType.value }
     if (editTarget.value) {
       await api.put(`/hr-requests/${editTarget.value.id}`, payload)
+      showToast('Bildirim başarıyla güncellendi', 'success')
     } else {
       await api.post('/hr-requests', payload)
+      showToast('Bildirim başarıyla oluşturuldu', 'success')
     }
     showModal.value = false
     fetchData()
   } catch (err) {
-    alert('Hata: ' + (err.response?.data?.error || err.message))
+    showToast('Hata: ' + (err.response?.data?.error || err.message), 'error')
+  } finally {
+    stopLoading()
   }
 }
 

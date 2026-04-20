@@ -3,6 +3,11 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import api from '../api'
 import AppTable from '../components/AppTable.vue'
 import { useMasterDataStore } from '../stores/masterData'
+import { useToast } from '../composables/useToast'
+import { useConfirm } from '../composables/useConfirm'
+
+const { showToast } = useToast()
+const { ask, startLoading, stopLoading } = useConfirm()
 
 const props = defineProps({
   type: { type: String, default: 'cloud' }
@@ -53,22 +58,43 @@ const openEdit = (row) => {
 
 const save = async () => {
     try {
+        startLoading()
         if (editTarget.value) {
             await masterData.updateItem('servers', editTarget.value.id, form.value)
+            showToast('Sunucu başarıyla güncellendi', 'success')
         } else {
             await masterData.createItem('servers', form.value)
+            showToast('Yeni sunucu başarıyla eklendi', 'success')
         }
         showModal.value = false
         loadServers()
     } catch (err) {
-        alert('Hata: ' + (err.response?.data?.error || err.message))
+        showToast('Hata: ' + (err.response?.data?.error || err.message), 'error')
+    } finally {
+        stopLoading()
     }
 }
 
 const handleDelete = async (row) => {
-    if (!confirm('Bu sunucuyu silmek istediğinize emin misiniz?')) return
-    await masterData.deleteItem('servers', row.id)
-    loadServers()
+    const impact = await masterData.getDeleteImpact('servers', row.id)
+    const confirmed = await ask({
+        title: 'Sunucuyu Sil',
+        message: `"${row.name}" isimli sunucuyu silmek istediğinize emin misiniz?`,
+        confirmLabel: 'Evet, Sil',
+        impact: impact
+    })
+    if (confirmed) {
+        try {
+            startLoading()
+            await masterData.deleteItem('servers', row.id)
+            showToast('Sunucu başarıyla silindi', 'success')
+            loadServers()
+        } catch (e) {
+            showToast('Hata: ' + e.message, 'error')
+        } finally {
+            stopLoading()
+        }
+    }
 }
 
 const addCompanyToForm = () => {

@@ -1,10 +1,14 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useMasterDataStore } from '../../stores/masterData'
+import { useToast } from '../../composables/useToast'
+import { useConfirm } from '../../composables/useConfirm'
 import AppTable from '../../components/AppTable.vue'
 import * as XLSX from 'xlsx'
 
 const masterData = useMasterDataStore()
+const { showToast } = useToast()
+const { ask, startLoading, stopLoading } = useConfirm()
 const loading    = ref(false)
 
 const columns = [
@@ -40,18 +44,37 @@ const openEditModal = (row) => {
 
 const saveItem = async () => {
   try {
-    if (selectedItem.value)
+    if (selectedItem.value) {
       await masterData.updateItem('locations', selectedItem.value.id, form.value)
-    else
+      showToast('Lokasyon başarıyla güncellendi', 'success')
+    } else {
       await masterData.createItem('locations', form.value)
+      showToast('Yeni lokasyon başarıyla eklendi', 'success')
+    }
     isModalOpen.value = false
-  } catch (err) { alert('Hata: ' + err.message) }
+  } catch (err) { showToast('Hata: ' + err.message, 'error') }
 }
 
 const handleDelete = async (row) => {
-  if (!confirm('Bu lokasyonu silmek istediğinize emin misiniz?')) return
-  try { await masterData.deleteItem('locations', row.id) }
-  catch (err) { alert('Hata: ' + err.message) }
+  const impact = await masterData.getDeleteImpact('locations', row.id)
+  const confirmed = await ask({
+    title: 'Lokasyonu Sil',
+    message: `"${row.name}" isimli lokasyonu silmek istediğinize emin misiniz?`,
+    confirmLabel: 'Evet, Sil',
+    impact: impact
+  })
+
+  if (confirmed) {
+    try {
+      startLoading()
+      await masterData.deleteItem('locations', row.id)
+      showToast('Lokasyon başarıyla silindi', 'success')
+    } catch (err) {
+      showToast('Hata: ' + err.message, 'error')
+    } finally {
+      stopLoading()
+    }
+  }
 }
 
 const downloadTemplate = () => {

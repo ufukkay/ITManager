@@ -25,6 +25,8 @@ router.get('/personnel', MasterDataController.getPersonnel);
 router.post('/personnel', MasterDataController.createPersonnel);
 router.put('/personnel/:id', MasterDataController.updatePersonnel);
 router.delete('/personnel/:id', MasterDataController.deletePersonnel);
+router.post('/personnel/bulk-delete', MasterDataController.bulkDeletePersonnel);
+router.post('/personnel/bulk-update', MasterDataController.bulkUpdatePersonnel);
 
 // Vehicles
 router.get('/vehicles', MasterDataController.getVehicles);
@@ -61,5 +63,8 @@ router.get('/servers', MasterDataController.getServers);
 router.post('/servers', MasterDataController.createServer);
 router.put('/servers/:id', MasterDataController.updateServer);
 router.delete('/servers/:id', MasterDataController.deleteServer);
+
+// Impact Analysis
+router.get('/:type/:id/impact', MasterDataController.getDeleteImpact);
 
 module.exports = router;

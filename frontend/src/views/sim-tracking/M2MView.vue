@@ -2,8 +2,13 @@
 import { ref, onMounted, computed } from 'vue'
 import { useSimApi } from '../../composables/useSimApi'
 import { useMasterDataStore } from '../../stores/masterData'
+import { useToast } from '../../composables/useToast'
+import { useConfirm } from '../../composables/useConfirm'
 import AppTable from '../../components/AppTable.vue'
 import * as XLSX from 'xlsx'
+
+const { showToast } = useToast()
+const { ask, startLoading, stopLoading } = useConfirm()
 
 const { dataList, loading, fetchList, createItem, updateItem, deleteItem } = useSimApi('m2m')
 const masterData = useMasterDataStore()
@@ -84,14 +89,33 @@ const openEdit = (item) => {
 }
 const save = async () => {
   try {
-    if (editTarget.value) await updateItem(editTarget.value.id, form.value)
-    else await createItem(form.value)
+    if (editTarget.value) {
+      await updateItem(editTarget.value.id, form.value)
+      showToast('Kayıt başarıyla güncellendi', 'success')
+    } else {
+      await createItem(form.value)
+      showToast('Yeni kayıt başarıyla oluşturuldu', 'success')
+    }
     showModal.value = false
-  } catch (e) { console.error(e) }
+  } catch (e) { showToast('Hata: ' + e.message, 'error') }
 }
 const handleDelete = async (row) => {
-  if (!confirm('Bu kaydı silmek istediğinize emin misiniz?')) return
-  await deleteItem(row.id)
+  const confirmed = await ask({
+    title: 'Hattı Sil',
+    message: `"${row.phone_no || row.iccid}" numaralı hattı silmek istediğinize emin misiniz?`,
+    confirmLabel: 'Evet, Sil'
+  })
+  if (confirmed) {
+    try {
+      startLoading()
+      await deleteItem(row.id)
+      showToast('Hat başarıyla silindi', 'success')
+    } catch (e) {
+      showToast('Hata: ' + e.message, 'error')
+    } finally {
+      stopLoading()
+    }
+  }
 }
 
 onMounted(() => {

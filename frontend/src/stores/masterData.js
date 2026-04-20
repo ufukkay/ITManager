@@ -158,6 +158,32 @@ export const useMasterDataStore = defineStore('masterData', {
       }
     },
 
+    async bulkDeletePersonnel(ids) {
+      this.loading = true
+      try {
+        await api.post('/api/master-data/personnel/bulk-delete', { ids })
+        await this.fetchPersonnel()
+      } catch (err) {
+        this.error = err.message
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async bulkUpdatePersonnel(ids, data) {
+      this.loading = true
+      try {
+        await api.post('/api/master-data/personnel/bulk-update', { ids, data })
+        await this.fetchPersonnel()
+      } catch (err) {
+        this.error = err.message
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
     // Global CRUD helper for other entities
     async createItem(type, data) {
         this.loading = true
@@ -226,17 +252,27 @@ export const useMasterDataStore = defineStore('masterData', {
 
     async refreshType(type) {
         const map = {
-            'companies': this.fetchCompanies,
-            'departments': this.fetchDepartments,
-            'cost-centers': this.fetchCostCenters,
-            'vehicles': this.fetchVehicles,
-            'locations': this.fetchLocations,
-            'operators': this.fetchOperators,
-            'packages': this.fetchPackages,
-            'licenses': this.fetchLicenses,
-            'servers': this.fetchServers
+            'companies': () => this.fetchCompanies(),
+            'departments': () => this.fetchDepartments(),
+            'cost-centers': () => this.fetchCostCenters(),
+            'vehicles': () => this.fetchVehicles(),
+            'locations': () => this.fetchLocations(),
+            'operators': () => this.fetchOperators(),
+            'packages': () => this.fetchPackages(),
+            'licenses': () => this.fetchLicenses(),
+            'servers': () => this.fetchServers()
         }
         if (map[type]) await map[type]()
+    },
+
+    async getDeleteImpact(type, id) {
+        try {
+            const response = await api.get(`/api/master-data/${type}/${id}/impact`)
+            return response.data
+        } catch (err) {
+            console.error('Impact analysis error:', err)
+            return [] // Fail safe
+        }
     }
   }
 })

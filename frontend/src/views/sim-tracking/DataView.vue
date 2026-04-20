@@ -2,11 +2,15 @@
 import { ref, onMounted, computed } from 'vue'
 import { useSimApi } from '../../composables/useSimApi'
 import { useMasterDataStore } from '../../stores/masterData'
+import { useToast } from '../../composables/useToast'
+import { useConfirm } from '../../composables/useConfirm'
 import AppTable from '../../components/AppTable.vue'
 import * as XLSX from 'xlsx'
 
 const { dataList, loading, fetchList, createItem, updateItem, deleteItem } = useSimApi('data')
 const masterData = useMasterDataStore()
+const { showToast } = useToast()
+const { ask, startLoading, stopLoading } = useConfirm()
 
 const columns = [
   { key: 'iccid',         label: 'ICCID',        sortable: true, width: '220px' },
@@ -60,13 +64,35 @@ const exportSelected = () => {
 }
 
 const saveItem = async () => {
-  if (selectedItem.value) await updateItem(selectedItem.value.id, form.value)
-  else await createItem(form.value)
-  isModalOpen.value = false
+  try {
+    if (selectedItem.value) {
+      await updateItem(selectedItem.value.id, form.value)
+      showToast('Data hattı başarıyla güncellendi', 'success')
+    } else {
+      await createItem(form.value)
+      showToast('Yeni data hattı başarıyla eklendi', 'success')
+    }
+    isModalOpen.value = false
+  } catch (err) { showToast('Hata: ' + err.message, 'error') }
 }
 
 const handleDelete = async (row) => {
-  if (confirm('Emin misiniz?')) await deleteItem(row.id)
+  const confirmed = await ask({
+    title: 'Hattı Sil',
+    message: `"${row.iccid}" ICCID'li data hattını silmek istediğinize emin misiniz?`,
+    confirmLabel: 'Evet, Sil'
+  })
+  if (confirmed) {
+    try {
+      startLoading()
+      await deleteItem(row.id)
+      showToast('Hat başarıyla silindi', 'success')
+    } catch (e) {
+      showToast('Hata: ' + e.message, 'error')
+    } finally {
+      stopLoading()
+    }
+  }
 }
 
 onMounted(() => {

@@ -39,7 +39,13 @@ server_err.log
 dist/
 frontend/dist/
 
+# Scratch and temp files
+scratch/
+*.sqlite
+
 # OS specific
 .DS_Store
 Thumbs.db
 node_modules
+
+temp-l365/

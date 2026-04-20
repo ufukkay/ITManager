@@ -2,7 +2,10 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import api from '../../api'
 import AppTable from '../../components/AppTable.vue'
+import { useConfirm } from '../../composables/useConfirm'
 import * as XLSX from 'xlsx'
+
+const { ask, startLoading, stopLoading } = useConfirm()
 
 /* ─── State ─── */
 const summaries       = ref([])
@@ -141,7 +144,12 @@ const uploadInvoices = async () => {
 
 const deleteSelectedInvoices = async () => {
   if (selectedIds.value.length === 0) return
-  if (!confirm(`${selectedIds.value.length} kaydı silmek istediğinize emin misiniz?`)) return
+  const confirmed = await ask({
+    title: 'Faturaları Sil',
+    message: `${selectedIds.value.length} adet fatura kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
+    confirmLabel: 'Evet, Hepsini Sil'
+  })
+  if (!confirmed) return
   try {
     await api.post('/sim-takip/api/invoices/bulk-delete', { ids: selectedIds.value })
     selectedIds.value = []

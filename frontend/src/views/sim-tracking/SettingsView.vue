@@ -4,7 +4,12 @@ import { useRoute } from 'vue-router'
 import * as XLSX from 'xlsx'
 import api from '../../api'
 import { useMasterDataStore } from '../../stores/masterData'
+import { useToast } from '../../composables/useToast'
+import { useConfirm } from '../../composables/useConfirm'
+
 const masterData = useMasterDataStore()
+const { showToast } = useToast()
+const { ask, startLoading, stopLoading } = useConfirm()
 
 const route = useRoute()
 const activeTab = ref(route.query.tab || 'simcards')
@@ -16,28 +21,7 @@ const simType = ref('m2m')
 const selectedTable = ref('sim_m2m')
 const uploadMode = ref('transfer')
 
-// --- Toast Notification System ---
-const toasts = ref([])
-let toastId = 0
-const showToast = (message, type = 'success') => {
-    const id = ++toastId
-    toasts.value.push({ id, message, type })
-    setTimeout(() => {
-        toasts.value = toasts.value.filter(t => t.id !== id)
-    }, 3500)
-}
-
-// --- Search/Filter for lists ---
-const listSearchQuery = ref('')
-
-// --- Delete Confirmation Modal ---
-const deleteModal = ref({ show: false, type: '', id: null, name: '' })
-const showDeleteModal = (type, id, name) => {
-    deleteModal.value = { show: true, type, id, name }
-}
-const closeDeleteModal = () => {
-    deleteModal.value = { show: false, type: '', id: null, name: '' }
-}
+// No local toasts/modals needed
 
 // --- Bulk Selection State ---
 const selectedIds = ref([])
@@ -67,12 +51,63 @@ const toggleSelect = (id) => {
         selectedIds.value.push(id)
     }
 }
-const confirmDelete = async () => {
-    const { type, id } = deleteModal.value
-    closeDeleteModal()
-    loading.value = true
-    try {
-        if (type === 'bulk') {
+const handleDelete = async (type, id, name) => {
+    // Map settings types to master data types if they differ
+    const typeMap = {
+        'operator': 'operators',
+        'company': 'companies',
+        'package': 'packages',
+        'vehicle': 'vehicles',
+        'location': 'locations',
+        'personnel': 'personnel',
+        'department': 'departments'
+    }
+    const apiType = typeMap[type] || type
+    
+    // Fetch impact analysis
+    const impact = await masterData.getDeleteImpact(apiType, id)
+    
+    const confirmed = await ask({
+        title: 'Kaydı Sil',
+        message: `"${name}" kaydını silmek istediğinize emin misiniz?`,
+        confirmLabel: 'Evet, Sil',
+        impact: impact
+    })
+    
+    if (confirmed) {
+        startLoading()
+        try {
+            const endpoints = {
+                operator: `/sim-takip/api/operators/${id}`,
+                company: `/sim-takip/api/companies/${id}`,
+                package: `/sim-takip/api/packages/${id}`,
+                vehicle: `/sim-takip/api/vehicles/${id}`,
+                location: `/sim-takip/api/locations/${id}`,
+                personnel: `/sim-takip/api/personnel/${id}`,
+                department: `/sim-takip/api/departments/${id}`
+            }
+            await api.delete(endpoints[type])
+            showToast('Kayıt başarıyla silindi.', 'success')
+            selectedIds.value = selectedIds.value.filter(sId => sId !== id)
+            fetchData()
+        } catch (err) {
+            showToast(err.response?.data?.message || err.response?.data?.error || 'Silme hatası!', 'error')
+        } finally {
+            stopLoading()
+        }
+    }
+}
+
+const handleBulkDelete = async () => {
+    const confirmed = await ask({
+        title: 'Toplu Silme',
+        message: `Seçilen ${selectedIds.value.length} kaydı silmek istediğinize emin misiniz?`,
+        confirmLabel: 'Hepsini Sil'
+    })
+
+    if (confirmed) {
+        startLoading()
+        try {
             const endpointMap = {
                 operators: 'operators',
                 companies: 'companies',
@@ -86,26 +121,12 @@ const confirmDelete = async () => {
             await Promise.all(selectedIds.value.map(sId => api.delete(`/sim-takip/api/${endpoint}/${sId}`)))
             showToast(`${selectedIds.value.length} kayıt silindi.`)
             selectedIds.value = []
-        } else {
-            const endpoints = {
-                operator: `/sim-takip/api/operators/${id}`,
-                company: `/sim-takip/api/companies/${id}`,
-                package: `/sim-takip/api/packages/${id}`,
-                vehicle: `/sim-takip/api/vehicles/${id}`,
-                location: `/sim-takip/api/locations/${id}`,
-                personnel: `/sim-takip/api/personnel/${id}`,
-                department: `/sim-takip/api/departments/${id}`
-            }
-            await api.delete(endpoints[type])
-            showToast('Kayıt başarıyla silindi.', 'success')
-            // If the deleted item was selected, remove it
-            selectedIds.value = selectedIds.value.filter(sId => sId !== id)
+            fetchData()
+        } catch (err) {
+            showToast('Toplu silme hatası!', 'error')
+        } finally {
+            stopLoading()
         }
-        fetchData()
-    } catch (err) {
-        showToast(err.response?.data?.message || err.response?.data?.error || 'Silme hatası!', 'error')
-    } finally {
-        loading.value = false
     }
 }
 
@@ -734,49 +755,7 @@ const handleFileUpload = (e) => {
 
 <template>
     <div class="h-full flex flex-col bg-[#f8f9fa] overflow-hidden">
-        <!-- Toast Notifications -->
-        <div class="fixed top-5 right-5 z-[9999] flex flex-col gap-2 pointer-events-none">
-            <transition-group name="toast">
-                <div v-for="toast in toasts" :key="toast.id"
-                    class="px-5 py-3 rounded shadow-md text-[13px] font-semibold pointer-events-auto flex items-center gap-3 min-w-[280px] backdrop-blur-lg border animate-slide-in-right"
-                    :class="toast.type === 'error' ? 'bg-red-50/95 text-red-700 border-red-200' : 'bg-emerald-50/95 text-emerald-700 border-emerald-200'">
-                    <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                        :class="toast.type === 'error' ? 'bg-red-100' : 'bg-emerald-100'">
-                        <i class="fas text-[13px]" :class="toast.type === 'error' ? 'fa-times' : 'fa-check'"></i>
-                    </div>
-                    {{ toast.message }}
-                </div>
-            </transition-group>
-        </div>
-
-        <!-- Delete Confirmation Modal -->
-        <transition name="modal">
-            <div v-if="deleteModal.show" class="fixed inset-0 z-[9998] flex items-center justify-center p-4" @click.self="closeDeleteModal">
-                <div class="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
-                <div class="relative bg-white rounded shadow-md w-full max-w-sm p-6 space-y-5 animate-scale-in">
-                    <div class="flex items-center gap-3">
-                        <div class="w-11 h-11 rounded bg-red-50 flex items-center justify-center text-red-500">
-                            <i class="fas fa-trash-alt text-lg"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-[15px] font-bold text-gray-800">Silme Onayı</h3>
-                            <p class="text-[12px] text-gray-400 mt-0.5">Bu işlem geri alınamaz.</p>
-                        </div>
-                    </div>
-                    <div class="bg-gray-50 rounded p-4 border border-gray-100">
-                        <p class="text-[13px] text-gray-600"><span class="font-bold text-gray-800">{{ deleteModal.name }}</span> kaydını silmek istediğinize emin misiniz?</p>
-                    </div>
-                    <div class="flex gap-3">
-                        <button @click="closeDeleteModal" class="flex-1 h-11 rounded border border-gray-200 text-[12px] font-bold text-gray-500 hover:bg-gray-50 transition-all">
-                            Vazgeç
-                        </button>
-                        <button @click="confirmDelete" class="flex-1 h-11 rounded bg-red-500 text-white text-[12px] font-bold hover:bg-red-600 transition-all shadow-sm shadow-red-200">
-                            Evet, Sil
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </transition>
+        <!-- Global Toast and Confirm modals are handled in App.vue -->
 
         <div class="flex-1 overflow-hidden flex flex-col p-4">
             <!-- Main Content Container (fills the screen minus sidebar) -->
@@ -1172,7 +1151,7 @@ const handleFileUpload = (e) => {
                                             </div>
                                             <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button @click="startEditOperator(op)" class="w-8 h-8 flex items-center justify-center text-blue-400 hover:bg-blue-100 rounded-lg transition-all"><i class="fas fa-edit text-[13px]"></i></button>
-                                                <button @click="showDeleteModal('operator', op.id, op.name)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
+                                                <button @click.stop="handleDelete('operator', op.id, op.name)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
                                             </div>
                                         </div>
                                     </template>
@@ -1194,7 +1173,7 @@ const handleFileUpload = (e) => {
                                             </div>
                                             <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button @click="startEditCompany(comp)" class="w-8 h-8 flex items-center justify-center text-blue-400 hover:bg-blue-100 rounded-lg transition-all"><i class="fas fa-edit text-[13px]"></i></button>
-                                                <button @click="showDeleteModal('company', comp.id, comp.name)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
+                                                <button @click.stop="handleDelete('company', comp.id, comp.name)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
                                             </div>
                                         </div>
                                     </template>
@@ -1218,7 +1197,7 @@ const handleFileUpload = (e) => {
                                                 <span class="text-[12px] px-2 py-1 rounded-md font-bold uppercase" :class="pkg.type === 'm2m' ? 'bg-blue-50 text-blue-500' : pkg.type === 'data' ? 'bg-gray-50 text-gray-500' : 'bg-gray-50 text-gray-500'">{{ pkg.type }}</span>
                                                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button @click="startEditPackage(pkg)" class="w-8 h-8 flex items-center justify-center text-blue-400 hover:bg-blue-100 rounded-lg transition-all"><i class="fas fa-edit text-[13px]"></i></button>
-                                                    <button @click="showDeleteModal('package', pkg.id, pkg.name)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
+                                                    <button @click.stop="handleDelete('package', pkg.id, pkg.name)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
                                                 </div>
                                             </div>
                                         </div>
@@ -1241,7 +1220,7 @@ const handleFileUpload = (e) => {
                                             </div>
                                             <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button @click="startEditVehicle(v)" class="w-8 h-8 flex items-center justify-center text-blue-400 hover:bg-blue-100 rounded-lg transition-all"><i class="fas fa-edit text-[13px]"></i></button>
-                                                <button @click="showDeleteModal('vehicle', v.id, v.plate_no)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
+                                                <button @click.stop="handleDelete('vehicle', v.id, v.plate_no)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
                                             </div>
                                         </div>
                                     </template>
@@ -1263,7 +1242,7 @@ const handleFileUpload = (e) => {
                                             </div>
                                             <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button @click="startEditLocation(l)" class="w-8 h-8 flex items-center justify-center text-blue-400 hover:bg-blue-100 rounded-lg transition-all"><i class="fas fa-edit text-[13px]"></i></button>
-                                                <button @click="showDeleteModal('location', l.id, l.name)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
+                                                <button @click.stop="handleDelete('location', l.id, l.name)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
                                             </div>
                                         </div>
                                     </template>
@@ -1285,7 +1264,7 @@ const handleFileUpload = (e) => {
                                             </div>
                                             <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button @click="startEditPerson(p)" class="w-8 h-8 flex items-center justify-center text-blue-400 hover:bg-blue-100 rounded-lg transition-all"><i class="fas fa-edit text-[13px]"></i></button>
-                                                <button @click="showDeleteModal('personnel', p.id, p.first_name + ' ' + p.last_name)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
+                                                <button @click.stop="handleDelete('personnel', p.id, p.first_name + ' ' + p.last_name)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
                                             </div>
                                         </div>
                                     </template>
@@ -1304,7 +1283,7 @@ const handleFileUpload = (e) => {
                                             </div>
                                             <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button @click="startEditDepartment(d)" class="w-8 h-8 flex items-center justify-center text-blue-400 hover:bg-blue-100 rounded-lg transition-all"><i class="fas fa-edit text-[13px]"></i></button>
-                                                <button @click="showDeleteModal('department', d.id, d.name)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
+                                                <button @click.stop="handleDelete('department', d.id, d.name)" class="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-100 rounded-lg transition-all"><i class="fas fa-trash-alt text-[13px]"></i></button>
                                             </div>
                                         </div>
                                     </template>
@@ -1346,7 +1325,7 @@ const handleFileUpload = (e) => {
                     <button @click="openBulkEditModal" class="flex items-center gap-2 px-4 py-2.5 rounded hover:bg-white/10 transition-all text-[12px] font-bold uppercase tracking-wide">
                         <i class="fas fa-edit text-blue-400"></i> Toplu Düzenle
                     </button>
-                    <button @click="showDeleteModal('bulk', null, `${selectedIds.length} kayıt`)" class="flex items-center gap-2 px-4 py-2.5 rounded hover:bg-red-500/20 text-red-400 transition-all text-[12px] font-bold uppercase tracking-wide">
+                    <button @click="handleBulkDelete" class="flex items-center gap-2 px-4 py-2.5 rounded hover:bg-red-500/20 text-red-400 transition-all text-[12px] font-bold uppercase tracking-wide">
                         <i class="fas fa-trash-alt"></i> Toplu Sil
                     </button>
                 </div>

@@ -1,9 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useMasterDataStore } from '../../stores/masterData'
+import { useToast } from '../../composables/useToast'
+import { useConfirm } from '../../composables/useConfirm'
 import AppTable from '../../components/AppTable.vue'
 
 const masterData = useMasterDataStore()
+const { showToast } = useToast()
+const { ask, startLoading, stopLoading } = useConfirm()
 const loading = ref(false)
 const activeTab = ref('operators')
 
@@ -75,38 +79,68 @@ const openLicenseModal = (item = null) => {
 
 const saveOperator = async () => {
   try {
-    if (selectedOperator.value)
+    startLoading()
+    if (selectedOperator.value) {
       await masterData.updateItem('operators', selectedOperator.value.id, operatorForm.value)
-    else
+      showToast('Operatör başarıyla güncellendi', 'success')
+    } else {
       await masterData.createItem('operators', operatorForm.value)
+      showToast('Yeni operatör başarıyla eklendi', 'success')
+    }
     isOperatorModalOpen.value = false
-  } catch (err) { alert(err.message) }
+  } catch (err) { showToast('Hata: ' + err.message, 'error') }
+  finally { stopLoading() }
 }
 
 const savePackage = async () => {
   try {
-    if (selectedPackage.value)
+    startLoading()
+    if (selectedPackage.value) {
       await masterData.updateItem('packages', selectedPackage.value.id, packageForm.value)
-    else
+      showToast('Paket başarıyla güncellendi', 'success')
+    } else {
       await masterData.createItem('packages', packageForm.value)
+      showToast('Yeni paket başarıyla eklendi', 'success')
+    }
     isPackageModalOpen.value = false
-  } catch (err) { alert(err.message) }
+  } catch (err) { showToast('Hata: ' + err.message, 'error') }
+  finally { stopLoading() }
 }
 
 const saveLicense = async () => {
   try {
-    if (selectedLicense.value)
+    startLoading()
+    if (selectedLicense.value) {
       await masterData.updateItem('licenses', selectedLicense.value.id, licenseForm.value)
-    else
+      showToast('Lisans başarıyla güncellendi', 'success')
+    } else {
       await masterData.createItem('licenses', licenseForm.value)
+      showToast('Yeni lisans başarıyla eklendi', 'success')
+    }
     isLicenseModalOpen.value = false
-  } catch (err) { alert(err.message) }
+  } catch (err) { showToast('Hata: ' + err.message, 'error') }
+  finally { stopLoading() }
 }
 
 const handleDelete = async (type, id) => {
-  if (!confirm('Bu kaydı silmek istediğinize emin misiniz?')) return
-  try { await masterData.deleteItem(type, id) }
-  catch (err) { alert(err.message) }
+  const impact = await masterData.getDeleteImpact(type, id)
+  const confirmed = await ask({
+    title: 'Kaydı Sil',
+    message: 'Bu kaydı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
+    confirmLabel: 'Evet, Sil',
+    impact: impact
+  })
+  if (confirmed) {
+    try {
+      startLoading()
+      await masterData.deleteItem(type, id)
+      showToast('Kayıt başarıyla silindi', 'success')
+    } catch (err) {
+      showToast('Hata: ' + err.message, 'error')
+    } finally {
+      stopLoading()
+    }
+  }
 }
 
 onMounted(fetchData)
