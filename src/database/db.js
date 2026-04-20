@@ -405,9 +405,19 @@ const initDb = () => {
     )
   `).run();
 
+  // Invoices table
+  try {
+    const columns = db.prepare("PRAGMA table_info(invoices)").all();
+    if (columns.length > 0 && !columns.some(c => c.name === 'invoice_type')) {
+        console.log("Adding invoice_type to invoices table...");
+        db.prepare("ALTER TABLE invoices ADD COLUMN invoice_type TEXT DEFAULT 'gsm'").run();
+    }
+  } catch (e) { console.log("Invoices migration skipped:", e.message); }
+
   db.prepare(`
     CREATE TABLE IF NOT EXISTS invoices (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_type TEXT DEFAULT 'gsm', -- gsm, m365, server, etc
         operator TEXT NOT NULL,
         period TEXT NOT NULL,
         phone_no TEXT,

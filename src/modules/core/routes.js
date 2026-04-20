@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const MasterDataController = require('./controller');
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Companies
 router.get('/companies', MasterDataController.getCompanies);
@@ -63,6 +65,11 @@ router.get('/servers', MasterDataController.getServers);
 router.post('/servers', MasterDataController.createServer);
 router.put('/servers/:id', MasterDataController.updateServer);
 router.delete('/servers/:id', MasterDataController.deleteServer);
+
+// Financial Reports
+router.get('/reports/financial/personnel/:id', MasterDataController.getPersonnelFinancialHistory);
+router.get('/reports/financial/stats', MasterDataController.getFinancialStats);
+router.post('/reports/financial/upload/m365', upload.array('file'), MasterDataController.uploadM365Invoice);
 
 // Impact Analysis
 router.get('/:type/:id/impact', MasterDataController.getDeleteImpact);

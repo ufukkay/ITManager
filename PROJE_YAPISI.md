@@ -6,24 +6,33 @@ Bu dosya, projenin klasör yapısını ve hangi dizinde neyin bulunduğunu Türk
 
 ```text
 ITManager/
-├── _archived_scripts/  # Eski/gereksiz scriptlerin arşivi (Temizlik sonrası)
-├── agent/             # Uzak sunuculara kurulan izleme ajanı (Node/Electron)
-├── data/              # SQLite veritabanları (simcardtracking.db ve itmanager.db)
-├── frontend/          # Vue 3 tabanlı modern kullanıcı arayüzü (Vite + Tailwind)
-│   ├── src/           # Vue kaynak dosyaları (components, views, composables)
+├── data/              # SQLite veritabanı (itmanager.db - Tek Kaynak Gerçekliği)
+├── frontend/          # Vue 3 modern kullanıcı arayüzü (Composition API + Tailwind)
+│   ├── src/           
+│   │   ├── stores/    # Pinia state yönetimi (Auth, MasterData, UI)
+│   │   ├── views/     # Modüler sayfalar (Inventory, Monitoring, Costs)
+│   │   └── components/# Yeniden kullanılabilir premium UI bileşenleri
 │   └── public/        # Statik assetler
-├── src/               # Express tabanlı Headless API (Backend)
-│   ├── database/      # Veritabanı bağlantısı ve şemalar
-│   └── modules/       # Modüler API yapıları (SIM Takip, Auth vb.)
-├── .env               # Çevresel değişkenler (Port=3000)
-├── package.json       # Backend bağımlılıkları
-└── PROJE_YAPISI.md    # Bu dosya
+├── src/               # Express.js Backend (API)
+│   ├── database/      # db.js - Veritabanı bağlantısı ve tablo tanımları
+│   ├── modules/       # Modüler Backend mantığı
+│   │   ├── core/      # Master Data zekası ve Silme Etki Analizi
+│   │   ├── auth/      # Kimlik doğrulama sistemleri
+│   │   ├── sim-takip/ # Telekom ve varlık ilişkilendirme
+│   │   └── monitoring/# Sunucu izleme ve sağlık raporları
+│   └── app.js         # Sunucu giriş noktası
+├── .env               # Yapılandırma değişkenleri
+├── package.json       # Bağımlılık yönetimi
+└── PROJE_YAPISI.md    # Güncel proje rehberi (Şu an okuduğunuz)
 ```
 
-## 🔍 SIM Takip Modülü Değişiklikleri
-- **İlişkisel Yapı**: Artık Personeller, Departmanlar, Araçlar ve Lokasyonlar birbirine ID'ler üzerinden bağlıdır.
-- **Global Departmanlar**: Departmanlar şirketlerden bağımsız global bir listeden seçilir.
-- **Araç-Plaka Linki**: M2M hatları doğrudan "Araçlar" tablosuna bağlıdır; plaka değişirse tüm sistemde güncellenir.
+## 🔍 Kritik Sistemler & Yenilikler
+
+### 🛡️ Silme Etki Analizi (Delete Impact Analysis)
+Sistem genelinde bir kayıt silinmeden önce veritabanı şeması dinamik olarak taranır. Silinecek kayda bağlı diğer veriler (Personel -> SIM Kart, Şirket -> Personel vb.) tespit edilerek kullanıcıya detaylı bir etki raporu sunulur. Bu sayede `FOREIGN KEY` hatalarının önüne geçilir.
+
+### 🏢 Merkezi Master Data Yönetimi
+Şirketler, Departmanlar, Masraf Yerleri, Personeller, Araçlar ve Lokasyonlar `/master-data` altındaki tek bir konsoldan yönetilir. Tüm modüller (SIM Takip, Maliyet, İzleme) bu verileri ortak bir "Tek Kaynak Gerçekliği" (Single Source of Truth) prensibiyle kullanır.
 
 ## 🚀 Projeyi Çalıştırma (KRİTİK)
 

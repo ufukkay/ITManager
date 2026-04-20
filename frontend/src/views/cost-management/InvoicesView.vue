@@ -21,6 +21,7 @@ const historyData        = ref(null)
 const historyLoading     = ref(false)
 const uploadPeriod    = ref(new Date().toISOString().slice(0, 7))
 const uploadOperator  = ref('Turkcell')
+const uploadType      = ref('gsm') // 'gsm' or 'm365'
 const selectedFiles   = ref([])
 const fileInput       = ref(null)
 
@@ -31,9 +32,10 @@ const onSelectionChange = (rows) => { selectedIds.value = rows.map(r => r.id) }
 /* ─── Table columns ─── */
 const columns = [
   { key: 'personnel_name', label: 'Personel / Paydaş',  sortable: true, width: '200px' },
+  { key: 'invoice_type',   label: 'Tür',                 sortable: true, width: '100px' },
   { key: 'company_name',   label: 'Şirket',              sortable: true, width: '150px' },
   { key: 'cost_center',    label: 'Masraf Merkezi',      sortable: true, width: '150px' },
-  { key: 'phone_no',       label: 'Telefon No',          sortable: true, width: '130px' },
+  { key: 'phone_no',       label: 'Detay',               sortable: true, width: '130px' },
   { key: 'tariff',         label: 'Hizmet / Tarife',     sortable: true, nowrap: false },
   { key: 'total_amount',   label: 'Tutar',               sortable: true, width: '120px', align: 'right' },
   { key: 'status_label',   label: 'Durum',               sortable: true, width: '100px' },
@@ -129,16 +131,25 @@ const uploadInvoices = async () => {
   uploading.value = true
   const formData = new FormData()
   formData.append('period', uploadPeriod.value)
-  formData.append('operator', uploadOperator.value)
+  
+  const endpoint = uploadType.value === 'm365' 
+    ? '/api/master-data/reports/financial/upload/m365'
+    : '/sim-takip/api/invoices/upload'
+
+  if (uploadType.value === 'gsm') {
+    formData.append('operator', uploadOperator.value)
+  }
+
   selectedFiles.value.forEach(file => formData.append('file', file))
+  
   try {
-    await api.post('/sim-takip/api/invoices/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+    await api.post(endpoint, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
     isUploadModalOpen.value = false
     selectedFiles.value = []
     fetchSummaries()
     fetchInvoices()
   } catch (err) {
-    alert('Yükleme hatası: ' + (err.response?.data?.message || err.message))
+    alert('Yükleme hatası: ' + (err.response?.data?.message || err.response?.data?.error || err.message))
   } finally { uploading.value = false }
 }
 
@@ -255,9 +266,20 @@ onMounted(() => {
         </button>
       </template>
 
-      <!-- Telefon font-mono -->
-      <template #cell-phone_no="{ value }">
-        <span class="font-mono text-[12px] whitespace-nowrap">{{ value || '—' }}</span>
+      <!-- Tür Badge -->
+      <template #cell-invoice_type="{ value }">
+        <span :class="[
+          'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider',
+          value === 'gsm' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+        ]">
+          {{ value || 'gsm' }}
+        </span>
+      </template>
+
+      <!-- Detay font-mono -->
+      <template #cell-phone_no="{ row, value }">
+        <span v-if="row.invoice_type === 'gsm'" class="font-mono text-[12px] whitespace-nowrap">{{ value || '—' }}</span>
+        <span v-else class="text-[11px] text-gray-400 italic">M365 Lisans Gideri</span>
       </template>
 
       <!-- Tutar -->
@@ -288,14 +310,30 @@ onMounted(() => {
           <button type="button" @click="isUploadModalOpen = false" class="text-gray-400 hover:text-black"><i class="fas fa-times"></i></button>
         </div>
         <div class="p-6 space-y-4">
+          <div class="space-y-1">
+            <label class="text-[13px] font-bold text-gray-500 uppercase tracking-wide">Hizmet Tipi</label>
+            <div class="flex gap-4 p-1 bg-gray-100 rounded-lg">
+              <button type="button" @click="uploadType = 'gsm'" 
+                :class="uploadType === 'gsm' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'"
+                class="flex-1 py-2 text-[12px] font-bold rounded-md transition-all">
+                <i class="fas fa-mobile-alt mr-2"></i> GSM (PDF/XML)
+              </button>
+              <button type="button" @click="uploadType = 'm365'" 
+                :class="uploadType === 'm365' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'"
+                class="flex-1 py-2 text-[12px] font-bold rounded-md transition-all">
+                <i class="fas fa-microsoft mr-2"></i> M365 (Excel)
+              </button>
+            </div>
+          </div>
+
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1">
               <label class="text-[13px] font-bold text-gray-500 uppercase">Dönem</label>
               <input v-model="uploadPeriod" type="month"
                 class="w-full h-10 px-3 border border-gray-300 rounded outline-none focus:border-[#1a73e8]">
             </div>
-            <div class="space-y-1">
-              <label class="text-[13px] font-bold text-gray-500 uppercase">Operatör</label>
+            <div v-if="uploadType === 'gsm'" class="space-y-1">
+              <label class="text-[13px] font-bold text-gray-500 uppercase tracking-wide">Operatör</label>
               <select v-model="uploadOperator"
                 class="w-full h-10 px-3 border border-gray-300 rounded outline-none focus:border-[#1a73e8] bg-white text-[13px] font-bold">
                 <option value="Turkcell">Turkcell</option>
@@ -306,9 +344,11 @@ onMounted(() => {
           </div>
           <div @click="fileInput.click()"
             class="border-2 border-dashed border-gray-200 rounded p-10 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50/30 transition-all">
-            <input type="file" ref="fileInput" multiple @change="e => selectedFiles = [...e.target.files]" class="hidden" accept=".pdf,.xml">
+            <input type="file" ref="fileInput" multiple @change="e => selectedFiles = [...e.target.files]" class="hidden" :accept="uploadType === 'm365' ? '.xlsx,.xls' : '.pdf,.xml'">
             <i class="fas fa-cloud-upload-alt text-3xl text-gray-300 mb-2"></i>
-            <span class="text-[13px] font-bold text-gray-600">PDF veya XML dosyalarını seçin</span>
+            <span class="text-[13px] font-bold text-gray-600">
+              {{ uploadType === 'm365' ? 'M365 Excel dosyasını seçin' : 'PDF veya XML dosyalarını seçin' }}
+            </span>
             <div v-if="selectedFiles.length > 0" class="mt-4 text-[12px] font-bold text-[#1a73e8] bg-blue-50 px-3 py-1 rounded">
               {{ selectedFiles.length }} dosya seçildi
             </div>

@@ -13,7 +13,8 @@ import {
   PointElement,
   LineElement
 } from 'chart.js'
-import { Bar, Doughnut } from 'vue-chartjs'
+import { Bar, Doughnut, Line } from 'vue-chartjs'
+import { useMasterDataStore } from '../../stores/masterData'
 
 ChartJS.register(
   Title,
@@ -27,57 +28,31 @@ ChartJS.register(
   LineElement
 )
 
-const summary = ref({
-    totalLines: 0,
-    activeLines: 0,
-    passiveLines: 0,
-    cancelledLines: 0,
-    operatorDist: {},
-    monthlyCosts: []
 })
+
+const financialStats = ref(null)
+const masterData = useMasterDataStore()
 
 const loading = ref(true)
 
 const loadReports = async () => {
     loading.value = true
     try {
-        const res = await api.get('/sim-takip/api/reports/summary')
-        summary.value = res.data || {
-            totalLines: 154,
-            activeLines: 120,
-            passiveLines: 14,
-            cancelledLines: 20,
-            operatorDist: { 'Turkcell': 85, 'Vodafone': 45, 'Türk Telekom': 24 },
-            monthlyCosts: [
-                { period: '2023-11', amount: 12500 },
-                { period: '2023-12', amount: 13200 },
-                { period: '2024-01', amount: 11800 },
-                { period: '2024-02', amount: 14500 },
-                { period: '2024-03', amount: 15100 },
-                { period: '2024-04', amount: 14900 }
-            ]
-        }
+        const [simRes, finRes] = await Promise.all([
+          api.get('/sim-takip/api/reports/summary'),
+          masterData.fetchFinancialStats()
+        ])
+        summary.value = simRes.data
+        financialStats.value = finRes
     } catch (err) {
-        console.error('Failed to load reports summary', err)
-        // Fallback for demo
-        summary.value = {
-            totalLines: 154,
-            activeLines: 120,
-            passiveLines: 14,
-            cancelledLines: 20,
-            operatorDist: { 'Turkcell': 85, 'Vodafone': 45, 'Türk Telekom': 24 },
-            monthlyCosts: [
-                { period: '2023-11', amount: 12500 },
-                { period: '2023-12', amount: 13200 },
-                { period: '2024-01', amount: 11800 },
-                { period: '2024-02', amount: 14500 },
-                { period: '2024-03', amount: 15100 },
-                { period: '2024-04', amount: 14900 }
-            ]
-        }
+        console.error('Failed to load reports', err)
     } finally {
         loading.value = false
     }
+}
+
+const formatCurrency = (val) => {
+  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val)
 }
 
 // Chart Configurations
@@ -91,12 +66,29 @@ const doughnutData = computed(() => ({
 }))
 
 const barData = computed(() => ({
-    labels: summary.value.monthlyCosts.map(c => c.period),
+    labels: financialStats.value?.monthlyTrend.map(c => c.period) || [],
+    datasets: [
+        {
+          label: 'GSM (₺)',
+          backgroundColor: '#10b981',
+          data: financialStats.value?.monthlyTrend.map(c => c.gsm) || [],
+          borderRadius: 4
+        },
+        {
+          label: 'Lisans (₺)',
+          backgroundColor: '#1a73e8',
+          data: financialStats.value?.monthlyTrend.map(c => c.m365) || [],
+          borderRadius: 4
+        }
+    ]
+}))
+
+const companyDoughnutData = computed(() => ({
+    labels: financialStats.value?.byCompany.map(c => c.name) || [],
     datasets: [{
-        label: 'Aylık Maliyet (₺)',
-        backgroundColor: '#1a73e8',
-        data: summary.value.monthlyCosts.map(c => c.amount),
-        borderRadius: 0
+        backgroundColor: ['#1a73e8', '#10b981', '#f59e0b', '#3b82f6', '#ef4444'],
+        data: financialStats.value?.byCompany.map(c => c.total_amount) || [],
+        borderWidth: 0
     }]
 }))
 
@@ -169,24 +161,65 @@ onMounted(() => {
       </div>
 
       <!-- Charts Area -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[400px]">
-          <div class="bg-white border border-[#eee] flex flex-col overflow-hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Total Cost Trend -->
+          <div class="bg-white border border-[#eee] flex flex-col h-[400px]">
+              <div class="px-5 py-3 border-b border-[#f8f9fa] bg-[#fcfcfc] flex justify-between items-center">
+                  <h3 class="text-[11px] font-bold text-gray-900 uppercase tracking-wider">Aylık Toplam Maliyet Trendi</h3>
+                  <span class="text-[10px] text-gray-400 font-bold uppercase">Son 12 Ay</span>
+              </div>
+              <div class="flex-1 p-6">
+                  <Bar v-if="!loading" :data="barData" :options="chartOptions" />
+                  <div v-else class="h-full flex items-center justify-center text-gray-300 animate-pulse"><i class="fas fa-circle-notch fa-spin text-2xl"></i></div>
+              </div>
+          </div>
+
+          <!-- Top Spend Personnel -->
+          <div class="bg-white border border-[#eee] flex flex-col h-[400px]">
+              <div class="px-5 py-3 border-b border-[#f8f9fa] bg-[#fcfcfc]">
+                  <h3 class="text-[11px] font-bold text-gray-900 uppercase tracking-wider">En Maliyetli Personeller</h3>
+              </div>
+              <div class="flex-1 overflow-y-auto p-4">
+                  <div v-if="!loading && financialStats?.topPersonnel.length" class="space-y-3">
+                      <div v-for="(p, index) in financialStats.topPersonnel" :key="p.id" 
+                        class="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 group">
+                        <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-[11px] shrink-0">
+                          #{{ index + 1 }}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                           <div class="text-[13px] font-bold text-gray-900 truncate">{{ p.name }}</div>
+                           <div class="text-[10px] text-gray-400 font-bold tracking-wide uppercase mt-0.5">Yıllık Toplam Harcama</div>
+                        </div>
+                        <div class="text-right">
+                           <div class="text-[14px] font-bold text-gray-900">{{ formatCurrency(p.total_amount) }}</div>
+                           <div class="text-[10px] text-emerald-600 font-bold mt-0.5">Bütçe Kullanımı</div>
+                        </div>
+                      </div>
+                  </div>
+                  <div v-else-if="!loading" class="h-full flex flex-col items-center justify-center text-gray-400">
+                      <i class="fas fa-search-dollar text-xl mb-2"></i>
+                      <span class="text-[11px]">Yeterli veri bulunamadı</span>
+                  </div>
+              </div>
+          </div>
+
+          <!-- Operator Distribution -->
+          <div class="bg-white border border-[#eee] flex flex-col h-[400px]">
               <div class="px-5 py-3 border-b border-[#f8f9fa] bg-[#fcfcfc]">
                   <h3 class="text-[11px] font-bold text-gray-900 uppercase tracking-wider">Operatör Dağılımı</h3>
               </div>
               <div class="flex-1 p-6 flex items-center justify-center min-h-0">
                   <Doughnut v-if="!loading" :data="doughnutData" :options="chartOptions" />
-                  <div v-else class="text-gray-300 animate-pulse"><i class="fas fa-circle-notch fa-spin text-2xl"></i></div>
               </div>
           </div>
 
-          <div class="bg-white border border-[#eee] flex flex-col overflow-hidden">
+          <!-- Company Distribution -->
+          <div class="bg-white border border-[#eee] flex flex-col h-[400px]">
               <div class="px-5 py-3 border-b border-[#f8f9fa] bg-[#fcfcfc]">
-                  <h3 class="text-[11px] font-bold text-gray-900 uppercase tracking-wider">Aylık Toplam MaliyetTrendi</h3>
+                  <h3 class="text-[11px] font-bold text-gray-900 uppercase tracking-wider">Şirket Bazlı Maliyet Dağılımı</h3>
               </div>
               <div class="flex-1 p-6 flex items-center justify-center min-h-0">
-                  <Bar v-if="!loading" :data="barData" :options="chartOptions" />
-                  <div v-else class="text-gray-300 animate-pulse"><i class="fas fa-circle-notch fa-spin text-2xl"></i></div>
+                  <Doughnut v-if="!loading" :data="companyDoughnutData" :options="chartOptions" />
               </div>
           </div>
       </div>

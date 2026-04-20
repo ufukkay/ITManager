@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router'
 import { useToast } from '../../composables/useToast'
 import { useConfirm } from '../../composables/useConfirm'
 import AppTable from '../../components/AppTable.vue'
+import AppFinancialHistory from '../../components/AppFinancialHistory.vue'
 import * as XLSX from 'xlsx'
 
 const masterData = useMasterDataStore()
@@ -513,6 +514,11 @@ onMounted(fetchData)
               <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Notlar</label>
               <textarea v-model="editingPersonnel.notes" rows="2" placeholder="Personel hakkında ek notlar..."
                 class="w-full px-3 py-2 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 resize-none"></textarea>
+            </div>
+
+            <!-- Maliyet Analizi Section (Sadece Mevcut Personel İçin) -->
+            <div v-if="editingPersonnel.id" class="pt-6 border-t border-gray-100">
+               <AppFinancialHistory :personnel-id="editingPersonnel.id" />
             </div>
           </div>
 

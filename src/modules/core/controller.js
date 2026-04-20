@@ -1,4 +1,5 @@
 const MasterDataService = require('./service');
+const { parseM365Excel } = require('./services/m365InvoiceParser');
 
 class MasterDataController {
     // Shirketler
@@ -398,6 +399,67 @@ class MasterDataController {
             const { type, id } = req.params;
             const data = await MasterDataService.getDeleteImpact(type, id);
             res.json(data);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async getPersonnelFinancialHistory(req, res) {
+        try {
+            const { id } = req.params;
+            const history = await MasterDataService.getPersonnelFinancialHistory(id);
+            res.json(history);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async getFinancialStats(req, res) {
+        try {
+            const stats = await MasterDataService.getGlobalFinancialStats();
+            res.json(stats);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async uploadM365Invoice(req, res) {
+        try {
+            if (!req.files || req.files.length === 0) return res.status(400).json({ message: 'Dosya yüklenmedi.' });
+            
+            const { period } = req.body;
+            if (!period) return res.status(400).json({ message: 'Dönem seçimi zorunludur.' });
+
+            let totalInserted = 0;
+
+            for (const file of req.files) {
+                const records = await parseM365Excel(file.buffer);
+                
+                for (const rec of records) {
+                    const personnel = MasterDataService.findPersonnelByEmail(rec.email);
+                    
+                    // Add to invoices table as 'm365' type
+                    await MasterDataService.insertInvoiceRecord({
+                        invoice_type: 'm365',
+                        operator: 'Microsoft',
+                        period: period,
+                        phone_no: null,
+                        personnel_id: personnel ? personnel.id : null,
+                        company_id: personnel ? personnel.company_id : null,
+                        cost_center_id: personnel ? personnel.cost_center_id : null,
+                        source_file: file.originalname,
+                        tariff: rec.tariff,
+                        amount: rec.amount,
+                        tax_kdv: 0,
+                        tax_oiv: 0,
+                        total_amount: rec.amount,
+                        is_matched: personnel ? 1 : 0
+                    });
+                    totalInserted++;
+                }
+            }
+
+            res.json({ success: true, message: `${totalInserted} adet lisans maliyet kaydı işlendi.` });
         } catch (e) {
             res.status(500).json({ error: e.message });
         }

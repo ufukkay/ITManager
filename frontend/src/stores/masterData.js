@@ -273,6 +273,26 @@ export const useMasterDataStore = defineStore('masterData', {
             console.error('Impact analysis error:', err)
             return [] // Fail safe
         }
+    },
+
+    async fetchPersonnelFinancialHistory(id) {
+        try {
+            const response = await api.get(`/api/master-data/reports/financial/personnel/${id}`)
+            return response.data
+        } catch (err) {
+            console.error('Financial history fetch error:', err)
+            return []
+        }
+    },
+
+    async fetchFinancialStats() {
+        try {
+            const response = await api.get('/api/master-data/reports/financial/stats')
+            return response.data
+        } catch (err) {
+            console.error('Financial stats fetch error:', err)
+            return null
+        }
     }
   }
 })

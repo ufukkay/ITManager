@@ -513,6 +513,123 @@ class MasterDataService {
 
         return results;
     }
+
+    // --- FINANCIAL INTELLIGENCE ---
+    static async getPersonnelFinancialHistory(personnelId) {
+        // Aylık bazda tüm maliyetleri topla (GSM + M365)
+        return db.prepare(`
+            SELECT 
+                period,
+                SUM(total_amount) as total_amount,
+                SUM(CASE WHEN invoice_type = 'gsm' THEN total_amount ELSE 0 END) as gsm_amount,
+                SUM(CASE WHEN invoice_type = 'm365' THEN total_amount ELSE 0 END) as m365_amount,
+                GROUP_CONCAT(DISTINCT operator) as categories
+            FROM invoices
+            WHERE personnel_id = ?
+            GROUP BY period
+            ORDER BY period DESC
+            LIMIT 12
+        `).all(personnelId);
+    }
+
+    static async getGlobalFinancialStats() {
+        // Son 12 ayın toplam maliyet trendi
+        const monthlyTrend = db.prepare(`
+            SELECT 
+                period,
+                SUM(total_amount) as amount,
+                SUM(CASE WHEN invoice_type = 'gsm' THEN total_amount ELSE 0 END) as gsm,
+                SUM(CASE WHEN invoice_type = 'm365' THEN total_amount ELSE 0 END) as m365
+            FROM invoices
+            GROUP BY period
+            ORDER BY period ASC
+            LIMIT 24
+        `).all();
+
+        // En maliyetli 5 personel
+        const topPersonnel = db.prepare(`
+            SELECT 
+                p.id,
+                p.first_name || ' ' || p.last_name as name,
+                SUM(i.total_amount) as total_amount
+            FROM invoices i
+            JOIN personnel p ON i.personnel_id = p.id
+            GROUP BY p.id
+            ORDER BY total_amount DESC
+            LIMIT 5
+        `).all();
+
+        // Şirket bazlı maliyet dağılımı
+        const byCompany = db.prepare(`
+            SELECT 
+                c.name,
+                SUM(i.total_amount) as total_amount
+            FROM invoices i
+            JOIN companies c ON i.company_id = c.id
+            GROUP BY c.id
+        `).all();
+
+        return {
+            monthlyTrend,
+            topPersonnel,
+            byCompany
+        };
+    }
+
+    // --- HELPERS FOR MATCHING ---
+    static findPersonnelByEmail(email) {
+        if (!email) return null;
+        return db.prepare(`
+            SELECT p.id, p.company_id, p.cost_center_id, p.first_name || ' ' || p.last_name as full_name
+            FROM personnel p
+            WHERE LOWER(p.email) = LOWER(?)
+        `).get(email);
+    }
+
+    static findPersonnelByPhone(phone) {
+        if (!phone) return null;
+        // Normalize phone for lookup (last 10 digits)
+        const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+        return db.prepare(`
+            SELECT p.id, p.company_id, p.cost_center_id, p.first_name || ' ' || p.last_name as full_name
+            FROM personnel p
+            WHERE phone LIKE ?
+        `).get(`%${cleanPhone}%`);
+    }
+
+    static async insertInvoiceRecord(data) {
+        // Dönem, operatör ve dosya ismi aynıysa mükerrer kaydı önlemek için temizle
+        db.prepare(`
+            DELETE FROM invoices 
+            WHERE period = ? AND operator = ? AND source_file = ?
+        `).run(data.period, data.operator, data.source_file);
+
+        const stmt = db.prepare(`
+            INSERT INTO invoices (
+                invoice_type, operator, period, phone_no, 
+                personnel_id, company_id, cost_center_id, 
+                source_file, tariff, amount, tax_kdv, tax_oiv, 
+                total_amount, is_matched
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        return stmt.run(
+            data.invoice_type || 'gsm',
+            data.operator,
+            data.period,
+            data.phone_no,
+            data.personnel_id,
+            data.company_id,
+            data.cost_center_id,
+            data.source_file,
+            data.tariff,
+            data.amount,
+            data.tax_kdv,
+            data.tax_oiv,
+            data.total_amount,
+            data.is_matched
+        );
+    }
 }
 
 module.exports = MasterDataService;

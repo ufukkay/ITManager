@@ -50,11 +50,12 @@ const modules = [
     href: '/master-data'
   },
   {
-    title: 'Maliyet Dağıtımı',
-    desc: 'Operatör maliyet yansıtma',
+    title: 'Fatura Yönetimi',
+    desc: 'Operatör & M365 maliyet analizi',
     count: 'Faturalar',
     icon: 'fa-file-invoice-dollar',
-    href: '/cost-management'
+    href: '/cost-management',
+    permission: 'invoice:view'
   },
   {
     title: 'Raporlar & Analiz',

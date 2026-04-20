@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const xlsx = require('xlsx');
 const db = require('../../../database/db');
+const MasterDataService = require('../../core/service');
 const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
 
@@ -246,31 +247,25 @@ router.post('/upload', hasPermission('sim:edit'), upload.array('file'), async (r
         }
 
         db.transaction(() => {
-          db.prepare('DELETE FROM invoices WHERE period = ? AND operator = ? AND source_file = ?').run(period, operator, originalName);
-
-          const insertStmt = db.prepare(`
-            INSERT INTO invoices (operator, period, phone_no, personnel_name, cost_center, tariff, amount, tax_kdv, tax_oiv, total_amount, company_name, source_file, is_matched)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `);
-
           for (const rec of extractedRecords) {
-            const { name: dbName, costCenter: dbCostCenter, company: dbCompany, tariff: dbTariff, isMatched } = findPersonnelByPhone(rec.phoneNo);
+            const match = findPersonnelByPhone(rec.phoneNo);
 
-            insertStmt.run(
-              operator, 
-              period, 
-              rec.phoneNo, 
-              dbName || '', 
-              dbCostCenter || '', 
-              dbTariff || '',
-              rec.amount, 
-              rec.tax_kdv, 
-              rec.tax_oiv, 
-              rec.total_amount, 
-              dbCompany || '', 
-              originalName, 
-              isMatched ? 1 : 0
-            );
+            MasterDataService.insertInvoiceRecord({
+              invoice_type: 'gsm',
+              operator: operator,
+              period: period,
+              phone_no: rec.phoneNo,
+              personnel_id: match.personnel_id,
+              company_id: match.company_id,
+              cost_center_id: match.cost_center_id,
+              source_file: originalName,
+              tariff: match.tariff || rec.tariff || '',
+              amount: rec.amount,
+              tax_kdv: rec.tax_kdv,
+              tax_oiv: rec.tax_oiv,
+              total_amount: rec.total_amount,
+              is_matched: match.isMatched ? 1 : 0
+            });
             insertCount++;
           }
         })();
