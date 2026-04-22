@@ -33,7 +33,7 @@ function adminOnly(req, res, next) {
 
 function getDbUser(req) {
   // Lazily require db to avoid circular dependency at module load time
-  const db = require('../../../database/db');
+  const { db } = require('../../../database/db');
   return db.prepare('SELECT role, permissions FROM users WHERE id = ?').get(req.user.id);
 }
 

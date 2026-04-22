@@ -1,7 +1,63 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../../../database/db');
+const { db } = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
+
+// GET /api/reports/summary - Genel özet istatistikler
+router.get('/summary', (req, res) => {
+  try {
+    const totalLines = db.prepare(`
+      SELECT 
+        (SELECT COUNT(*) FROM sim_m2m) + 
+        (SELECT COUNT(*) FROM sim_data) + 
+        (SELECT COUNT(*) FROM sim_voice) as total
+    `).get().total;
+
+    const activeLines = db.prepare(`
+      SELECT 
+        (SELECT COUNT(*) FROM sim_m2m WHERE status = 'active') + 
+        (SELECT COUNT(*) FROM sim_data WHERE status = 'active') + 
+        (SELECT COUNT(*) FROM sim_voice WHERE status = 'active') as total
+    `).get().total;
+
+    const passiveLines = db.prepare(`
+      SELECT 
+        (SELECT COUNT(*) FROM sim_m2m WHERE status = 'passive') + 
+        (SELECT COUNT(*) FROM sim_data WHERE status = 'passive') + 
+        (SELECT COUNT(*) FROM sim_voice WHERE status = 'passive') as total
+    `).get().total;
+
+    const cancelledLines = db.prepare(`
+      SELECT 
+        (SELECT COUNT(*) FROM sim_m2m WHERE status = 'cancelled') + 
+        (SELECT COUNT(*) FROM sim_data WHERE status = 'cancelled') + 
+        (SELECT COUNT(*) FROM sim_voice WHERE status = 'cancelled') as total
+    `).get().total;
+
+    const operatorDist = db.prepare(`
+      SELECT operator, COUNT(*) as count FROM (
+        SELECT operator FROM sim_m2m
+        UNION ALL
+        SELECT operator FROM sim_data
+        UNION ALL
+        SELECT operator FROM sim_voice
+      ) GROUP BY operator
+    `).all().reduce((acc, row) => {
+      acc[row.operator] = row.count;
+      return acc;
+    }, {});
+
+    res.json({
+      totalLines,
+      activeLines,
+      passiveLines,
+      cancelledLines,
+      operatorDist
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Özet rapor oluşturulamadı', error: error.message });
+  }
+});
 
 // POST /api/reports/advanced - Gelişmiş rapor oluştur
 router.post('/advanced', (req, res) => {

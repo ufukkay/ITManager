@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const xlsx = require('xlsx');
-const db = require('../../../database/db');
+const { db } = require('../../../database/db');
 const MasterDataService = require('../../core/service');
 const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
@@ -18,87 +18,93 @@ const upload = multer({ storage: storage });
 /**
  * Helper to fetch and sync invoices with current SIM/Personnel data
  */
-function fetchInvoices({ period, operator, sourceFile, isMatched, phoneNo, personnelName, companyName, costCenter, search } = {}) {
-  let query = 'SELECT * FROM invoices WHERE 1=1';
+function fetchInvoices({ period, operator, source_file, isMatched, phoneNo, personnelName, companyName, costCenter, search } = {}) {
+  let query = `
+    SELECT 
+      i.*, 
+      p.first_name || ' ' || p.last_name as personnel_name,
+      c.name as company_name,
+      cc.name as cost_center
+    FROM invoices i
+    LEFT JOIN personnel p ON i.personnel_id = p.id
+    LEFT JOIN companies c ON i.company_id = c.id
+    LEFT JOIN departments cc ON i.cost_center_id = cc.id
+    WHERE 1=1
+  `;
   const params = [];
 
   if (period) {
-    query += ' AND period = ?';
+    query += ' AND i.period = ?';
     params.push(period);
   }
   if (operator) {
-    query += ' AND operator = ?';
+    query += ' AND i.operator = ?';
     params.push(operator);
   }
-  if (sourceFile) {
-    query += ' AND source_file = ?';
-    params.push(sourceFile);
+  if (source_file) {
+    query += ' AND i.source_file = ?';
+    params.push(source_file);
   }
   if (isMatched !== undefined && isMatched !== '') {
-    query += ' AND is_matched = ?';
+    query += ' AND i.is_matched = ?';
     params.push(isMatched === 'true' || isMatched === '1' ? 1 : 0);
   }
   
   if (phoneNo) {
-    query += ' AND phone_no LIKE ?';
+    query += ' AND i.phone_no LIKE ?';
     params.push(`%${phoneNo}%`);
-  }
-  if (personnelName) {
-    query += ' AND personnel_name LIKE ?';
-    params.push(`%${personnelName}%`);
-  }
-  if (companyName) {
-    query += ' AND company_name LIKE ?';
-    params.push(`%${companyName}%`);
-  }
-  if (costCenter) {
-    query += ' AND cost_center LIKE ?';
-    params.push(`%${costCenter}%`);
   }
   
   if (search) {
-    query += ' AND (phone_no LIKE ? OR personnel_name LIKE ? OR company_name LIKE ? OR cost_center LIKE ? OR tariff LIKE ?)';
+    query += ' AND (i.phone_no LIKE ? OR p.first_name LIKE ? OR p.last_name LIKE ? OR c.name LIKE ? OR cc.name LIKE ? OR i.tariff LIKE ?)';
     const searchParam = `%${search}%`;
-    params.push(searchParam, searchParam, searchParam, searchParam, searchParam);
+    params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
   }
 
-  query += ' ORDER BY total_amount DESC';
+  query += ' ORDER BY i.total_amount DESC';
 
   const list = db.prepare(query).all(...params);
-  const updateStmt = db.prepare('UPDATE invoices SET personnel_name = ?, cost_center = ?, company_name = ?, tariff = ?, is_matched = ? WHERE id = ?');
+  
+  // Re-sync logic: Only update if the assignment has changed since upload
+  const updateStmt = db.prepare(`
+    UPDATE invoices 
+    SET personnel_id = ?, cost_center_id = ?, company_id = ?, tariff = ?, is_matched = ? 
+    WHERE id = ?
+  `);
 
   return list.map(row => {
-    if (row.phone_no) {
-      const { name, costCenter, company, tariff, isMatched: newlyMatched } = findPersonnelByPhone(row.phone_no);
+    if (row.phone_no && row.invoice_type === 'gsm') {
+      const match = findPersonnelByPhone(row.phone_no);
       let changed = false;
 
-      // sync logic
-      if (newlyMatched && row.tariff !== tariff) {
-        row.tariff = tariff;
-        changed = true;
-      } else if (!newlyMatched && row.tariff !== '') {
-        row.tariff = '';
+      if (row.personnel_id !== match.personnel_id) { 
+        row.personnel_id = match.personnel_id; 
+        row.personnel_name = match.name;
+        changed = true; 
+      }
+      if (row.company_id !== match.company_id) { 
+        row.company_id = match.company_id; 
+        row.company_name = match.company;
+        changed = true; 
+      }
+      if (row.cost_center_id !== match.cost_center_id) { 
+        row.cost_center_id = match.cost_center_id; 
+        row.cost_center = match.costCenter;
+        changed = true; 
+      }
+      if (row.tariff !== (match.tariff || '')) {
+        row.tariff = match.tariff || '';
         changed = true;
       }
-
-      if (newlyMatched) {
-        if (row.personnel_name !== name) { row.personnel_name = name; changed = true; }
-        if (row.cost_center !== costCenter) { row.cost_center = costCenter; changed = true; }
-        if (row.company_name !== company) { row.company_name = company; changed = true; }
-      } else {
-        if (row.personnel_name) { row.personnel_name = ''; changed = true; }
-        if (row.cost_center) { row.cost_center = ''; changed = true; }
-        if (row.company_name) { row.company_name = ''; changed = true; }
-      }
-
-      const matchStatus = newlyMatched ? 1 : 0;
+      
+      const matchStatus = match.isMatched ? 1 : 0;
       if (row.is_matched !== matchStatus) {
         row.is_matched = matchStatus;
         changed = true;
       }
 
       if (changed) {
-        updateStmt.run(row.personnel_name || null, row.cost_center || null, row.company_name || null, row.tariff || '', row.is_matched, row.id);
+        updateStmt.run(row.personnel_id, row.cost_center_id, row.company_id, row.tariff, row.is_matched, row.id);
       }
     }
     return row;
@@ -152,13 +158,12 @@ router.get('/export', (req, res) => {
       return res.status(404).json({ message: 'İndirilecek fatura bulunamadı.' });
     }
 
-    const header = ['Dönem', 'Operatör', 'Dosya/Hesap', 'Şirket', 'Personel', 'Masraf Kalemi', 'Telefon', 'Tarife', 'Fatura Tutarı', 'KDV', 'ÖİV', 'Ödenecek Tutar', 'Eşleşme Durumu'];
+    const header = ['Dönem', 'Operatör', 'Dosya/Hesap', 'Şirket', 'Masraf Kalemi', 'Telefon', 'Tarife', 'Fatura Tutarı', 'KDV', 'ÖİV', 'Ödenecek Tutar', 'Eşleşme Durumu'];
     const rows = data.map(row => [
       row.period,
       row.operator,
       row.source_file || '',
       row.company_name || '',
-      row.personnel_name || '',
       row.cost_center || '',
       row.phone_no || '',
       row.tariff || '',
@@ -247,6 +252,10 @@ router.post('/upload', hasPermission('sim:edit'), upload.array('file'), async (r
         }
 
         db.transaction(() => {
+          // Aynı dosyanın tekrar yüklenmesi durumunda önceki kayıtları temizle
+          db.prepare('DELETE FROM invoices WHERE period = ? AND operator = ? AND source_file = ?')
+            .run(period, operator, originalName);
+
           for (const rec of extractedRecords) {
             const match = findPersonnelByPhone(rec.phoneNo);
 
@@ -328,6 +337,28 @@ router.post('/bulk-delete-summaries', hasPermission('sim:edit'), (req, res) => {
     res.json({ message: 'Seçili belgeler başarıyla silindi', deletedCount: result.changes });
   } catch (error) {
     res.status(500).json({ message: 'Belge silme hatası', error: error.message });
+  }
+});
+
+// POST /api/invoices/rename-file
+router.post('/rename-file', hasPermission('sim:edit'), (req, res) => {
+  try {
+    const { oldName, newName, period, operator } = req.body;
+    if (!oldName || !newName || !period || !operator) {
+      return res.status(400).json({ message: 'Eksik bilgi: Eski ad, yeni ad, dönem ve operatör gereklidir.' });
+    }
+
+    // Veritabanındaki kayıtları güncelle
+    const result = db.prepare(`
+      UPDATE invoices 
+      SET source_file = ? 
+      WHERE source_file = ? AND period = ? AND operator = ?
+    `).run(newName, oldName, period, operator);
+
+    logActivity(req, 'UPDATE', 'INVOICE_RENAME', oldName, { newName, period, operator, recordsUpdated: result.changes });
+    res.json({ message: 'Dosya adı başarıyla güncellendi', updatedCount: result.changes });
+  } catch (error) {
+    res.status(500).json({ message: 'Dosya adı güncellenirken hata oluştu', error: error.message });
   }
 });
 

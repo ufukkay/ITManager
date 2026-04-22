@@ -27,6 +27,8 @@ app.use(session({
 
 
 
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Kullanıcı Verileri İçin Global Ara Katman
 app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
@@ -49,7 +51,7 @@ app.use('/monitoring', hasPermission('monitoring:view'), require('./modules/moni
 app.use('/sim-takip', hasPermission('sim:view'), require('./modules/simcardtracking/routes/index'));
 
 // HR Bildirim Rotaları (Personel Giriş/Çıkış)
-app.use('/hr-requests', hasPermission('hr:view'), require('./modules/hr-requests/routes/index'));
+app.use('/api/hr-requests', hasPermission('hr:view'), require('./modules/hr-requests/routes/index'));
 
 // M365 Lisans Yönetimi Rotaları
 app.use('/api/m365', require('./modules/m365/routes'));

@@ -293,6 +293,26 @@ export const useMasterDataStore = defineStore('masterData', {
             console.error('Financial stats fetch error:', err)
             return null
         }
+    },
+
+    async fetchAuditLogs(limit = 20) {
+      try {
+        const response = await api.get(`/api/master-data/audit-logs?limit=${limit}`)
+        return response.data
+      } catch (err) {
+        console.error('Audit logs fetch error:', err)
+        return []
+      }
+    },
+
+    async fetchResourceHistory(module, id) {
+      try {
+        const response = await api.get(`/api/master-data/audit-logs/${module}/${id}`)
+        return response.data
+      } catch (err) {
+        console.error('Resource history fetch error:', err)
+        return []
+      }
     }
   }
 })

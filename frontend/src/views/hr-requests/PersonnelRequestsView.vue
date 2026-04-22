@@ -20,9 +20,12 @@ const loading   = ref(false)
 
 /* ── Columns ── */
 const columns = [
+  { key: 'photo_path',      label: '',             width: '50px',  sortable: false, filterable: false },
   { key: 'type',            label: 'Tür',          width: '80px',  sortable: true },
   { key: 'full_name',       label: 'Ad Soyad',     width: '180px', sortable: true },
-  { key: 'position',        label: 'Unvan',        width: '160px', sortable: true },
+  { key: 'email',           label: 'E-Posta',      width: '180px', sortable: true },
+  { key: 'position_tr',     label: 'Unvan (TR)',    width: '160px', sortable: true },
+  { key: 'position_en',     label: 'Unvan (EN)',    width: '160px', sortable: true },
   { key: 'company_name',    label: 'Şirket',       width: '150px', sortable: true },
   { key: 'department_name', label: 'Departman',    width: '150px', sortable: true },
   { key: 'location_name',   label: 'Lokasyon',     width: '130px', sortable: true },
@@ -53,7 +56,7 @@ const stats = computed(() => ({
 const fetchData = async () => {
   loading.value = true
   try {
-    const res = await api.get('/hr-requests')
+    const res = await api.get('/api/hr-requests')
     requests.value = res.data
   } catch (err) {
     console.error(err)
@@ -65,7 +68,7 @@ const fetchData = async () => {
 /* ── Status Update ── */
 const updateStatus = async (id, newStatus) => {
   try {
-    await api.put(`/hr-requests/${id}`, { status: newStatus })
+    await api.put(`/api/hr-requests/${id}`, { status: newStatus })
     fetchData()
   } catch (err) { console.error(err) }
 }
@@ -82,7 +85,7 @@ const handleDelete = async (row) => {
   if (confirmed) {
     try {
       startLoading()
-      await api.delete(`/hr-requests/${row.id}`)
+      await api.delete(`/api/hr-requests/${row.id}`)
       showToast('Talep başarıyla silindi', 'success')
       fetchData()
     } catch (err) {
@@ -120,29 +123,68 @@ const showModal  = ref(false)
 const editTarget = ref(null)
 const formType   = ref('ENTRY')
 const form       = ref({
-  full_name: '', position: '', request_date: '',
+  first_name: '', last_name: '', position_tr: '', position_en: '', request_date: '',
   company_id: null, department_id: null, location_id: null, cost_center_id: null,
   equipment_needed: [], notes: '', manager_name: '',
-  email_groups: '', erp_permissions: '', file_permissions: ''
+  email_groups: '', erp_permissions: '', file_permissions: '',
+  photo: null, email: ''
+})
+const photoPreview = ref(null)
+
+const slugify = (text) => {
+  if (!text) return ''
+  const trMap = { 'ç':'c','ğ':'g','ı':'i','ö':'o','ş':'s','ü':'u','Ç':'C','Ğ':'G','İ':'I','Ö':'O','Ş':'S','Ü':'U' }
+  let val = text
+  for(let key in trMap) val = val.replace(new RegExp(key, 'g'), trMap[key])
+  return val.toLowerCase().trim().replace(/ +/g, '.').replace(/[^\w.]/g, '')
+}
+
+const onPhotoChange = (e) => {
+  const file = e.target.files[0]
+  if (file) {
+    form.value.photo = file
+    photoPreview.value = URL.createObjectURL(file)
+  }
+}
+
+watch([() => form.value.first_name, () => form.value.last_name, () => form.value.company_id], ([first, last, companyId]) => {
+  if (!editTarget.value && first && last && companyId) {
+    const company = masterData.companies.find(c => c.id === companyId)
+    if (company) {
+      let domain = 'company.com'
+      if (company.website) {
+        // www. ve http(s):// kısımlarını temizleyelim
+        domain = company.website.toLowerCase()
+          .replace('https://', '')
+          .replace('http://', '')
+          .replace('www.', '')
+          .split('/')[0] // Sadece domain kısmını al
+      } else {
+        domain = company.name.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '') + '.com'
+      }
+      form.value.email = slugify(first + '.' + last) + '@' + domain
+    }
+  }
 })
 
-const filteredDepts    = computed(() => masterData.departments.filter(d => d.company_id === form.value.company_id))
-const filteredCostCenters = computed(() => masterData.costCenters.filter(cc => cc.company_id === form.value.company_id))
+const filteredDepts    = computed(() => masterData.departments)
+const filteredCostCenters = computed(() => masterData.costCenters)
 
 watch(() => form.value.company_id, () => {
-  form.value.department_id  = null
-  form.value.cost_center_id = null
+  // Global oldukları için temizlemeye gerek yok veya tercihe bağlı
 })
 
 const openAdd = (type = 'ENTRY') => {
   editTarget.value = null
   formType.value   = type
   form.value = {
-    full_name: '', position: '', request_date: '',
+    first_name: '', last_name: '', position_tr: '', position_en: '', request_date: '',
     company_id: null, department_id: null, location_id: null, cost_center_id: null,
     equipment_needed: [], notes: '', manager_name: '',
-    email_groups: '', erp_permissions: '', file_permissions: ''
+    email_groups: '', erp_permissions: '', file_permissions: '',
+    photo: null, email: ''
   }
+  photoPreview.value = null
   showModal.value = true
 }
 
@@ -153,24 +195,43 @@ const openEdit = (row) => {
     ...row,
     equipment_needed: (() => { try { return JSON.parse(row.equipment_needed || '[]') } catch { return [] } })()
   }
+  photoPreview.value = row.photo_path ? row.photo_path : null
   showModal.value = true
 }
 
 const save = async () => {
   try {
     startLoading()
-    const payload = { ...form.value, type: formType.value }
+    
+    const formData = new FormData()
+    // Append all text fields
+    Object.keys(form.value).forEach(key => {
+      if (key === 'photo') {
+        if (form.value[key] instanceof File) formData.append('photo', form.value[key])
+      } else if (key === 'equipment_needed') {
+        formData.append(key, JSON.stringify(form.value[key]))
+      } else if (form.value[key] !== null && form.value[key] !== undefined) {
+        formData.append(key, form.value[key])
+      }
+    })
+    // form.value already contains type, no need to append again
+
     if (editTarget.value) {
-      await api.put(`/hr-requests/${editTarget.value.id}`, payload)
+      await api.put(`/api/hr-requests/${editTarget.value.id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
       showToast('Bildirim başarıyla güncellendi', 'success')
     } else {
-      await api.post('/hr-requests', payload)
+      await api.post('/api/hr-requests', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
       showToast('Bildirim başarıyla oluşturuldu', 'success')
     }
     showModal.value = false
     fetchData()
   } catch (err) {
-    showToast('Hata: ' + (err.response?.data?.error || err.message), 'error')
+    const errorMsg = err.response?.data?.error || 'Bildirim kaydedilirken hata oluştu'
+    showToast(errorMsg, 'error', 5000, err)
   } finally {
     stopLoading()
   }
@@ -256,6 +317,14 @@ onMounted(() => {
               class="flex items-center gap-1.5 px-4 py-1.5 bg-[#1a73e8] text-white rounded-lg text-[12px] font-bold hover:bg-blue-700 shadow-sm">
               <i class="fas fa-user-plus text-[11px]"></i> Giriş Bildir
             </button>
+          </div>
+        </template>
+
+        <!-- Photo cell -->
+        <template #cell-photo_path="{ value }">
+          <div class="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center shrink-0">
+            <img v-if="value" :src="value" class="w-full h-full object-cover">
+            <i v-else class="fas fa-user text-gray-300 text-[10px]"></i>
           </div>
         </template>
 
@@ -375,15 +444,56 @@ onMounted(() => {
               <h4 class="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-2 flex items-center gap-2">
                 <i class="fas fa-id-card text-blue-400"></i> Kişisel Bilgiler
               </h4>
+              
+              <!-- Photo Upload Section -->
+              <div class="flex items-center gap-6 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                <div class="relative group">
+                  <div class="w-20 h-20 rounded-2xl bg-white border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden transition-all group-hover:border-blue-400">
+                    <img v-if="photoPreview" :src="photoPreview" class="w-full h-full object-cover">
+                    <i v-else class="fas fa-camera text-gray-300 text-xl"></i>
+                  </div>
+                  <input type="file" @change="onPhotoChange" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer">
+                  <div class="absolute -bottom-2 -right-2 w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white pointer-events-none">
+                    <i class="fas fa-plus text-[10px]"></i>
+                  </div>
+                </div>
+                <div class="flex-1">
+                  <p class="text-[13px] font-bold text-gray-800">Profil Fotoğrafı</p>
+                  <p class="text-[11px] text-gray-400 mt-1">Lütfen personelin net bir fotoğrafını yükleyin. (Max 2MB, JPG/PNG)</p>
+                  <button type="button" @click="photoPreview = null; form.photo = null" v-if="photoPreview" class="text-[11px] text-red-500 font-bold mt-2 hover:underline">
+                    Fotoğrafı Kaldır
+                  </button>
+                </div>
+              </div>
+
               <div class="grid grid-cols-2 gap-4">
-                <div class="col-span-2 space-y-1">
-                  <label class="text-[11px] font-bold text-gray-400 uppercase">Adı Soyadı <span class="text-red-500">*</span></label>
-                  <input v-model="form.full_name" type="text" required placeholder="Ahmet Yılmaz"
+                <div class="space-y-1">
+                  <label class="text-[11px] font-bold text-gray-400 uppercase">Adı <span class="text-red-500">*</span></label>
+                  <input v-model="form.first_name" type="text" required placeholder="Örn: Ahmet"
                     class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500">
                 </div>
                 <div class="space-y-1">
-                  <label class="text-[11px] font-bold text-gray-400 uppercase">Unvan</label>
-                  <input v-model="form.position" type="text" placeholder="Örn: Uzman / Specialist"
+                  <label class="text-[11px] font-bold text-gray-400 uppercase">Soyadı <span class="text-red-500">*</span></label>
+                  <input v-model="form.last_name" type="text" required placeholder="Örn: Yılmaz"
+                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500">
+                </div>
+                <div class="space-y-1">
+                  <label class="text-[11px] font-bold text-gray-400 uppercase">Kurumsal E-Posta</label>
+                  <div class="relative">
+                    <input v-model="form.email" type="email" placeholder="ad.soyad@sirket.com"
+                      class="w-full h-10 pl-9 pr-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500">
+                    <i class="fas fa-envelope absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[11px]"></i>
+                  </div>
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-[11px] font-bold text-gray-400 uppercase">Unvan (Türkçe)</label>
+                  <input v-model="form.position_tr" type="text" placeholder="Örn: Yazılım Uzmanı"
+                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500">
+                </div>
+                <div class="space-y-1">
+                  <label class="text-[11px] font-bold text-gray-400 uppercase">Unvan (İngilizce)</label>
+                  <input v-model="form.position_en" type="text" placeholder="Örn: Software Specialist"
                     class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500">
                 </div>
                 <div class="space-y-1">
@@ -403,8 +513,8 @@ onMounted(() => {
                 </div>
                 <div class="space-y-1">
                   <label class="text-[11px] font-bold text-gray-400 uppercase">Departman</label>
-                  <select v-model="form.department_id" :disabled="!form.company_id"
-                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-not-allowed">
+                  <select v-model="form.department_id"
+                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
                     <option :value="null">Seçiniz...</option>
                     <option v-for="d in filteredDepts" :key="d.id" :value="d.id">{{ d.name }}</option>
                   </select>
@@ -419,8 +529,8 @@ onMounted(() => {
                 </div>
                 <div class="space-y-1">
                   <label class="text-[11px] font-bold text-gray-400 uppercase">Masraf Yeri</label>
-                  <select v-model="form.cost_center_id" :disabled="!form.company_id"
-                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:cursor-not-allowed">
+                  <select v-model="form.cost_center_id"
+                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
                     <option :value="null">Seçiniz...</option>
                     <option v-for="cc in filteredCostCenters" :key="cc.id" :value="cc.id">{{ cc.name }}</option>
                   </select>

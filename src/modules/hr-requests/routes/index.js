@@ -3,19 +3,38 @@ const router = express.Router();
 const { db } = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 const MailerService = require('../../../services/MailerService');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Multer Config
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = 'uploads/hr-photos';
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + path.extname(file.originalname));
+    }
+});
+const upload = multer({ storage });
 
 // Tüm talepleri getir
 router.get('/', hasPermission('hr:view'), (req, res) => {
     try {
         const requests = db.prepare(`
             SELECT hr.*, 
+                   COALESCE(hr.first_name || ' ' || hr.last_name, hr.full_name) as full_name,
                    c.name as company_name, 
                    d.name as department_name, 
-                   l.name as location_name
+                   l.name as location_name,
+                   cc.name as cost_center_name
             FROM hr_requests hr
             LEFT JOIN companies c ON hr.company_id = c.id
             LEFT JOIN departments d ON hr.department_id = d.id
             LEFT JOIN locations l ON hr.location_id = l.id
+            LEFT JOIN cost_centers cc ON hr.cost_center_id = cc.id
             ORDER BY hr.created_at DESC
         `).all();
         res.json(requests);
@@ -25,43 +44,54 @@ router.get('/', hasPermission('hr:view'), (req, res) => {
 });
 
 // Yeni talep oluştur (IK tarafından)
-router.post('/', hasPermission('hr:edit'), async (req, res) => {
+router.post('/', hasPermission('hr:edit'), upload.single('photo'), async (req, res) => {
     try {
         const { 
-            type, full_name, position, request_date, 
-            department_id, location_id, company_id, 
+            type, first_name, last_name, position_tr, position_en, request_date, 
+            department_id, location_id, company_id, cost_center_id,
             equipment_needed, notes, manager_name, 
-            email_groups, erp_permissions, file_permissions 
+            email_groups, erp_permissions, file_permissions,
+            email 
         } = req.body;
         
-        if (!type || !full_name) {
-            return res.status(400).json({ error: "Talep tipi ve isim zorunludur." });
+        const photo_path = req.file ? `/uploads/hr-photos/${req.file.filename}` : null;
+
+        if (!type || !first_name || !last_name) {
+            return res.status(400).json({ error: "Talep tipi ve ad-soyad zorunludur." });
         }
 
         const stmt = db.prepare(`
             INSERT INTO hr_requests (
-                type, full_name, position, request_date, 
-                department_id, location_id, company_id, 
+                type, first_name, last_name, full_name, position_tr, position_en, position, request_date, 
+                department_id, location_id, company_id, cost_center_id,
                 equipment_needed, notes, manager_name, 
-                email_groups, erp_permissions, file_permissions
+                email_groups, erp_permissions, file_permissions,
+                photo_path, email
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         
         const info = stmt.run(
             type, 
-            full_name, 
-            position || null, 
+            first_name, 
+            last_name,
+            `${first_name} ${last_name}`,
+            position_tr || null,
+            position_en || null,
+            position_tr || position_en || null,
             request_date || null, 
             department_id || null, 
             location_id || null, 
             company_id || null, 
-            JSON.stringify(equipment_needed || []), 
+            cost_center_id || null,
+            equipment_needed || '[]', 
             notes || null,
             manager_name || null,
             email_groups || null,
             erp_permissions || null,
-            file_permissions || null
+            file_permissions || null,
+            photo_path,
+            email || null
         );
 
         try {
@@ -76,22 +106,46 @@ router.post('/', hasPermission('hr:edit'), async (req, res) => {
     }
 });
 
-// Talep güncelle (IT tarafından durum güncelleme veya IK tarafından düzenleme)
-router.put('/:id', hasPermission('hr:edit'), (req, res) => {
+// Talep güncelle (IT veya IK tarafından)
+router.put('/:id', hasPermission('hr:edit'), upload.single('photo'), (req, res) => {
     try {
-        const { status, notes, equipment_needed } = req.body;
         const id = req.params.id;
+        const body = req.body;
 
-        // Mevcut talebi getir (Personel ekleme kontrolü için)
+        // Mevcut talebi getir
         const request = db.prepare('SELECT * FROM hr_requests WHERE id = ?').get(id);
         if (!request) return res.status(404).json({ error: "Talep bulunamadı." });
+
+        const updatableFields = [
+            'type', 'first_name', 'last_name', 'position_tr', 'position_en', 'request_date', 
+            'department_id', 'location_id', 'company_id', 'cost_center_id',
+            'status', 'notes', 'manager_name', 
+            'email_groups', 'erp_permissions', 'file_permissions', 'email'
+        ];
+        // position alanını da güncelle (geriye dönük uyumluluk için)
+        if (body.position_tr) body.position = body.position_tr;
 
         const fields = [];
         const params = [];
 
-        if (status !== undefined) { fields.push('status = ?'); params.push(status); }
-        if (notes !== undefined) { fields.push('notes = ?'); params.push(notes); }
-        if (equipment_needed !== undefined) { fields.push('equipment_needed = ?'); params.push(JSON.stringify(equipment_needed)); }
+        updatableFields.forEach(field => {
+            if (body[field] !== undefined) {
+                fields.push(`${field} = ?`);
+                params.push(body[field]);
+            }
+        });
+
+        // equipment_needed özel işlemi
+        if (body.equipment_needed !== undefined) {
+            fields.push('equipment_needed = ?');
+            params.push(typeof body.equipment_needed === 'string' ? body.equipment_needed : JSON.stringify(body.equipment_needed || []));
+        }
+
+        // photo_path özel işlemi
+        if (req.file) {
+            fields.push('photo_path = ?');
+            params.push(`/uploads/hr-photos/${req.file.filename}`);
+        }
 
         if (fields.length === 0) {
             return res.status(400).json({ error: "Güncellenecek alan bulunamadı." });
@@ -103,19 +157,22 @@ router.put('/:id', hasPermission('hr:edit'), (req, res) => {
 
         // --- MASTER DATA ENTEGRASYONU ---
         // Eğer talep "ENTRY" ise ve "COMPLETED" durumuna geçtiyse, personeli ortak tabloya ekle
-        if (request.type === 'ENTRY' && status === 'COMPLETED') {
-            const nameParts = request.full_name.trim().split(' ');
-            const lastName = nameParts.length > 1 ? nameParts.pop() : '';
-            const firstName = nameParts.join(' ') || request.full_name;
+        if (request.type === 'ENTRY' && body.status === 'COMPLETED' && request.status !== 'COMPLETED') {
+            const firstName = body.first_name || request.first_name;
+            const lastName  = body.last_name || request.last_name;
+            const titleTr   = body.position_tr || request.position_tr;
+            const titleEn   = body.position_en || request.position_en;
+            const companyId = body.company_id || request.company_id;
+            const deptId    = body.department_id || request.department_id;
+            const costCenterId = body.cost_center_id || request.cost_center_id;
 
             // Personel var mı kontrol et
             const exists = db.prepare('SELECT id FROM personnel WHERE first_name = ? AND last_name = ?').get(firstName, lastName);
             if (!exists) {
                 db.prepare(`
-                    INSERT INTO personnel (first_name, last_name, company_id, department_id, status, notes)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                `).run(firstName, lastName, request.company_id, request.department_id, 'active', `IK Talebi (${id}) ile oluşturuldu.`);
-                console.log(`HR Talebi #${id} -> Personel oluşturuldu: ${request.full_name}`);
+                    INSERT INTO personnel (first_name, last_name, company_id, department_id, cost_center_id, status, notes, photo_path, email, title_tr, title_en, title)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `).run(firstName, lastName, companyId, deptId, costCenterId, 'active', `IK Talebi (${id}) ile otomatik oluşturuldu.`, request.photo_path, body.email || request.email, titleTr, titleEn, titleTr);
             }
         }
 

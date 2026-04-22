@@ -7,6 +7,10 @@ const { db } = require('../database/db');
 const hasPermission = (permissionKey) => {
     return (req, res, next) => {
         if (!req.session.user) {
+            // Eğer API isteğiyse JSON dön (veya 401)
+            if (req.xhr || req.headers.accept?.indexOf('json') > -1 || req.path.includes('/api/')) {
+                return res.status(401).json({ message: 'Oturum açmanız gerekmektedir.' });
+            }
             return res.redirect('/auth/login');
         }
 

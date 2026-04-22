@@ -153,19 +153,16 @@ const routes = [
         name: 'master-services',
         component: () => import('../views/master-data/ServiceListView.vue')
       },
-      // Hızlı İşlemler
       {
-        path: 'actions/add-org',
-        name: 'master-action-add-org',
-        component: () => import('../views/master-data/QuickActions.vue'),
-        props: { mode: 'add-org' }
+        path: 'licensing',
+        name: 'master-licensing',
+        component: () => import('../views/master-data/LicensingListView.vue')
       },
       {
-        path: 'actions/assign',
-        name: 'master-action-assign',
-        component: () => import('../views/master-data/QuickActions.vue'),
-        props: { mode: 'assign' }
-      }
+        path: 'sim-cards',
+        name: 'master-sims',
+        component: () => import('../views/master-data/SimCardListView.vue')
+      },
     ]
   },
   // Maliyet Yönetimi (Masraf Yansıtma)
@@ -173,7 +170,7 @@ const routes = [
     path: '/cost-management',
     name: 'cost-management',
     component: () => import('../views/cost-management/InvoicesView.vue'),
-    meta: { layout: 'main', requiresAuth: true }
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true }
   },
   // Raporlar ve Analitik
   {

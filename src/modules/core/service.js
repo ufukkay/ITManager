@@ -16,7 +16,7 @@ class MasterDataService {
     }
 
     static async createCompany(data) {
-        const { name, tax_number, notes } = data;
+        const { name, tax_number, website, notes } = data;
         
         // Mükerrer Kontrolü
         const existingName = db.prepare("SELECT id FROM companies WHERE LOWER(name) = LOWER(?)").get(name);
@@ -31,15 +31,15 @@ class MasterDataService {
         const lastRow = db.prepare("SELECT MAX(company_id) as max_id FROM companies").get();
         const company_id = Math.max(lastRow.max_id || 0, 0) + 1;
 
-        const info = db.prepare("INSERT INTO companies (company_id, name, tax_number, notes) VALUES (?, ?, ?, ?)")
-            .run(company_id, name, tax_number, notes);
+        const info = db.prepare("INSERT INTO companies (company_id, name, tax_number, website, notes) VALUES (?, ?, ?, ?, ?)")
+            .run(company_id, name, tax_number, website, notes);
         return info.lastInsertRowid;
     }
 
     static async updateCompany(id, data) {
-        const { company_id, name, tax_number, notes } = data;
-        db.prepare("UPDATE companies SET company_id = ?, name = ?, tax_number = ?, notes = ? WHERE id = ?")
-            .run(company_id, name, tax_number, notes, id);
+        const { company_id, name, tax_number, website, notes } = data;
+        db.prepare("UPDATE companies SET company_id = ?, name = ?, tax_number = ?, website = ?, notes = ? WHERE id = ?")
+            .run(company_id, name, tax_number, website, notes, id);
     }
 
     static async deleteCompany(id) {
@@ -546,33 +546,64 @@ class MasterDataService {
             LIMIT 24
         `).all();
 
-        // En maliyetli 5 personel
+        // En maliyetli 10 personel (Detaylı)
         const topPersonnel = db.prepare(`
             SELECT 
                 p.id,
-                p.first_name || ' ' || p.last_name as name,
-                SUM(i.total_amount) as total_amount
+                COALESCE(p.first_name || ' ' || p.last_name, 'Eşleşmemiş Kayıtlar') as name,
+                COALESCE(d.name, 'Genel') as department_name,
+                COALESCE(c.name, 'Tanımsız Şirket') as company_name,
+                SUM(i.total_amount) as total_amount,
+                SUM(CASE WHEN i.invoice_type = 'gsm' THEN i.total_amount ELSE 0 END) as gsm_total,
+                SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as m365_total
             FROM invoices i
-            JOIN personnel p ON i.personnel_id = p.id
-            GROUP BY p.id
+            LEFT JOIN personnel p ON i.personnel_id = p.id
+            LEFT JOIN departments d ON p.department_id = d.id
+            LEFT JOIN companies c ON p.company_id = c.id
+            GROUP BY i.personnel_id
             ORDER BY total_amount DESC
-            LIMIT 5
+            LIMIT 10
         `).all();
 
         // Şirket bazlı maliyet dağılımı
         const byCompany = db.prepare(`
             SELECT 
-                c.name,
-                SUM(i.total_amount) as total_amount
+                COALESCE(c.name, 'Eşleşmemiş/Bilinmeyen') as name,
+                SUM(i.total_amount) as total_amount,
+                COUNT(DISTINCT i.personnel_id) as personnel_count
             FROM invoices i
-            JOIN companies c ON i.company_id = c.id
-            GROUP BY c.id
+            LEFT JOIN companies c ON i.company_id = c.id
+            GROUP BY i.company_id
+        `).all();
+
+        // Hizmet Tipi Kırılımı
+        const byServiceType = db.prepare(`
+            SELECT 
+                invoice_type,
+                operator,
+                SUM(total_amount) as amount
+            FROM invoices
+            GROUP BY invoice_type, operator
+            ORDER BY amount DESC
+        `).all();
+
+        // Masraf Merkezi Kırılımı
+        const byCostCenter = db.prepare(`
+            SELECT 
+                COALESCE(cc.name, 'Merkez/Tanımsız') as name,
+                SUM(i.total_amount) as amount
+            FROM invoices i
+            LEFT JOIN cost_centers cc ON i.cost_center_id = cc.id
+            GROUP BY i.cost_center_id
+            ORDER BY amount DESC
         `).all();
 
         return {
             monthlyTrend,
             topPersonnel,
-            byCompany
+            byCompany,
+            byServiceType,
+            byCostCenter
         };
     }
 
@@ -598,12 +629,6 @@ class MasterDataService {
     }
 
     static async insertInvoiceRecord(data) {
-        // Dönem, operatör ve dosya ismi aynıysa mükerrer kaydı önlemek için temizle
-        db.prepare(`
-            DELETE FROM invoices 
-            WHERE period = ? AND operator = ? AND source_file = ?
-        `).run(data.period, data.operator, data.source_file);
-
         const stmt = db.prepare(`
             INSERT INTO invoices (
                 invoice_type, operator, period, phone_no, 

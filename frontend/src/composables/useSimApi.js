@@ -17,7 +17,7 @@ export function useSimApi(endpoint) {
       return dataList.value
     } catch (err) {
       error.value = err.response?.data?.message || 'Veri çekilirken hata oluştu'
-      showToast(error.value, 'error')
+      showToast(error.value, 'error', 5000, err)
       return []
     } finally {
       loading.value = false
@@ -33,7 +33,7 @@ export function useSimApi(endpoint) {
       return res.data
     } catch (err) {
       const msg = err.response?.data?.message || 'Kayıt oluşturulamadı'
-      showToast(msg, 'error')
+      showToast(msg, 'error', 5000, err)
       throw err
     } finally {
       loading.value = false
@@ -49,7 +49,7 @@ export function useSimApi(endpoint) {
       return res.data
     } catch (err) {
       const msg = err.response?.data?.message || 'Güncelleme başarısız'
-      showToast(msg, 'error')
+      showToast(msg, 'error', 5000, err)
       throw err
     } finally {
       loading.value = false
@@ -65,7 +65,24 @@ export function useSimApi(endpoint) {
       return true
     } catch (err) {
       const msg = err.response?.data?.message || 'Silme işlemi başarısız'
-      showToast(msg, 'error')
+      showToast(msg, 'error', 5000, err)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const bulkDelete = async (ids) => {
+    if (!ids || ids.length === 0) return false
+    loading.value = true
+    try {
+      await api.post(`/sim-takip/api/${endpoint}/bulk-delete`, { ids })
+      showToast(`${ids.length} kayıt başarıyla silindi`)
+      await fetchList()
+      return true
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Toplu silme başarısız'
+      showToast(msg, 'error', 5000, err)
       return false
     } finally {
       loading.value = false
@@ -79,6 +96,8 @@ export function useSimApi(endpoint) {
     fetchList,
     createItem,
     updateItem,
-    deleteItem
+    deleteItem,
+    bulkDelete
   }
 }
+

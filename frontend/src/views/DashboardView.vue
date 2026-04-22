@@ -1,8 +1,57 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { useMasterDataStore } from '../stores/masterData'
 
 const authStore = useAuthStore()
+const masterData = useMasterDataStore()
+const activities = ref([])
+
+onMounted(async () => {
+  activities.value = await masterData.fetchAuditLogs(10)
+})
+
+const getIcon = (module) => {
+  if (module?.includes('SIM')) return 'fa-sim-card'
+  if (module?.includes('PERSONNEL')) return 'fa-user-plus'
+  if (module?.includes('COMPANY')) return 'fa-building'
+  return 'fa-info-circle'
+}
+
+const getTimeAgo = (dateStr) => {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  
+  if (diffMins < 1) return 'Az önce'
+  if (diffMins < 60) return `${diffMins} dk`
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) return `${diffHours} sa`
+  return date.toLocaleDateString('tr-TR')
+}
+
+const formatAction = (activity) => {
+  const actionMap = {
+    'CREATE': 'Eklendi',
+    'UPDATE': 'Güncellendi',
+    'DELETE': 'Silindi'
+  }
+  const moduleMap = {
+    'SIM_VOICE': 'Ses Hattı',
+    'SIM_DATA': 'Data Hattı',
+    'SIM_M2M': 'M2M Hattı',
+    'PERSONNEL': 'Personel',
+    'COMPANY': 'Şirket'
+  }
+  
+  const actionStr = actionMap[activity.action] || activity.action
+  const moduleStr = moduleMap[activity.module] || activity.module
+  const details = activity.details ? JSON.parse(activity.details) : {}
+  const target = details.name || details.phone_no || details.iccid || activity.resource_id || ''
+  
+  return `${moduleStr} · ${target} ${actionStr}`
+}
 
 const modules = [
   {
@@ -135,26 +184,25 @@ const filteredModules = computed(() => {
     <!-- Son Etkinlik -->
     <div>
       <div class="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-3">Son Etkinlik</div>
-      <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
+      <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden shadow-sm">
+        <div v-if="activities.length === 0" class="p-8 text-center text-gray-400 text-[13px]">
+          Henüz bir aktivite kaydı bulunmuyor.
+        </div>
         <div
-          v-for="(a, i) in [
-            { t: '3 dk',  icon: 'fa-sim-card',             text: 'SIM Kart · Yeni M2M hattı eklendi',              warn: false },
-            { t: '18 dk', icon: 'fa-triangle-exclamation',  text: 'Sistem · Sunucu CPU kritik eşiği aştı',           warn: true  },
-            { t: '42 dk', icon: 'fa-user-plus',             text: 'İK · Yeni işe giriş talebi açıldı',               warn: false },
-            { t: '1 sa',  icon: 'fa-file-invoice-dollar',   text: 'Otomasyon · Aylık fatura ayrıştırıldı',           warn: false },
-            { t: '2 sa',  icon: 'fa-user-shield',           text: 'Yetki · Kullanıcı rolü güncellendi',             warn: false },
-          ]"
-          :key="i"
-          class="flex items-center gap-3 px-4 py-3"
+          v-for="(a, i) in activities"
+          :key="a.id"
+          class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
         >
           <div
-            class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-            :class="a.warn ? 'bg-red-50 text-red-500' : 'bg-gray-50 text-gray-500'"
+            class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-gray-50 text-gray-500"
           >
-            <i :class="['fas text-[12px]', a.icon]"></i>
+            <i :class="['fas text-[12px]', getIcon(a.module)]"></i>
           </div>
-          <div class="flex-1 text-[13px] text-gray-700">{{ a.text }}</div>
-          <div class="text-[12px] text-gray-400 shrink-0">{{ a.t }}</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[13px] text-gray-700 truncate">{{ formatAction(a) }}</div>
+            <div class="text-[11px] text-gray-400">{{ a.user_name || 'Sistem' }} tarafından</div>
+          </div>
+          <div class="text-[12px] text-gray-400 shrink-0 font-medium">{{ getTimeAgo(a.created_at) }}</div>
         </div>
       </div>
     </div>

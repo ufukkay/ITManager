@@ -2,6 +2,13 @@
 import { useToast } from '../composables/useToast'
 
 const { toasts, removeToast } = useToast()
+
+const copyError = (toast) => {
+  const errorText = `Mesaj: ${toast.message}\nDetay: ${JSON.stringify(toast.details, null, 2)}`
+  navigator.clipboard.writeText(errorText).then(() => {
+    // Mini bir başarı göstergesi ekleyebiliriz ama şimdilik kopyalaması yeterli
+  })
+}
 </script>
 
 <template>
@@ -22,12 +29,23 @@ const { toasts, removeToast } = useToast()
                                    toast.type === 'warning' ? 'fa-triangle-exclamation' : 
                                    'fa-circle-check'"></i>
           </div>
-          <div class="flex-1">
-            <p class="text-[14px] font-bold text-slate-800 leading-tight">{{ toast.message }}</p>
+          <div class="flex-1 min-w-0">
+            <p class="text-[14px] font-bold text-slate-800 leading-tight truncate">{{ toast.message }}</p>
+            <p v-if="toast.details" class="text-[11px] text-slate-400 mt-1">Teknik detay için kopyalayın.</p>
           </div>
-          <button @click="removeToast(toast.id)" class="text-slate-300 hover:text-slate-500 transition-colors p-1">
-            <i class="fas fa-times text-[12px]"></i>
-          </button>
+
+          <div class="flex items-center gap-1">
+            <button v-if="toast.type === 'error'" 
+              @click="copyError(toast)"
+              title="Hatayı Kopyala"
+              class="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+            >
+              <i class="fas fa-copy text-[12px]"></i>
+            </button>
+            <button @click="removeToast(toast.id)" class="w-7 h-7 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+              <i class="fas fa-times text-[12px]"></i>
+            </button>
+          </div>
         </div>
       </div>
     </TransitionGroup>

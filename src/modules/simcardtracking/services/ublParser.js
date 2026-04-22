@@ -27,11 +27,11 @@ async function parseInvoiceXML(xmlBuffer) {
     if (text.startsWith('F2-')) {
       const parts = text.substring(3).split(/[?#$+!]/);
       if (parts.length >= 6) {
-        const phoneNo = parts[0].trim().slice(-10); 
+        const phoneNo = parts[0].trim().slice(-10);
         const amount = parseFloat(parts[2].replace(',', '.')) || 0;
-        const total_amount = parseFloat(parts[3].replace(',', '.')) || 0;
         const tax_kdv = parseFloat(parts[4].replace(',', '.')) || 0;
         const tax_oiv = parseFloat(parts[5].replace(',', '.')) || 0;
+        const total_amount = parseFloat((amount + tax_kdv + tax_oiv).toFixed(2));
 
         extractedRecords.push({
           phoneNo: '0' + phoneNo, 

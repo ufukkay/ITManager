@@ -10,35 +10,6 @@ const route = useRoute()
 const dropdownOpen = ref(false)
 const dropdownRef = ref(null)
 
-const menuItems = [
-  { title: 'Dashboard', icon: 'fa-th-large', path: '/', permission: null },
-  { title: 'SIM Takip', icon: 'fa-sim-card', path: '/sim-takip', permission: 'sim:view' },
-  { title: 'Fatura Yönetimi', icon: 'fa-file-invoice-dollar', path: '/cost-management', permission: 'invoice:view' },
-  { title: 'M365 Yönetimi', icon: 'fa-envelope-open-text', path: '/m365', permission: 'm365:view' },
-  { title: 'İK Bildirimleri', icon: 'fa-user-clock', path: '/hr-requests', permission: 'hr:view' },
-  { title: 'Yetki Yönetimi', icon: 'fa-user-shield', path: '/admin/permissions', permission: 'system:admin' }
-]
-
-const masterMenuItems = [
-  { title: 'Personel Listesi', icon: 'fa-users', path: '/master-data/personnel' },
-  { title: 'Organizasyon', icon: 'fa-sitemap', path: '/master-data/organization' },
-  { title: 'Araç Envanteri', icon: 'fa-truck-moving', path: '/master-data/vehicles' },
-  { title: 'Lokasyonlar', icon: 'fa-map-marker-alt', path: '/master-data/locations' },
-  { title: 'Operatör & Paketler', icon: 'fa-hand-holding-heart', path: '/master-data/services' },
-]
-
-const filteredMenu = computed(() => {
-  return menuItems.filter(item => {
-    if (!item.permission) return true
-    return authStore.hasPermission(item.permission)
-  })
-})
-
-const isActive = (path) => {
-  if (path === '/') return route.path === '/'
-  return route.path.startsWith(path)
-}
-
 const userInitials = computed(() => {
   const name = authStore.userName
   if (!name) return '?'
@@ -71,22 +42,8 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
       </div>
       <span class="text-[15px] font-bold text-gray-900 tracking-tight">ITManager <span class="text-brand font-black ml-0.5">.</span></span>
     </router-link>
-    <!-- Navigation -->
-    <nav class="hidden lg:flex items-center gap-1.5 flex-1">
-      <router-link 
-        v-for="item in filteredMenu" 
-        :key="item.path"
-        :to="item.path"
-        class="h-9 px-4 rounded-lg flex items-center gap-2.5 transition-all text-[13px] font-semibold"
-        :class="isActive(item.path) 
-          ? 'bg-brand/10 text-brand' 
-          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'"
-      >
-        <i :class="['fas text-[14px]', item.icon]"></i>
-        {{ item.title }}
-      </router-link>
-    </nav>
-    <div class="flex lg:hidden flex-1"></div>
+    <!-- Navigation Removed as per user request -->
+    <div class="flex-1"></div>
 
     <!-- Actions -->
     <div class="flex items-center gap-2 shrink-0">

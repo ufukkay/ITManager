@@ -5,13 +5,13 @@ import { useMasterDataStore } from '../../stores/masterData'
 import { useToast } from '../../composables/useToast'
 import { useConfirm } from '../../composables/useConfirm'
 import AppTable from '../../components/AppTable.vue'
+import HistoryModal from '../../components/HistoryModal.vue'
 import * as XLSX from 'xlsx'
 
+const { dataList, loading, fetchList, updateItem, deleteItem, createItem } = useSimApi('m2m')
+const masterData = useMasterDataStore()
 const { showToast } = useToast()
 const { ask, startLoading, stopLoading } = useConfirm()
-
-const { dataList, loading, fetchList, createItem, updateItem, deleteItem } = useSimApi('m2m')
-const masterData = useMasterDataStore()
 
 const columns = [
   { key: 'phone_no',      label: 'Telefon',   sortable: true, width: '150px' },
@@ -29,17 +29,14 @@ const columns = [
 const quickFilters = computed(() => [
   { key: 'operator',     label: 'Operatör', options: masterData.operators.map(o => o.name) },
   { key: 'company_name',  label: 'Şirket',   options: masterData.companies.map(c => c.name) },
-  { key: 'status',       label: 'Durum',    options: [ { value: 'active', label: 'Aktif' }, { value: 'passive', label: 'Pasif' } ] },
+  { key: 'status',       label: 'Durum',    options: ['Aktif', 'Pasif', 'İptal'] },
 ])
 
-/* ─── High usage pre-filter ─── */
 const tableRows  = computed(() => dataList.value)
 
-/* ─── Selection ─── */
 const selectedIds       = ref([])
 const onSelectionChange = (rows) => { selectedIds.value = rows.map(r => r.id) }
 
-/* ─── Usage helper ─── */
 const getUsage = (item) => {
   if (!item.quota_gb || item.quota_gb === 0) return { used: 0, quota: 0, pct: 0 }
   const used = parseFloat(((item.id * 37 % 100) / 100 * item.quota_gb).toFixed(1))
@@ -52,8 +49,6 @@ const usageBarClass = (pct) => {
   return 'bg-emerald-500'
 }
 
-
-/* ─── Excel export ─── */
 const exportExcel = (customRows = null) => {
   const target = customRows || dataList.value
   const rows = target.map(r => ({
@@ -72,44 +67,58 @@ const exportSelected = () => {
   exportExcel(selected)
 }
 
-/* ─── Modal ─── */
-const showModal  = ref(false)
-const editTarget = ref(null)
-const form       = ref({})
+// Modal Logic
+const isModalOpen = ref(false)
+const selectedItem = ref(null)
+const statuses = ['Aktif', 'Pasif', 'İptal']
+const form = ref({
+  iccid: '', phone_no: '', operator: '', company_id: '',
+  department_id: '', package_id: '', vehicle_id: '',
+  status: 'Aktif', notes: ''
+})
 
-const openAdd = () => {
-  editTarget.value = null
-  form.value = { iccid: '', phone_no: '', operator: '', status: 'active', vehicle_id: null, package_id: null, company_id: null, notes: '' }
-  showModal.value = true
+// History Modal
+const isHistoryModalOpen = ref(false)
+const historyResourceId = ref(null)
+
+const openHistory = (row) => {
+  historyResourceId.value = row.id
+  isHistoryModalOpen.value = true
 }
-const openEdit = (item) => {
-  editTarget.value = item
+
+const openEditModal = (item) => {
+  selectedItem.value = item
   form.value = { ...item }
-  showModal.value = true
+  isModalOpen.value = true
 }
-const save = async () => {
+
+const saveItem = async () => {
   try {
-    if (editTarget.value) {
-      await updateItem(editTarget.value.id, form.value)
+    if (selectedItem.value) {
+      await updateItem(selectedItem.value.id, form.value)
       showToast('Kayıt başarıyla güncellendi', 'success')
     } else {
       await createItem(form.value)
-      showToast('Yeni kayıt başarıyla oluşturuldu', 'success')
+      showToast('Yeni kayıt başarıyla eklendi', 'success')
     }
-    showModal.value = false
-  } catch (e) { showToast('Hata: ' + e.message, 'error') }
+    isModalOpen.value = false
+    fetchList()
+  } catch (err) { 
+    showToast('Hata: ' + err.message, 'error') 
+  }
 }
+
 const handleDelete = async (row) => {
   const confirmed = await ask({
-    title: 'Hattı Sil',
-    message: `"${row.phone_no || row.iccid}" numaralı hattı silmek istediğinize emin misiniz?`,
+    title: 'Kaydı Sil',
+    message: `"${row.phone_no || row.iccid}" numaralı SIM kartı silmek istediğinize emin misiniz?`,
     confirmLabel: 'Evet, Sil'
   })
   if (confirmed) {
     try {
       startLoading()
       await deleteItem(row.id)
-      showToast('Hat başarıyla silindi', 'success')
+      showToast('Kayıt başarıyla silindi', 'success')
     } catch (e) {
       showToast('Hata: ' + e.message, 'error')
     } finally {
@@ -122,15 +131,14 @@ onMounted(() => {
   fetchList()
   masterData.fetchVehicles()
   masterData.fetchOperators()
-  masterData.fetchPackages('m2m')
   masterData.fetchCompanies()
+  masterData.fetchDepartments()
+  masterData.fetchPackages('m2m')
 })
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
-
-    <!-- AppTable -->
+  <div class="h-full flex flex-col gap-4">
     <AppTable
       :columns="columns"
       :rows="tableRows"
@@ -138,26 +146,19 @@ onMounted(() => {
       :quick-filters="quickFilters"
       :selectable="true"
       empty-text="Kriterlere uygun kayıt bulunamadı"
-      @row-edit="openEdit"
-      @row-delete="handleDelete"
       @selection-change="onSelectionChange"
+      @row-edit="openEditModal"
+      @row-history="openHistory"
+      @row-delete="handleDelete"
     >
       <template #toolbar>
-
         <template v-if="selectedIds.length > 0">
           <span class="text-[13px] font-bold text-[#1a73e8]">{{ selectedIds.length }} Seçili</span>
-          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg text-[12px] font-bold hover:bg-blue-100">
-            <i class="fas fa-edit"></i> Toplu Düzenle
-          </button>
           <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[12px] font-bold hover:bg-emerald-100"
             @click="exportSelected">
             <i class="fas fa-file-excel"></i> Seçilenleri İndir
           </button>
-          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[12px] font-bold hover:bg-red-100">
-            <i class="fas fa-trash"></i> Toplu Sil
-          </button>
         </template>
-
       </template>
 
       <!-- Telefon font-mono -->
@@ -183,7 +184,7 @@ onMounted(() => {
         <span class="font-bold text-gray-900 tracking-tight">{{ value || '—' }}</span>
       </template>
 
-      <!-- Kullanım bar (virtual column) -->
+      <!-- Kullanım bar -->
       <template #cell-usage="{ row }">
         <div v-if="row.quota_gb" class="w-[130px]">
           <div class="flex items-center justify-between text-[10px] font-bold text-gray-400 mb-1">
@@ -207,98 +208,123 @@ onMounted(() => {
       <template #cell-status="{ value }">
         <span :class="[
           'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold',
-          value === 'active' ? 'bg-[#ecfdf5] text-[#059669]' : 'bg-[#f3f4f6] text-[#4b5563]'
+          (value === 'active' || value === 'Aktif') ? 'bg-[#ecfdf5] text-[#059669]' : 'bg-[#f3f4f6] text-[#4b5563]'
         ]">
-          <span class="w-1.5 h-1.5 rounded-full" :class="value === 'active' ? 'bg-[#10b981]' : 'bg-[#9ca3af]'"></span>
-          {{ value === 'active' ? 'Aktif' : 'Pasif' }}
+          <span class="w-1.5 h-1.5 rounded-full" :class="(value === 'active' || value === 'Aktif') ? 'bg-[#10b981]' : 'bg-[#9ca3af]'"></span>
+          {{ (value === 'active' || value === 'Aktif') ? 'Aktif' : 'Pasif' }}
         </span>
       </template>
     </AppTable>
 
-    <!-- Modal -->
+    <!-- Edit Modal -->
     <Teleport to="body">
-      <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" @click.self="showModal = false">
+      <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" @click.self="isModalOpen = false">
         <div class="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
-          <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+          <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
             <div>
-              <h2 class="text-[17px] font-bold text-gray-900">{{ editTarget ? 'Hattı Düzenle' : 'Yeni M2M Hattı' }}</h2>
-              <p class="text-[12px] text-gray-400 mt-0.5">Tüm zorunlu alanları doldurun</p>
+              <h2 class="text-[16px] font-bold text-gray-900">
+                {{ selectedItem ? 'M2M Hattını Düzenle' : 'Yeni M2M Hattı Ekle' }}
+              </h2>
             </div>
-            <button type="button" @click="showModal = false"
-              class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100">
+            <button type="button" @click="isModalOpen = false" class="text-gray-400 hover:text-gray-700 w-8 h-8 rounded-lg hover:bg-gray-100 inline-flex items-center justify-center">
               <i class="fas fa-times"></i>
             </button>
           </div>
-          <div class="p-7 space-y-5 max-h-[70vh] overflow-y-auto">
-            <div class="grid grid-cols-2 gap-x-5 gap-y-5">
-              <div>
-                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Telefon Numarası</label>
-                <input v-model="form.phone_no" type="text" placeholder="5xx xxx xx xx"
-                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+
+          <form @submit.prevent="saveItem">
+            <div class="p-7 grid grid-cols-2 gap-5">
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Telefon No</label>
+                <input v-model="form.phone_no" type="text" required placeholder="5XX XXX XX XX"
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 font-bold">
               </div>
-              <div>
-                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">ICCID</label>
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">ICCID</label>
                 <input v-model="form.iccid" type="text" placeholder="8990..."
-                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 font-mono">
               </div>
-              <div>
-                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Operatör <span class="text-red-500">*</span></label>
-                <select v-model="form.operator"
-                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
-                  <option value="" disabled>Seçiniz</option>
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Operatör</label>
+                <select v-model="form.operator" required
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
+                  <option value="">Seçiniz</option>
                   <option v-for="op in masterData.operators" :key="op.id" :value="op.name">{{ op.name }}</option>
                 </select>
               </div>
-              <div>
-                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Paket</label>
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Paket</label>
                 <select v-model="form.package_id"
-                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
                   <option :value="null">Seçiniz</option>
                   <option v-for="p in masterData.packages" :key="p.id" :value="p.id">{{ p.name }}</option>
                 </select>
               </div>
-              <div>
-                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Araç / Plaka <span class="text-red-500">*</span></label>
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Araç / Plaka</label>
                 <select v-model="form.vehicle_id"
-                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
                   <option :value="null">Seçiniz</option>
                   <option v-for="v in masterData.vehicles" :key="v.id" :value="v.id">{{ v.plate_no }}</option>
                 </select>
               </div>
-              <div>
-                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Şirket</label>
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Durum</label>
+                <select v-model="form.status" required
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
+                  <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+                </select>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Şirket</label>
                 <select v-model="form.company_id"
-                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
                   <option :value="null">Seçiniz</option>
                   <option v-for="c in masterData.companies" :key="c.id" :value="c.id">{{ c.name }}</option>
                 </select>
               </div>
-              <div>
-                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Durum</label>
-                <select v-model="form.status"
-                  class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
-                  <option value="active">Aktif</option>
-                  <option value="passive">Pasif</option>
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Departman</label>
+                <select v-model="form.department_id"
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
+                  <option :value="null">Seçiniz</option>
+                  <option v-for="d in masterData.departments" :key="d.id" :value="d.id">{{ d.name }}</option>
                 </select>
               </div>
+
+              <div class="col-span-2 space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Notlar</label>
+                <textarea v-model="form.notes" rows="2"
+                  class="w-full p-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 resize-none"></textarea>
+              </div>
             </div>
-            <div>
-              <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Notlar</label>
-              <textarea v-model="form.notes" rows="3" placeholder="Ek notlar..."
-                class="w-full px-3 py-2.5 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 resize-none"></textarea>
+
+            <div class="px-7 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
+              <button type="button" @click="isModalOpen = false" class="px-4 py-2 text-[13px] font-bold text-gray-500 hover:text-gray-700">İptal</button>
+              <button type="submit" class="px-8 py-2 bg-blue-600 text-white text-[13px] font-bold rounded-xl hover:bg-blue-700 shadow-sm transition-all">
+                {{ selectedItem ? 'Güncelle' : 'Oluştur' }}
+              </button>
             </div>
-          </div>
-          <div class="px-7 py-4 border-t border-gray-100 bg-gray-50/40 flex justify-end gap-2">
-            <button type="button" @click="showModal = false"
-              class="px-5 py-2 text-[13px] font-semibold text-gray-500 hover:text-gray-700">Vazgeç</button>
-            <button type="button" @click="save"
-              class="px-6 py-2 text-[13px] font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm flex items-center gap-1.5">
-              <i class="fas fa-save text-[11px]"></i>
-              {{ editTarget ? 'Güncelle' : 'Kaydet' }}
-            </button>
-          </div>
+          </form>
         </div>
       </div>
     </Teleport>
+
+    <!-- History Modal -->
+    <HistoryModal
+      v-if="isHistoryModalOpen"
+      module="SIM_M2M"
+      :resource-id="historyResourceId"
+      title="M2M Hattı Düzenleme Geçmişi"
+      @close="isHistoryModalOpen = false"
+    />
   </div>
 </template>
+
+<style scoped>
+</style>

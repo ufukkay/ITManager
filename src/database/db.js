@@ -150,25 +150,46 @@ const initDb = () => {
   // Check for old schema and drop if found (Normalization)
   try {
     const columns = db.prepare("PRAGMA table_info(hr_requests)").all();
-    if (columns.length > 0 && columns.some(c => c.name === 'company')) {
-        console.log("Renaming old hr_requests table to migrate data...");
-        db.prepare("DROP TABLE hr_requests").run();
+    if (columns.length > 0 && !columns.some(c => c.name === 'photo_path')) {
+        console.log("Adding photo_path to hr_requests table...");
+        db.prepare("ALTER TABLE hr_requests ADD COLUMN photo_path TEXT").run();
     }
-  } catch (e) {
-    console.log("hr_requests table check skipped or error:", e.message);
-  }
+    if (columns.length > 0 && !columns.some(c => c.name === 'email')) {
+        console.log("Adding email to hr_requests table...");
+        db.prepare("ALTER TABLE hr_requests ADD COLUMN email TEXT").run();
+    }
+    if (columns.length > 0 && !columns.some(c => c.name === 'first_name')) {
+        console.log("Adding first_name/last_name to hr_requests table...");
+        db.prepare("ALTER TABLE hr_requests ADD COLUMN first_name TEXT").run();
+        db.prepare("ALTER TABLE hr_requests ADD COLUMN last_name TEXT").run();
+    }
+    if (columns.length > 0 && !columns.some(c => c.name === 'position_tr')) {
+        console.log("Adding position_tr/en to hr_requests table...");
+        db.prepare("ALTER TABLE hr_requests ADD COLUMN position_tr TEXT").run();
+        db.prepare("ALTER TABLE hr_requests ADD COLUMN position_en TEXT").run();
+    }
+    if (columns.length > 0 && !columns.some(c => c.name === 'cost_center_id')) {
+        console.log("Adding cost_center_id to hr_requests table...");
+        db.prepare("ALTER TABLE hr_requests ADD COLUMN cost_center_id INTEGER").run();
+    }
+  } catch (e) { console.log("hr_requests migration skipped:", e.message); }
 
   db.prepare(
     `
         CREATE TABLE IF NOT EXISTS hr_requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             type TEXT NOT NULL CHECK(type IN ('ENTRY', 'EXIT')),
-            full_name TEXT NOT NULL,
+            first_name TEXT,
+            last_name TEXT,
+            full_name TEXT,
+            position_tr TEXT,
+            position_en TEXT,
             position TEXT,
             request_date DATE,
             department_id INTEGER,
             location_id INTEGER,
             company_id INTEGER,
+            cost_center_id INTEGER,
             status TEXT DEFAULT 'PENDING',
             equipment_needed TEXT,
             notes TEXT,
@@ -176,6 +197,8 @@ const initDb = () => {
             email_groups TEXT,
             erp_permissions TEXT,
             file_permissions TEXT,
+            photo_path TEXT,
+            email TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(department_id) REFERENCES departments(id),
             FOREIGN KEY(location_id) REFERENCES locations(id),
@@ -201,6 +224,10 @@ const initDb = () => {
             updateStmt.run(startId++, c.id);
         });
     }
+    if (columns.length > 0 && !columns.some(c => c.name === 'website')) {
+        console.log("Adding website to companies table...");
+        db.prepare("ALTER TABLE companies ADD COLUMN website TEXT").run();
+    }
   } catch (e) { console.log("Companies check skipped:", e.message); }
 
   db.prepare(`
@@ -209,6 +236,7 @@ const initDb = () => {
         company_id INTEGER UNIQUE,
         name TEXT UNIQUE NOT NULL,
         tax_number TEXT,
+        website TEXT,
         notes TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -280,6 +308,15 @@ const initDb = () => {
         db.prepare("DROP TABLE personnel").run();
         db.prepare("PRAGMA foreign_keys = ON").run();
     }
+    if (columns.length > 0 && !columns.some(c => c.name === 'photo_path')) {
+        console.log("Adding photo_path to personnel table...");
+        db.prepare("ALTER TABLE personnel ADD COLUMN photo_path TEXT").run();
+    }
+    if (columns.length > 0 && !columns.some(c => c.name === 'title_tr')) {
+        console.log("Adding title_tr/en to personnel table...");
+        db.prepare("ALTER TABLE personnel ADD COLUMN title_tr TEXT").run();
+        db.prepare("ALTER TABLE personnel ADD COLUMN title_en TEXT").run();
+    }
   } catch (e) {
     console.log("Personnel table check skipped:", e.message);
   }
@@ -290,6 +327,8 @@ const initDb = () => {
         employee_id INTEGER UNIQUE,
         first_name TEXT NOT NULL,
         last_name TEXT NOT NULL,
+        title_tr TEXT,
+        title_en TEXT,
         title TEXT,
         email TEXT,
         phone TEXT,
@@ -300,6 +339,7 @@ const initDb = () => {
         exit_date DATE,
         status TEXT DEFAULT 'active',
         notes TEXT,
+        photo_path TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(company_id) REFERENCES companies(id),
         FOREIGN KEY(department_id) REFERENCES departments(id),
@@ -373,6 +413,17 @@ const initDb = () => {
         )
     `).run();
 
+  // sim_data table migrations
+  try {
+    const columns = db.prepare("PRAGMA table_info(sim_data)").all();
+    if (columns.length > 0) {
+      if (!columns.some(c => c.name === 'company_id')) {
+        console.log("Adding company_id to sim_data table...");
+        db.prepare("ALTER TABLE sim_data ADD COLUMN company_id INTEGER REFERENCES companies(id)").run();
+      }
+    }
+  } catch (e) { console.log("sim_data migration skipped:", e.message); }
+
   db.prepare(`
     CREATE TABLE IF NOT EXISTS sim_data (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -390,6 +441,22 @@ const initDb = () => {
     )
   `).run();
 
+
+  // sim_voice table migrations
+  try {
+    const columns = db.prepare("PRAGMA table_info(sim_voice)").all();
+    if (columns.length > 0) {
+      if (!columns.some(c => c.name === 'company_id')) {
+        console.log("Adding company_id to sim_voice table...");
+        db.prepare("ALTER TABLE sim_voice ADD COLUMN company_id INTEGER REFERENCES companies(id)").run();
+      }
+      if (!columns.some(c => c.name === 'department_id')) {
+        console.log("Adding department_id to sim_voice table...");
+        db.prepare("ALTER TABLE sim_voice ADD COLUMN department_id INTEGER REFERENCES departments(id)").run();
+      }
+    }
+  } catch (e) { console.log("sim_voice migration skipped:", e.message); }
+
   db.prepare(`
     CREATE TABLE IF NOT EXISTS sim_voice (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -398,12 +465,15 @@ const initDb = () => {
         operator TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'active',
         personnel_id INTEGER REFERENCES personnel(id),
+        company_id INTEGER REFERENCES companies(id),
+        department_id INTEGER REFERENCES departments(id),
         notes TEXT,
         package_id INTEGER REFERENCES packages(id),
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run();
+
 
   // Invoices table
   try {
@@ -482,6 +552,21 @@ const initDb = () => {
         personnel_id INTEGER REFERENCES personnel(id),
         user_name TEXT, -- Legacy support during transit
         FOREIGN KEY (allocation_id) REFERENCES m365_allocations(id) ON DELETE CASCADE
+    )
+  `).run();
+
+  // Audit Logs table
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        module TEXT NOT NULL,
+        action TEXT NOT NULL, -- CREATE, UPDATE, DELETE, LOGIN, etc.
+        resource_id TEXT,
+        details TEXT, -- JSON string for changes
+        ip_address TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
     )
   `).run();
 

@@ -74,4 +74,8 @@ router.post('/reports/financial/upload/m365', upload.array('file'), MasterDataCo
 // Impact Analysis
 router.get('/:type/:id/impact', MasterDataController.getDeleteImpact);
 
+// Audit Logs
+router.get('/audit-logs', MasterDataController.getAuditLogs);
+router.get('/audit-logs/:module/:id', MasterDataController.getResourceHistory);
+
 module.exports = router;

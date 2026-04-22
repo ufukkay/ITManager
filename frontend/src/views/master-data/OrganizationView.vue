@@ -30,7 +30,8 @@ const columns = computed(() => {
     { key: 'company_id', label: 'ID',           sortable: true, width: '80px' },
     { key: 'name',       label: 'Şirket Adı',     sortable: true },
     { key: 'personnel_count', label: 'Personel', sortable: true, width: '120px', align: 'center' },
-    { key: 'tax_number', label: 'Vergi Numarası', sortable: true, width: '220px' },
+    { key: 'tax_number', label: 'Vergi Numarası', sortable: true, width: '180px' },
+    { key: 'website',    label: 'Web Sitesi',    sortable: true, width: '180px' },
     { key: 'created_at', label: 'Eklenme Tarihi', sortable: true, width: '160px' },
   ]
   if (activeTab.value === 'departments') return [
@@ -61,11 +62,11 @@ const showModal      = ref(false)
 const showHistoryModal = ref(false)
 const editingItem    = ref(null)
 const historyItem    = ref(null)
-const formData       = ref({ name: '', code: '', tax_number: '', notes: '', dept_id: null, company_id: null })
+const formData       = ref({ name: '', code: '', tax_number: '', website: '', notes: '', dept_id: null, company_id: null })
 
 const openModal = (item = null) => {
   editingItem.value = item
-  formData.value = item ? { ...item } : { name: '', code: '', tax_number: '', notes: '', dept_id: null, company_id: null }
+  formData.value = item ? { ...item } : { name: '', code: '', tax_number: '', website: '', notes: '', dept_id: null, company_id: null }
   showModal.value = true
 }
 
@@ -323,10 +324,17 @@ onMounted(fetchData)
                     class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all">
                 </div>
               </div>
-              <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Vergi Numarası</label>
-                <input v-model="formData.tax_number" type="text"
-                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500">
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                  <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Vergi Numarası</label>
+                  <input v-model="formData.tax_number" type="text"
+                    class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500">
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Web Sitesi (Domain)</label>
+                  <input v-model="formData.website" type="text" placeholder="www.talay.com"
+                    class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500">
+                </div>
               </div>
             </template>
 

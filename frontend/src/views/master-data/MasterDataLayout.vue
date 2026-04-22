@@ -20,14 +20,9 @@ const menuSections = [
       { name: 'Araç Envanteri', icon: 'fa-truck-moving', path: '/master-data/vehicles' },
       { name: 'Lokasyonlar', icon: 'fa-map-marker-alt', path: '/master-data/locations' },
       { name: 'Sunucu Envanteri', icon: 'fa-server', path: '/master-data/servers' },
-      { name: 'Operatör & Paketler', icon: 'fa-hand-holding-heart', path: '/master-data/services' }
-    ]
-  },
-  {
-    title: 'Hızlı İşlemler',
-    items: [
-      { name: 'Şirket/Departman Ekle', icon: 'fa-building-circle-plus', path: '/master-data/actions/add-org' },
-      { name: 'Personel Atama', icon: 'fa-user-tag', path: '/master-data/actions/assign' }
+      { name: 'SIM Kart Havuzu', icon: 'fa-sim-card', path: '/master-data/sim-cards' },
+      { name: 'Operatör & Paketler', icon: 'fa-hand-holding-heart', path: '/master-data/services' },
+      { name: 'Yazılım Lisansları', icon: 'fa-key', path: '/master-data/licensing' }
     ]
   }
 ]

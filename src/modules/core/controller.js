@@ -1,5 +1,6 @@
 const MasterDataService = require('./service');
 const { parseM365Excel } = require('./services/m365InvoiceParser');
+const AuditService = require('../../services/auditService');
 
 class MasterDataController {
     // Shirketler
@@ -15,6 +16,14 @@ class MasterDataController {
     static async createCompany(req, res) {
         try {
             const id = await MasterDataService.createCompany(req.body);
+            AuditService.logActivity({
+                userId: req.session?.user?.id,
+                module: 'COMPANY',
+                action: 'CREATE',
+                resourceId: id,
+                details: { name: req.body.name },
+                ipAddress: req.ip
+            });
             res.status(201).json({ id });
         } catch (e) {
             res.status(500).json({ error: e.message });
@@ -24,6 +33,14 @@ class MasterDataController {
     static async updateCompany(req, res) {
         try {
             await MasterDataService.updateCompany(req.params.id, req.body);
+            AuditService.logActivity({
+                userId: req.session?.user?.id,
+                module: 'COMPANY',
+                action: 'UPDATE',
+                resourceId: req.params.id,
+                details: { name: req.body.name },
+                ipAddress: req.ip
+            });
             res.json({ success: true });
         } catch (e) {
             res.status(500).json({ error: e.message });
@@ -53,6 +70,14 @@ class MasterDataController {
     static async createDepartment(req, res) {
         try {
             const id = await MasterDataService.createDepartment(req.body);
+            AuditService.logActivity({
+                userId: req.session?.user?.id,
+                module: 'DEPARTMENT',
+                action: 'CREATE',
+                resourceId: id,
+                details: { name: req.body.name },
+                ipAddress: req.ip
+            });
             res.status(201).json({ id });
         } catch (e) {
             res.status(500).json({ error: e.message });
@@ -91,6 +116,14 @@ class MasterDataController {
     static async createCostCenter(req, res) {
         try {
             const id = await MasterDataService.createCostCenter(req.body);
+            AuditService.logActivity({
+                userId: req.session?.user?.id,
+                module: 'COST_CENTER',
+                action: 'CREATE',
+                resourceId: id,
+                details: { name: req.body.name, code: req.body.code },
+                ipAddress: req.ip
+            });
             res.status(201).json({ id });
         } catch (e) {
             res.status(500).json({ error: e.message });
@@ -128,6 +161,14 @@ class MasterDataController {
     static async createPersonnel(req, res) {
         try {
             const id = await MasterDataService.createPersonnel(req.body);
+            AuditService.logActivity({
+                userId: req.session?.user?.id,
+                module: 'PERSONNEL',
+                action: 'CREATE',
+                resourceId: id,
+                details: { name: `${req.body.first_name} ${req.body.last_name}` },
+                ipAddress: req.ip
+            });
             res.status(201).json({ id });
         } catch (e) {
             res.status(500).json({ error: e.message });
@@ -137,6 +178,14 @@ class MasterDataController {
     static async updatePersonnel(req, res) {
         try {
             await MasterDataService.updatePersonnel(req.params.id, req.body);
+            AuditService.logActivity({
+                userId: req.session?.user?.id,
+                module: 'PERSONNEL',
+                action: 'UPDATE',
+                resourceId: req.params.id,
+                details: { name: `${req.body.first_name} ${req.body.last_name}` },
+                ipAddress: req.ip
+            });
             res.json({ success: true });
         } catch (e) {
             res.status(500).json({ error: e.message });
@@ -183,6 +232,14 @@ class MasterDataController {
     static async createVehicle(req, res) {
         try {
             const id = await MasterDataService.createVehicle(req.body);
+            AuditService.logActivity({
+                userId: req.session?.user?.id,
+                module: 'VEHICLE',
+                action: 'CREATE',
+                resourceId: id,
+                details: { plate_no: req.body.plate_no },
+                ipAddress: req.ip
+            });
             res.status(201).json({ id });
         } catch (e) {
             res.status(500).json({ error: e.message });
@@ -220,6 +277,14 @@ class MasterDataController {
     static async createLocation(req, res) {
         try {
             const id = await MasterDataService.createLocation(req.body);
+            AuditService.logActivity({
+                userId: req.session?.user?.id,
+                module: 'LOCATION',
+                action: 'CREATE',
+                resourceId: id,
+                details: { name: req.body.name },
+                ipAddress: req.ip
+            });
             res.status(201).json({ id });
         } catch (e) {
             res.status(500).json({ error: e.message });
@@ -460,6 +525,27 @@ class MasterDataController {
             }
 
             res.json({ success: true, message: `${totalInserted} adet lisans maliyet kaydı işlendi.` });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    // Audit Logs
+    static async getAuditLogs(req, res) {
+        try {
+            const { limit } = req.query;
+            const data = await AuditService.getRecentActivities(limit ? parseInt(limit) : 20);
+            res.json(data);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async getResourceHistory(req, res) {
+        try {
+            const { module, id } = req.params;
+            const data = await AuditService.getResourceHistory(module, id);
+            res.json(data);
         } catch (e) {
             res.status(500).json({ error: e.message });
         }

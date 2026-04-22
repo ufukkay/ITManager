@@ -1,38 +1,58 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import api from '../../api'
+import { useMasterDataStore } from '../../stores/masterData'
 import AppTable from '../../components/AppTable.vue'
 import { useConfirm } from '../../composables/useConfirm'
 import * as XLSX from 'xlsx'
 
 const { ask, startLoading, stopLoading } = useConfirm()
+const masterData = useMasterDataStore()
 
 /* ─── State ─── */
 const summaries       = ref([])
 const invoices        = ref([])
 const loading         = ref(false)
 const uploading       = ref(false)
+const viewMode          = ref('documents') // 'documents' or 'records'
 const selectedPeriod  = ref('')
 const selectedSourceFile = ref('')
 const searchQuery     = ref('')
+const selectedOperator = ref('all') 
+
 const isUploadModalOpen  = ref(false)
 const isHistoryModalOpen = ref(false)
 const historyData        = ref(null)
 const historyLoading     = ref(false)
+
 const uploadPeriod    = ref(new Date().toISOString().slice(0, 7))
 const uploadOperator  = ref('Turkcell')
-const uploadType      = ref('gsm') // 'gsm' or 'm365'
+const uploadType      = ref('gsm') 
 const selectedFiles   = ref([])
 const fileInput       = ref(null)
 
 /* ─── Selection (bulk) ─── */
 const selectedIds       = ref([])
-const onSelectionChange = (rows) => { selectedIds.value = rows.map(r => r.id) }
+const onSelectionChange = (rows) => { 
+  if (viewMode.value === 'documents') {
+    selectedIds.value = rows.map(r => r.source_file + r.period)
+  } else {
+    selectedIds.value = rows.map(r => r.id) 
+  }
+}
 
 /* ─── Table columns ─── */
-const columns = [
-  { key: 'personnel_name', label: 'Personel / Paydaş',  sortable: true, width: '200px' },
-  { key: 'invoice_type',   label: 'Tür',                 sortable: true, width: '100px' },
+const docColumns = [
+  { key: 'period',         label: 'Dönem',               sortable: true, width: '100px' },
+  { key: 'operator',       label: 'Operatör',            sortable: true, width: '130px' },
+  { key: 'source_file',    label: 'Dosya / Belge Adı',   sortable: true, nowrap: false },
+  { key: 'ticket_count',   label: 'Kayıt',               sortable: true, width: '90px', align: 'center' },
+  { key: 'total_payable',  label: 'Toplam Tutar',        sortable: true, width: '140px', align: 'right' },
+  { key: 'unmatched_count',label: 'Açık Kayıt',          sortable: true, width: '110px', align: 'center' },
+]
+
+const recordColumns = [
+  { key: 'invoice_type',   label: 'Tür',                 sortable: true, width: '90px' },
   { key: 'company_name',   label: 'Şirket',              sortable: true, width: '150px' },
   { key: 'cost_center',    label: 'Masraf Merkezi',      sortable: true, width: '150px' },
   { key: 'phone_no',       label: 'Detay',               sortable: true, width: '130px' },
@@ -41,29 +61,41 @@ const columns = [
   { key: 'status_label',   label: 'Durum',               sortable: true, width: '100px' },
 ]
 
-/* Map is_matched → status_label for filtering/sorting */
-const tableRows = computed(() =>
-  invoices.value.map(i => ({ ...i, status_label: i.is_matched ? 'Eşleşti' : 'Açık' }))
-)
+/* Filtering */
+const filteredDocuments = computed(() => {
+  let list = summaries.value
+  if (selectedOperator.value !== 'all') {
+    list = list.filter(i => i.operator === selectedOperator.value)
+  }
+  if (searchQuery.value) {
+    const s = searchQuery.value.toLowerCase()
+    list = list.filter(d => d.source_file.toLowerCase().includes(s))
+  }
+  return list
+})
 
-/* ─── Stats ─── */
-const stats = computed(() => ({
-  totalPayable:   invoices.value.reduce((a, b) => a + (b.total_amount || 0), 0),
-  ticketCount:    invoices.value.length,
-  unmatchedCount: invoices.value.filter(i => !i.is_matched).length,
-}))
+const filteredInvoices = computed(() => {
+  let list = invoices.value
+  if (selectedOperator.value !== 'all') {
+    list = list.filter(i => i.operator === selectedOperator.value)
+  }
+  return list.map(i => ({ ...i, status_label: i.is_matched ? 'Eşleşti' : 'Açık' }))
+})
 
 /* ─── Fetch ─── */
 const fetchSummaries = async () => {
+  loading.value = true
   try {
     const res = await api.get('/sim-takip/api/invoices/summary')
     summaries.value = res.data
     if (!selectedPeriod.value && summaries.value.length > 0)
       selectedPeriod.value = summaries.value[0].period
   } catch (err) { console.error('Özetler yüklenemedi:', err) }
+  finally { loading.value = false }
 }
 
 const fetchInvoices = async () => {
+  if (viewMode.value === 'documents') return
   loading.value = true
   try {
     const res = await api.get('/sim-takip/api/invoices/list', {
@@ -78,18 +110,50 @@ const fetchInvoices = async () => {
   finally { loading.value = false }
 }
 
+const backToDocuments = () => {
+  viewMode.value = 'documents'
+  selectedSourceFile.value = ''
+  selectedIds.value = [] // Selection'ı temizle
+  fetchSummaries()
+}
+
+const selectDocument = (doc) => {
+  selectedPeriod.value = doc.period
+  selectedSourceFile.value = doc.source_file
+  viewMode.value = 'records'
+  selectedIds.value = [] // Selection'ı temizle
+  fetchInvoices()
+}
+
 const periods = computed(() => {
   const pSet = new Set(summaries.value.map(s => s.period))
   return [...pSet].sort((a, b) => b.localeCompare(a))
 })
 
-const filesForSelectedPeriod = computed(() => {
-  if (!selectedPeriod.value) return []
-  return summaries.value.filter(s => s.period === selectedPeriod.value)
+watch(selectedPeriod, () => {
+  if (viewMode.value === 'records') fetchInvoices()
+  else fetchSummaries()
 })
 
-watch(selectedPeriod, () => { selectedSourceFile.value = '' })
-watch([selectedPeriod, selectedSourceFile], () => fetchInvoices())
+const renameDocument = async (doc) => {
+  const newName = window.prompt('Yeni dosya adını giriniz:', doc.source_file)
+  if (!newName || newName === doc.source_file) return
+
+  try {
+    startLoading()
+    await api.post('/sim-takip/api/invoices/rename-file', {
+      oldName: doc.source_file,
+      newName: newName,
+      period: doc.period,
+      operator: doc.operator
+    })
+    await fetchSummaries()
+  } catch (err) {
+    alert('Ad değiştirme hatası: ' + (err.response?.data?.message || err.message))
+  } finally {
+    stopLoading()
+  }
+}
 
 let searchTimeout = null
 watch(searchQuery, () => {
@@ -117,7 +181,7 @@ const exportInvoices = async () => {
 const exportSelectedRows = () => {
   const selected = invoices.value.filter(i => selectedIds.value.includes(i.id))
   const rows = selected.map(r => ({
-    Personel: r.personnel_name, Şirket: r.company_name, 'Masraf Merkezi': r.cost_center,
+    Şirket: r.company_name, 'Masraf Merkezi': r.cost_center,
     Telefon: r.phone_no, Tarife: r.tariff, Tutar: r.total_amount, Durum: r.status_label
   }))
   const ws = XLSX.utils.json_to_sheet(rows)
@@ -143,11 +207,13 @@ const uploadInvoices = async () => {
   selectedFiles.value.forEach(file => formData.append('file', file))
   
   try {
-    await api.post(endpoint, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+    const res = await api.post(endpoint, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
     isUploadModalOpen.value = false
     selectedFiles.value = []
-    fetchSummaries()
+    selectedPeriod.value = uploadPeriod.value
+    await fetchSummaries()
     fetchInvoices()
+    alert(`Başarılı! ${res.data?.message || 'Faturalar yüklendi.'}`)
   } catch (err) {
     alert('Yükleme hatası: ' + (err.response?.data?.message || err.response?.data?.error || err.message))
   } finally { uploading.value = false }
@@ -156,15 +222,44 @@ const uploadInvoices = async () => {
 const deleteSelectedInvoices = async () => {
   if (selectedIds.value.length === 0) return
   const confirmed = await ask({
-    title: 'Faturaları Sil',
-    message: `${selectedIds.value.length} adet fatura kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
-    confirmLabel: 'Evet, Hepsini Sil'
+    title: 'Kayıtları Sil',
+    message: `${selectedIds.value.length} adet fatura satırını silmek istediğinize emin misiniz?`,
+    confirmLabel: 'Evet, Sil'
   })
   if (!confirmed) return
   try {
     await api.post('/sim-takip/api/invoices/bulk-delete', { ids: selectedIds.value })
     selectedIds.value = []
     fetchInvoices()
+  } catch (err) { alert('Silme hatası: ' + (err.response?.data?.message || err.message)) }
+}
+
+const deleteSelectedDocuments = async () => {
+  if (selectedIds.value.length === 0) return
+  
+  // Seçili dokümanların bilgilerini hazırla
+  const selectedDocs = summaries.value.filter(s => {
+    // summaries tablosunda ID yok, o yüzden source_file+period+operator kombinasyonunu kullanacağız veya summaries'e ID ekleyeceğiz.
+    // Şimdilik AppTable selection row'un kendisini de döndürebilir ama biz sadece ID tutuyoruz.
+    // Bu yüzden seçili row'ları bulmak için farklı bir yaklaşım lazım.
+    return selectedIds.value.includes(s.source_file + s.period) // Geçici unique key
+  })
+
+  const confirmed = await ask({
+    title: 'Belgeleri Sil',
+    message: `${selectedIds.value.length} adet faturayı ve içindeki tüm kayıtları silmek istediğinize emin misiniz?`,
+    confirmLabel: 'Evet, Belgeleri Sil'
+  })
+  if (!confirmed) return
+
+  try {
+    // summaries tablosundan gelen verilerle backend'deki bulk-delete-summaries'e uygun formatta gönderelim
+    const summariesToDelete = summaries.value
+      .filter(s => selectedIds.value.includes(s.source_file + s.period))
+      .map(s => ({ period: s.period, operator: s.operator, source_file: s.source_file }))
+
+    await api.post('/sim-takip/api/invoices/bulk-delete-summaries', { summaries: summariesToDelete })
+    selectedIds.value = []
     fetchSummaries()
   } catch (err) { alert('Silme hatası: ' + (err.response?.data?.message || err.message)) }
 }
@@ -179,214 +274,309 @@ const showHistory = async (row) => {
   finally { historyLoading.value = false }
 }
 
+const getVendorLogo = (name) => {
+  if (!name) return 'fas fa-building text-gray-400'
+  const lower = name.toLowerCase()
+  if (lower.includes('turkcell')) return 'fas fa-mobile-alt text-blue-600'
+  if (lower.includes('vodafone')) return 'fas fa-mobile-alt text-red-600'
+  if (lower.includes('telekom')) return 'fas fa-mobile-alt text-blue-800'
+  if (lower.includes('microsoft')) return 'fab fa-microsoft text-blue-500'
+  if (lower.includes('fixcloud')) return 'fas fa-cloud text-sky-500'
+  return 'fas fa-building text-gray-400'
+}
+
 onMounted(() => {
+  masterData.fetchOperators()
   fetchSummaries()
-  fetchInvoices()
 })
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4 text-[#3c4043]">
+  <div class="h-full flex text-[#3c4043] overflow-hidden bg-white">
+    
+    <!-- Sidebar: Vendors (Modern Sub-Sidebar) -->
+    <div class="w-64 bg-gray-50 border-r border-gray-100 flex flex-col shrink-0 overflow-hidden">
+      <div class="p-5 border-b border-gray-100">
+        <h2 class="text-[10px] font-black text-gray-400 uppercase tracking-[2px] mb-1">Tedarikçiler</h2>
+        <p class="text-[12px] text-gray-900 font-bold">Hizmet Sağlayıcılar</p>
+      </div>
 
-    <!-- Stats Header -->
-    <div class="bg-white border-b border-[#eee] px-6 py-4 flex items-center justify-between shrink-0">
-      <div class="flex items-center gap-10">
-        <div class="flex flex-col border-l-4 border-blue-600 pl-4">
-          <h1 class="text-[17px] font-bold text-gray-800 tracking-tight leading-none mb-1">Fatura Yönetimi</h1>
-          <span class="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-none">Operatör & Maliyet Analizi</span>
-        </div>
-        
-        <div class="flex items-center gap-8">
-          <div class="flex flex-col">
-            <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Toplam Ödenecek</span>
-            <span class="text-[16px] font-bold text-gray-900 leading-none">{{ stats.totalPayable.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</span>
-          </div>
-          <div class="flex flex-col h-8 w-px bg-gray-100"></div>
-          <div class="flex flex-col">
-            <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Kayıt Sayısı</span>
-            <span class="text-[16px] font-bold text-gray-700 leading-none">{{ stats.ticketCount }}</span>
-          </div>
-          <div v-if="stats.unmatchedCount > 0" class="flex flex-col border-l border-red-50 pl-6">
-            <span class="text-[10px] text-red-400 font-bold uppercase tracking-wider mb-1">Eşleşmeyen</span>
-            <span class="text-[16px] font-bold text-red-600 leading-none">{{ stats.unmatchedCount }}</span>
-          </div>
-        </div>
+      <nav class="flex-1 overflow-y-auto px-2 py-4 space-y-0.5">
+        <button type="button" @click="selectedOperator = 'all'"
+          :class="selectedOperator === 'all' ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'"
+          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left group">
+          <i class="fas fa-th-large text-[12px] w-4 text-center"></i>
+          <span class="text-[13px] font-semibold">Tüm Maliyetler</span>
+        </button>
+
+        <button v-for="op in masterData.operators" :key="op.id" type="button" @click="selectedOperator = op.name"
+          :class="selectedOperator === op.name ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'"
+          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left group">
+          <i :class="[getVendorLogo(op.name), 'text-[12px] w-4 text-center']"></i>
+          <span class="text-[13px] font-semibold truncate">{{ op.name }}</span>
+        </button>
+
+        <template v-for="name in [...new Set(invoices.map(i => i.operator))]" :key="name">
+          <button v-if="!masterData.operators.find(o => o.name === name) && name" type="button" @click="selectedOperator = name"
+            :class="selectedOperator === name ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'"
+            class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-left group">
+            <i :class="[getVendorLogo(name), 'text-[12px] w-4 text-center']"></i>
+            <span class="text-[13px] font-semibold truncate">{{ name }}</span>
+          </button>
+        </template>
+      </nav>
+
+      <div class="p-4 border-t border-gray-100">
+        <button @click="isUploadModalOpen = true" class="w-full h-10 bg-gray-900 text-white rounded-lg text-[12px] font-bold hover:bg-black transition-all flex items-center justify-center gap-2">
+          <i class="fas fa-plus"></i> Fatura Yükle
+        </button>
       </div>
     </div>
 
-    <!-- AppTable -->
-    <AppTable
-      :columns="columns"
-      :rows="tableRows"
-      :loading="loading"
-      :selectable="true"
-      empty-text="Sonuç bulunamadı"
-      @row-history="showHistory"
-      @selection-change="onSelectionChange"
-    >
-      <template #toolbar>
-        <!-- Period & file selects -->
-        <select v-model="selectedPeriod" title="Dönem"
-          class="at-qs">
-          <option value="">Dönem</option>
-          <option v-for="p in periods" :key="p" :value="p">{{ p }}</option>
-        </select>
-
-        <select v-model="selectedSourceFile" title="Dosya"
-          class="at-qs !max-w-[320px]">
-          <option value="">Dosya / Belge</option>
-          <option v-for="s in filesForSelectedPeriod" :key="s.source_file" :value="s.source_file">{{ s.source_file }}</option>
-        </select>
-
-        <button type="button" @click="fetchInvoices"
-          class="h-8 w-8 flex items-center justify-center text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded border border-[#dadce0]" title="Yenile">
-          <i class="fas fa-sync-alt text-[12px]"></i>
-        </button>
-
-        <!-- Selection bulk actions -->
-        <template v-if="selectedIds.length > 0">
-          <span class="text-[13px] font-bold text-[#1a73e8] ml-2">{{ selectedIds.length }} Seçili</span>
-          <button type="button" @click="exportSelectedRows"
-            class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-none text-[12px] font-bold hover:bg-emerald-100">
-            <i class="fas fa-file-excel"></i> Seçilenleri İndir
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- Minimalist Toolbar -->
+      <div class="h-14 border-b border-gray-100 px-6 flex items-center justify-between shrink-0 bg-white">
+        <div class="flex items-center gap-4">
+          <button v-if="viewMode === 'records'" @click="backToDocuments" class="h-8 px-3 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded text-gray-600 transition-all font-bold text-[11px] gap-2">
+            <i class="fas fa-chevron-left text-[9px]"></i> GERİ DÖN
           </button>
-          <button type="button" @click="deleteSelectedInvoices"
-            class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-none text-[12px] font-bold hover:bg-red-100">
-            <i class="fas fa-trash-alt"></i> Sil
-          </button>
-        </template>
-
-        <button type="button" @click="exportInvoices"
-          class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-600 border border-gray-100 rounded-none text-[12px] font-bold hover:bg-gray-100 outline-none">
-          <i class="fas fa-file-excel text-gray-400"></i> Dışa Aktar
-        </button>
-        <button type="button" @click="isUploadModalOpen = true"
-          class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-none text-[12px] font-bold hover:bg-blue-700 shadow-sm outline-none">
-          <i class="fas fa-plus"></i> Dosya Yükle
-        </button>
-      </template>
-
-      <!-- Tür Badge -->
-      <template #cell-invoice_type="{ value }">
-        <span :class="[
-          'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider',
-          value === 'gsm' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
-        ]">
-          {{ value || 'gsm' }}
-        </span>
-      </template>
-
-      <!-- Detay font-mono -->
-      <template #cell-phone_no="{ row, value }">
-        <span v-if="row.invoice_type === 'gsm'" class="font-mono text-[12px] whitespace-nowrap">{{ value || '—' }}</span>
-        <span v-else class="text-[11px] text-gray-400 italic">M365 Lisans Gideri</span>
-      </template>
-
-      <!-- Tutar -->
-      <template #cell-total_amount="{ value }">
-        <span class="font-bold text-gray-900">{{ (value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</span>
-      </template>
-
-      <!-- Durum badge -->
-      <template #cell-status_label="{ value }">
-        <span v-if="value === 'Eşleşti'" class="px-2 py-0.5 rounded text-[12px] font-bold uppercase bg-[#e6f4ea] text-[#1e8e3e]">EŞLEŞTİ</span>
-        <span v-else class="px-2 py-0.5 rounded text-[12px] font-bold uppercase bg-[#fce8e6] text-[#d93025]">AÇIK</span>
-      </template>
-
-      <!-- Actions: only history button per row -->
-      <template #actions="{ row }">
-        <button type="button" @click="showHistory(row)"
-          class="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-100 rounded-full transition-all">
-          <i class="fas fa-history text-[11px]"></i>
-        </button>
-      </template>
-    </AppTable>
-
-    <!-- Upload Modal -->
-    <dialog class="modal" :class="{ 'modal-open': isUploadModalOpen }">
-      <div class="modal-box bg-white max-w-lg p-0 rounded-none shadow-md overflow-hidden">
-        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
-          <h3 class="text-[16px] font-bold text-gray-700">Fatura Dosyası Yükle</h3>
-          <button type="button" @click="isUploadModalOpen = false" class="text-gray-400 hover:text-black"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="p-6 space-y-4">
-          <div class="space-y-1">
-            <label class="text-[13px] font-bold text-gray-500 uppercase tracking-wide">Hizmet Tipi</label>
-            <div class="flex gap-4 p-1 bg-gray-100 rounded-lg">
-              <button type="button" @click="uploadType = 'gsm'" 
-                :class="uploadType === 'gsm' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'"
-                class="flex-1 py-2 text-[12px] font-bold rounded-md transition-all">
-                <i class="fas fa-mobile-alt mr-2"></i> GSM (PDF/XML)
-              </button>
-              <button type="button" @click="uploadType = 'm365'" 
-                :class="uploadType === 'm365' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'"
-                class="flex-1 py-2 text-[12px] font-bold rounded-md transition-all">
-                <i class="fas fa-microsoft mr-2"></i> M365 (Excel)
-              </button>
-            </div>
+          <div v-if="viewMode === 'records'" class="flex items-center gap-2">
+            <span class="text-[14px] font-bold text-gray-900">{{ selectedSourceFile }}</span>
+            <span class="text-[12px] text-gray-400 font-medium">/ {{ selectedPeriod }}</span>
           </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1">
-              <label class="text-[13px] font-bold text-gray-500 uppercase">Dönem</label>
-              <input v-model="uploadPeriod" type="month"
-                class="w-full h-10 px-3 border border-gray-300 rounded outline-none focus:border-[#1a73e8]">
-            </div>
-            <div v-if="uploadType === 'gsm'" class="space-y-1">
-              <label class="text-[13px] font-bold text-gray-500 uppercase tracking-wide">Operatör</label>
-              <select v-model="uploadOperator"
-                class="w-full h-10 px-3 border border-gray-300 rounded outline-none focus:border-[#1a73e8] bg-white text-[13px] font-bold">
-                <option value="Turkcell">Turkcell</option>
-                <option value="Vodafone">Vodafone</option>
-                <option value="Türk Telekom">Türk Telekom</option>
-              </select>
-            </div>
-          </div>
-          <div @click="fileInput.click()"
-            class="border-2 border-dashed border-gray-200 rounded p-10 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50/30 transition-all">
-            <input type="file" ref="fileInput" multiple @change="e => selectedFiles = [...e.target.files]" class="hidden" :accept="uploadType === 'm365' ? '.xlsx,.xls' : '.pdf,.xml'">
-            <i class="fas fa-cloud-upload-alt text-3xl text-gray-300 mb-2"></i>
-            <span class="text-[13px] font-bold text-gray-600">
-              {{ uploadType === 'm365' ? 'M365 Excel dosyasını seçin' : 'PDF veya XML dosyalarını seçin' }}
-            </span>
-            <div v-if="selectedFiles.length > 0" class="mt-4 text-[12px] font-bold text-[#1a73e8] bg-blue-50 px-3 py-1 rounded">
-              {{ selectedFiles.length }} dosya seçildi
-            </div>
+          <div v-else class="flex items-center gap-2">
+            <span class="text-[14px] font-bold text-gray-900">Mali Kayıtlar</span>
           </div>
         </div>
-        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2">
-          <button type="button" @click="isUploadModalOpen = false"
-            class="px-4 py-2 text-[13px] font-bold text-gray-500 hover:text-black uppercase">İptal</button>
-          <button type="button" @click="uploadInvoices"
-            :disabled="selectedFiles.length === 0 || uploading"
-            class="px-6 py-2 bg-[#1a73e8] text-white rounded text-[13px] font-bold hover:bg-blue-700 disabled:opacity-50">
-            Yüklemeyi Başlat
+
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[11px]"></i>
+            <input v-model="searchQuery" type="text" :placeholder="viewMode === 'documents' ? 'Belge ara...' : 'Telefon veya detay...'"
+              class="h-8 pl-8 pr-3 bg-gray-50 border border-gray-100 rounded text-[12px] outline-none focus:bg-white focus:border-blue-200 w-48 transition-all font-medium">
+          </div>
+          
+          <div class="h-6 w-px bg-gray-100 mx-1"></div>
+
+          <button @click="exportInvoices" class="h-8 px-3 bg-white text-gray-600 rounded text-[11px] font-bold border border-gray-100 hover:bg-gray-50 flex items-center gap-2 transition-all">
+            <i class="fas fa-download text-emerald-500"></i> İNDİR
+          </button>
+          
+          <select v-model="selectedPeriod" class="h-8 px-2 bg-white border border-gray-100 rounded text-[11px] font-bold outline-none focus:border-blue-500 cursor-pointer min-w-[100px]">
+            <option value="">TÜM DÖNEMLER</option>
+            <option v-for="p in periods" :key="p" :value="p">{{ p }}</option>
+          </select>
+
+          <button @click="viewMode === 'documents' ? fetchSummaries() : fetchInvoices()" class="h-8 w-8 flex items-center justify-center bg-gray-50 text-gray-400 hover:text-blue-600 rounded border border-gray-100 transition-all">
+            <i class="fas fa-sync-alt text-[10px]"></i>
           </button>
         </div>
       </div>
-    </dialog>
 
-    <!-- History Modal -->
-    <dialog class="modal" :class="{ 'modal-open': isHistoryModalOpen }">
-      <div class="modal-box bg-white max-w-xl p-0 rounded-none shadow-md overflow-hidden border border-gray-200">
-        <div class="px-6 py-4 bg-[#f8f9fa] border-b border-[#dadce0] flex justify-between items-center">
-          <h3 class="text-[16px] font-bold text-gray-700">
-            Maliyet Geçmişi <span class="font-mono ml-2 text-gray-400">{{ historyData?.phone_no }}</span>
-          </h3>
-          <button type="button" @click="isHistoryModalOpen = false" class="text-gray-400 hover:text-black"><i class="fas fa-times"></i></button>
+      <!-- Bulk Actions Bar -->
+      <div v-if="selectedIds.length > 0" class="bg-blue-600 text-white px-6 py-2 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-4">
+          <span class="text-[13px] font-bold">{{ selectedIds.length }} {{ viewMode === 'documents' ? 'Belge' : 'Kayıt' }} Seçildi</span>
+          <div class="h-4 w-px bg-blue-400/50"></div>
+          <button v-if="viewMode === 'records'" @click="exportSelectedRows" class="text-[12px] font-bold hover:underline flex items-center gap-1.5">
+            <i class="fas fa-file-excel"></i> Excel Olarak İndir
+          </button>
         </div>
-        <div class="p-6 max-h-[500px] overflow-y-auto divide-y divide-gray-100">
-          <div v-for="h in historyData?.history" :key="h.period + h.source_file"
-            class="py-3 flex justify-between items-center group">
+        <button @click="viewMode === 'documents' ? deleteSelectedDocuments() : deleteSelectedInvoices()" 
+          class="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-[11px] font-bold transition-all flex items-center gap-1.5">
+          <i class="fas fa-trash-alt"></i> Seçilenleri Sil
+        </button>
+      </div>
+
+      <!-- Table Section -->
+      <div class="flex-1 min-h-0 bg-white">
+        <AppTable
+          :columns="viewMode === 'documents' ? docColumns : recordColumns"
+          :rows="viewMode === 'documents' ? filteredDocuments : filteredInvoices"
+          :loading="loading"
+          :selectable="true"
+          :empty-text="viewMode === 'documents' ? 'Fatura kaydı bulunamadı' : 'Kayıt bulunamadı'"
+          @row-history="showHistory"
+          @selection-change="onSelectionChange"
+        >
+          <template #cell-source_file="{ row, value }">
             <div class="flex flex-col">
-              <span class="text-[12px] font-bold text-gray-400 uppercase">{{ h.period }}</span>
-              <span class="text-[14px] font-bold text-gray-700 group-hover:text-blue-600 transition-colors">{{ h.tariff || 'Tanımsız Tarife' }}</span>
+              <span class="text-[13px] font-bold text-gray-900">{{ value }}</span>
+              <span class="text-[10px] text-gray-400 font-mono">{{ row.period }}</span>
             </div>
-            <span class="text-[15px] font-bold text-gray-900">{{ h.total_amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</span>
+          </template>
+
+          <template #cell-ticket_count="{ value }">
+            <span class="text-[12px] font-semibold text-gray-600">{{ value }} Kayıt</span>
+          </template>
+
+          <template #cell-total_payable="{ value }">
+            <span class="font-bold text-gray-900 tabular-nums">{{ (value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</span>
+          </template>
+
+          <template #cell-unmatched_count="{ value }">
+            <span v-if="value > 0" class="px-2 py-0.5 bg-red-50 text-red-600 rounded text-[10px] font-bold">{{ value }} AÇIK</span>
+            <span v-else class="text-emerald-500"><i class="fas fa-check-circle text-[12px]"></i></span>
+          </template>
+
+          <template #cell-invoice_type="{ value }">
+            <span :class="[
+              'px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider',
+              value === 'gsm' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+            ]">
+              {{ value || 'gsm' }}
+            </span>
+          </template>
+
+          <template #cell-phone_no="{ row, value }">
+            <span v-if="row.invoice_type === 'gsm'" class="font-mono text-[12px] text-gray-500">{{ value || '—' }}</span>
+            <span v-else class="text-[11px] text-gray-400 font-medium italic">Sistem Lisans Gideri</span>
+          </template>
+
+          <template #cell-total_amount="{ value }">
+            <span class="font-bold text-gray-900 tabular-nums">{{ (value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</span>
+          </template>
+
+          <template #cell-status_label="{ value }">
+            <div class="flex items-center gap-1.5">
+              <div class="w-1.5 h-1.5 rounded-full" :class="value === 'Eşleşti' ? 'bg-emerald-500' : 'bg-red-500'"></div>
+              <span class="text-[11px] font-bold uppercase tracking-tight" :class="value === 'Eşleşti' ? 'text-emerald-600' : 'text-red-600'">
+                {{ value }}
+              </span>
+            </div>
+          </template>
+
+          <template #actions="{ row }">
+            <div v-if="viewMode === 'documents'" class="flex items-center gap-2">
+              <button type="button" @click="renameDocument(row)"
+                class="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all"
+                title="Dosya Adını Düzenle">
+                <i class="fas fa-edit text-[11px]"></i>
+              </button>
+              <button type="button" @click="selectDocument(row)"
+                class="px-3 h-7 flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded text-[10px] font-bold transition-all">
+                DETAY <i class="fas fa-chevron-right ml-1 text-[8px]"></i>
+              </button>
+            </div>
+            <button v-else type="button" @click="showHistory(row)"
+              class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all">
+              <i class="fas fa-history text-[11px]"></i>
+            </button>
+          </template>
+        </AppTable>
+      </div>
+    </div>
+
+    <!-- Modals -->
+    <Teleport to="body">
+      <div v-if="isUploadModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" @click.self="isUploadModalOpen = false">
+        <div class="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+          <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <h3 class="text-[16px] font-bold text-gray-900">Fatura Dosyası Yükle</h3>
+            <button @click="isUploadModalOpen = false" class="text-gray-400 hover:text-gray-700 w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div class="p-8 space-y-6">
+            <div class="space-y-2">
+              <label class="text-[11px] font-bold text-gray-400 uppercase tracking-[2px]">Hizmet Tipi</label>
+              <div class="flex gap-4 p-1.5 bg-gray-100 rounded-xl">
+                <button type="button" @click="uploadType = 'gsm'" 
+                  :class="uploadType === 'gsm' ? 'bg-white shadow text-blue-600' : 'text-gray-500'"
+                  class="flex-1 py-3 text-[13px] font-bold rounded-lg transition-all flex items-center justify-center gap-2">
+                  <i class="fas fa-mobile-alt"></i> GSM
+                </button>
+                <button type="button" @click="uploadType = 'm365'" 
+                  :class="uploadType === 'm365' ? 'bg-white shadow text-blue-600' : 'text-gray-500'"
+                  class="flex-1 py-3 text-[13px] font-bold rounded-lg transition-all flex items-center justify-center gap-2">
+                  <i class="fab fa-microsoft"></i> M365
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-5">
+              <div class="space-y-2">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-[2px]">Dönem</label>
+                <input v-model="uploadPeriod" type="month"
+                  class="w-full h-11 px-4 border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-gray-50 font-bold">
+              </div>
+              <div v-if="uploadType === 'gsm'" class="space-y-2">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-[2px]">Operatör</label>
+                <select v-model="uploadOperator"
+                  class="w-full h-11 px-4 border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-gray-50 text-[13px] font-bold cursor-pointer">
+                  <option value="Turkcell">Turkcell</option>
+                  <option value="Vodafone">Vodafone</option>
+                  <option value="Türk Telekom">Türk Telekom</option>
+                </select>
+              </div>
+            </div>
+
+            <div @click="fileInput.click()"
+              class="border-2 border-dashed border-gray-200 rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer hover:border-blue-300 hover:bg-blue-50/20 transition-all group">
+              <input type="file" ref="fileInput" multiple @change="e => selectedFiles = [...e.target.files]" class="hidden" :accept="uploadType === 'm365' ? '.xlsx,.xls' : '.pdf,.xml'">
+              <div class="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <i class="fas fa-cloud-upload-alt text-xl text-gray-400 group-hover:text-blue-500"></i>
+              </div>
+              <span class="text-[13px] font-bold text-gray-600 text-center">
+                {{ uploadType === 'm365' ? 'Excel dosyasını seçin' : 'PDF veya XML dosyalarını seçin' }}
+              </span>
+              
+              <div v-if="selectedFiles.length > 0" class="mt-4 flex flex-wrap gap-2 justify-center">
+                <div v-for="f in selectedFiles" :key="f.name" class="px-2 py-1 bg-blue-600 text-white text-[10px] font-bold rounded flex items-center gap-2">
+                  <i class="far fa-file"></i> {{ f.name }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-7 py-5 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
+            <button @click="isUploadModalOpen = false" class="px-4 py-2 text-[13px] font-bold text-gray-500 hover:text-gray-700">İptal</button>
+            <button @click="uploadInvoices" :disabled="selectedFiles.length === 0 || uploading"
+              class="px-8 py-3 bg-blue-600 text-white rounded-lg text-[13px] font-bold hover:bg-blue-700 disabled:opacity-50 transition-all shadow-md shadow-blue-100">
+              <span v-if="uploading"><i class="fas fa-spinner fa-spin mr-2"></i> Yükleniyor...</span>
+              <span v-else>Yüklemeyi Başlat</span>
+            </button>
           </div>
         </div>
       </div>
-      <form method="dialog" class="modal-backdrop" @click="isHistoryModalOpen = false"><button>close</button></form>
-    </dialog>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="isHistoryModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" @click.self="isHistoryModalOpen = false">
+        <div class="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+          <div class="px-7 py-5 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center">
+            <h3 class="text-[15px] font-bold text-gray-900 flex items-center gap-3">
+              Maliyet Geçmişi 
+              <span class="px-2 py-0.5 bg-blue-100 text-blue-600 rounded font-mono text-[11px]">{{ historyData?.phone_no || 'Lisans' }}</span>
+            </h3>
+            <button @click="isHistoryModalOpen = false" class="text-gray-400 hover:text-gray-700 w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="p-6 max-h-[450px] overflow-y-auto space-y-3">
+            <div v-if="historyLoading" class="flex flex-col items-center justify-center py-10">
+               <div class="w-8 h-8 border-4 border-blue-50 border-t-blue-600 rounded-full animate-spin mb-3"></div>
+            </div>
+            <div v-else-if="!historyData?.history?.length" class="text-center py-10 text-gray-400 text-[13px] italic">Geçmiş veri bulunamadı.</div>
+            <div v-for="h in historyData?.history" :key="h.period + h.source_file"
+              class="flex items-center justify-between p-3.5 bg-gray-50 border border-gray-100 rounded-xl">
+              <div class="flex flex-col">
+                <span class="text-[9px] font-black text-gray-400 uppercase tracking-widest">{{ h.period }}</span>
+                <span class="text-[13px] font-bold text-gray-800">{{ h.tariff || 'Standart Hizmet' }}</span>
+                <span class="text-[10px] text-gray-400 truncate max-w-[250px]">{{ h.source_file }}</span>
+              </div>
+              <div class="text-[16px] font-black text-gray-900 tabular-nums">
+                {{ h.total_amount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} <span class="text-[11px] text-gray-400">₺</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+</style>

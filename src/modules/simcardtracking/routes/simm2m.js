@@ -51,7 +51,6 @@ router.get('/:id', (req, res) => {
 router.post('/', hasPermission('sim:edit'), (req, res) => {
   const { iccid, phone_no, operator, status, vehicle_id, notes, package_id, company_id, personnel_id, department_id, last_usage_date } = req.body;
   if (!operator) return res.status(400).json({ message: 'Operatör zorunludur.' });
-  if (!vehicle_id) return res.status(400).json({ message: 'Araç (Plaka) seçimi zorunludur.' });
 
   // Mükerrer kayıt kontrolü
   if (phone_no) {
@@ -68,8 +67,8 @@ router.post('/', hasPermission('sim:edit'), (req, res) => {
     const result = db.prepare(`
       INSERT INTO sim_m2m (iccid, phone_no, operator, status, vehicle_id, notes, package_id, company_id, personnel_id, department_id, last_usage_date)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(iccid || null, phone_no || null, operator, status || 'active',
-           vehicle_id, notes || null, package_id || null, company_id || null,
+    `).run(iccid || null, phone_no || null, operator, status || 'Aktif',
+           vehicle_id || null, notes || null, package_id || null, company_id || null,
            personnel_id || null, department_id || null, last_usage_date || null);
     
     logActivity(req, 'CREATE', 'M2M', result.lastInsertRowid, { iccid, phone_no, vehicle_id });
@@ -94,19 +93,25 @@ router.put('/:id', hasPermission('sim:edit'), (req, res) => {
   }
 
   try {
+    const v_id = vehicle_id ? parseInt(vehicle_id) : null;
+    const pkg_id = package_id ? parseInt(package_id) : null;
+    const c_id = company_id ? parseInt(company_id) : null;
+    const p_id = personnel_id ? parseInt(personnel_id) : null;
+    const d_id = department_id ? parseInt(department_id) : null;
+
     const result = db.prepare(`
       UPDATE sim_m2m
       SET iccid=?, phone_no=?, operator=?, status=?, vehicle_id=?, notes=?, package_id=?, 
           company_id=?, personnel_id=?, department_id=?, last_usage_date=?, updated_at=CURRENT_TIMESTAMP
       WHERE id=?
     `).run(iccid || null, phone_no || null, operator, status,
-           vehicle_id || null, notes || null, package_id || null, 
-           company_id || null, personnel_id || null, department_id || null, last_usage_date || null,
+           v_id, notes || null, pkg_id, 
+           c_id, p_id, d_id, last_usage_date || null,
            req.params.id);
     
     if (result.changes === 0) return res.status(404).json({ message: 'Kayıt bulunamadı.' });
     
-    logActivity(req, 'UPDATE', 'M2M', req.params.id, { iccid, phone_no, vehicle_id });
+    logActivity(req, 'UPDATE', 'M2M', req.params.id, { iccid, phone_no, vehicle_id: v_id });
     res.json({ message: 'M2M hattı güncellendi.' });
   } catch (err) {
     res.status(400).json({ error: err.message });

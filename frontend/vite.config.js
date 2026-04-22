@@ -29,7 +29,7 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true
       },
-      '/hr-requests': {
+      '/api/hr-requests': {
         target: 'http://localhost:3001',
         changeOrigin: true
       },

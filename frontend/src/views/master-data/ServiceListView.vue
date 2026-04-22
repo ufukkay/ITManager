@@ -15,8 +15,7 @@ const fetchData = async () => {
   loading.value = true
   await Promise.all([
     masterData.fetchOperators(),
-    masterData.fetchPackages(),
-    masterData.fetchLicenses()
+    masterData.fetchPackages()
   ])
   loading.value = false
 }
@@ -29,12 +28,6 @@ const packageColumns = [
   { key: 'price',         label: 'Ücret',      sortable: true, width: '100px' },
 ]
 
-const licenseColumns = [
-  { key: 'name',          label: 'Lisans Adı',  sortable: true, nowrap: false },
-  { key: 'quantity',      label: 'Stok Adet',   sortable: true, width: '120px' },
-  { key: 'unit_price',    label: 'Birim Fiyat', sortable: true, width: '140px' },
-  { key: 'currency',      label: 'Para Birimi', sortable: true, width: '100px' },
-]
 
 const packageQuickFilters = [
   { key: 'operator_name', label: 'Operatör' },
@@ -44,13 +37,10 @@ const packageQuickFilters = [
 // Modals
 const isOperatorModalOpen = ref(false)
 const isPackageModalOpen  = ref(false)
-const isLicenseModalOpen  = ref(false)
 const selectedOperator    = ref(null)
 const selectedPackage     = ref(null)
-const selectedLicense     = ref(null)
 
 const operatorForm = ref({ name: '' })
-const licenseForm  = ref({ name: '', quantity: 0, unit_price: 0, currency: 'USD' })
 const packageForm  = ref({
   name: '', type: 'voice', operator_id: '', price: 0,
   data_limit: null, sms_limit: null, minutes_limit: null, features: ''
@@ -71,11 +61,6 @@ const openPackageModal = (item = null) => {
   isPackageModalOpen.value = true
 }
 
-const openLicenseModal = (item = null) => {
-  selectedLicense.value = item
-  licenseForm.value = item ? { ...item } : { name: '', quantity: 0, unit_price: 0, currency: 'USD' }
-  isLicenseModalOpen.value = true
-}
 
 const saveOperator = async () => {
   try {
@@ -107,20 +92,6 @@ const savePackage = async () => {
   finally { stopLoading() }
 }
 
-const saveLicense = async () => {
-  try {
-    startLoading()
-    if (selectedLicense.value) {
-      await masterData.updateItem('licenses', selectedLicense.value.id, licenseForm.value)
-      showToast('Lisans başarıyla güncellendi', 'success')
-    } else {
-      await masterData.createItem('licenses', licenseForm.value)
-      showToast('Yeni lisans başarıyla eklendi', 'success')
-    }
-    isLicenseModalOpen.value = false
-  } catch (err) { showToast('Hata: ' + err.message, 'error') }
-  finally { stopLoading() }
-}
 
 const handleDelete = async (type, id) => {
   const impact = await masterData.getDeleteImpact(type, id)
@@ -167,11 +138,6 @@ onMounted(fetchData)
         class="px-6 py-3 text-sm font-bold transition-all border-b-2"
         :class="activeTab === 'packages' ? 'border-[#1a73e8] text-[#1a73e8]' : 'border-transparent text-gray-500 hover:text-gray-700'">
         HİZMET PAKETLERİ (SIM/M2M)
-      </button>
-      <button type="button" @click="activeTab = 'licenses'"
-        class="px-6 py-3 text-sm font-bold transition-all border-b-2"
-        :class="activeTab === 'licenses' ? 'border-[#1a73e8] text-[#1a73e8]' : 'border-transparent text-gray-500 hover:text-gray-700'">
-        LİSANS PAKETLERİ (M365)
       </button>
     </div>
 
@@ -257,78 +223,7 @@ onMounted(fetchData)
       </template>
     </AppTable>
 
-    <!-- Licenses AppTable -->
-    <AppTable
-      v-if="activeTab === 'licenses'"
-      key="licenses"
-      :columns="licenseColumns"
-      :rows="masterData.licenses"
-      :loading="loading"
-      empty-text="Lisans kaydı bulunamadı"
-      @row-edit="openLicenseModal"
-      @row-delete="(row) => handleDelete('licenses', row.id)"
-    >
-      <template #toolbar>
-        <button type="button"
-          class="ml-auto flex items-center gap-2 px-4 py-2 bg-[#1a73e8] text-white text-[12.5px] font-semibold rounded-lg hover:bg-[#174ea6] shadow-sm"
-          @click="openLicenseModal()">
-          <i class="fas fa-plus text-[11px]"></i> Yeni Lisans Paketi
-        </button>
-      </template>
 
-      <template #cell-name="{ value }">
-        <div class="font-bold text-gray-900">{{ value }}</div>
-      </template>
-
-      <template #cell-quantity="{ value }">
-        <span class="font-bold text-gray-700">{{ value || 0 }}</span>
-      </template>
-
-      <template #cell-unit_price="{ row }">
-        <span class="font-bold text-gray-900">{{ row.unit_price }} {{ row.currency }}</span>
-      </template>
-    </AppTable>
-
-    <!-- License Modal -->
-    <dialog class="modal" :class="{ 'modal-open': isLicenseModalOpen }">
-      <div class="modal-box bg-white p-6 rounded-2xl shadow-xl border border-gray-100 max-w-md">
-        <h3 class="font-bold text-lg mb-6">{{ selectedLicense ? 'Lisans Düzenle' : 'Yeni Lisans Paketi' }}</h3>
-        <div class="space-y-4 mb-6">
-          <div>
-            <label class="text-xs font-bold text-gray-400">LİSANS ADI</label>
-            <input v-model="licenseForm.name" type="text" 
-              class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none focus:border-[#1a73e8]">
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="text-xs font-bold text-gray-400">STOK ADET</label>
-              <input v-model="licenseForm.quantity" type="number" 
-                class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none">
-            </div>
-            <div>
-              <label class="text-xs font-bold text-gray-400">PARA BİRİMİ</label>
-              <select v-model="licenseForm.currency" class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none bg-white">
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="TRY">TRY (₺)</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label class="text-xs font-bold text-gray-400">BİRİM FİYAT</label>
-            <input v-model="licenseForm.unit_price" type="number" step="0.01"
-              class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none">
-          </div>
-        </div>
-        <div class="flex justify-end gap-2">
-          <button type="button" @click="isLicenseModalOpen = false"
-            class="px-4 py-2 font-bold text-gray-400 hover:text-gray-600 uppercase text-xs">İPTAL</button>
-          <button type="button" @click="saveLicense"
-            class="px-6 py-2 bg-[#1a73e8] text-white rounded-xl font-bold shadow-md uppercase text-xs">KAYDET</button>
-        </div>
-      </div>
-      <form method="dialog" class="modal-backdrop" @click="isLicenseModalOpen = false"><button>close</button></form>
-    </dialog>
 
     <!-- Operator Modal -->
     <dialog class="modal" :class="{ 'modal-open': isOperatorModalOpen }">

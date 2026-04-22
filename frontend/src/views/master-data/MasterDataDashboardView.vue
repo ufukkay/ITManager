@@ -41,6 +41,13 @@ const masterModules = [
     color: 'bg-orange-500'
   },
   {
+    title: 'SIM Kart Havuzu',
+    desc: 'Ses, Data ve M2M hatlarının merkezi envanter yönetimi',
+    icon: 'fa-sim-card',
+    path: '/master-data/sim-cards',
+    color: 'bg-cyan-600'
+  },
+  {
     title: 'Operatör & Paketler',
     desc: 'GSM operatörleri ve tanımlı hizmet paketleri',
     icon: 'fa-hand-holding-heart',

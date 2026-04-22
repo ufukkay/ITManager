@@ -5,9 +5,10 @@ import { useMasterDataStore } from '../../stores/masterData'
 import { useToast } from '../../composables/useToast'
 import { useConfirm } from '../../composables/useConfirm'
 import AppTable from '../../components/AppTable.vue'
+import HistoryModal from '../../components/HistoryModal.vue'
 import * as XLSX from 'xlsx'
 
-const { dataList, loading, fetchList, createItem, updateItem, deleteItem } = useSimApi('data')
+const { dataList, loading, fetchList, updateItem, deleteItem, createItem } = useSimApi('data')
 const masterData = useMasterDataStore()
 const { showToast } = useToast()
 const { ask, startLoading, stopLoading } = useConfirm()
@@ -30,27 +31,6 @@ const quickFilters = computed(() => [
 const selectedIds    = ref([])
 const onSelectionChange = (rows) => { selectedIds.value = rows.map(r => r.id) }
 
-const isModalOpen  = ref(false)
-const selectedItem = ref(null)
-const statuses     = ['Aktif', 'Pasif', 'İptal']
-const form         = ref({
-  iccid: '', phone_no: '', operator: '', company_id: '',
-  personnel_id: '', device_info: '', package_id: '',
-  status: 'Aktif', location_id: '', description: ''
-})
-
-const openAddModal = () => {
-  selectedItem.value = null
-  form.value = { iccid: '', phone_no: '', operator: '', company_id: '', personnel_id: '', device_info: '', package_id: '', status: 'Aktif', location_id: '', description: '' }
-  isModalOpen.value = true
-}
-
-const openEditModal = (item) => {
-  selectedItem.value = item
-  form.value = { ...item }
-  isModalOpen.value = true
-}
-
 const exportSelected = () => {
   const selected = dataList.value.filter(r => selectedIds.value.includes(r.id))
   const rows = selected.map(r => ({
@@ -63,30 +43,58 @@ const exportSelected = () => {
   XLSX.writeFile(wb, 'data-secili-kayitlar.xlsx')
 }
 
+// Modal Logic
+const isModalOpen = ref(false)
+const selectedItem = ref(null)
+const statuses = ['Aktif', 'Pasif', 'İptal']
+const form = ref({
+  iccid: '', phone_no: '', operator: '', company_id: '',
+  department_id: '', package_id: '', location_id: '',
+  device_info: '', status: 'Aktif', notes: ''
+})
+
+// History Modal
+const isHistoryModalOpen = ref(false)
+const historyResourceId = ref(null)
+
+const openHistory = (row) => {
+  historyResourceId.value = row.id
+  isHistoryModalOpen.value = true
+}
+
+const openEditModal = (item) => {
+  selectedItem.value = item
+  form.value = { ...item }
+  isModalOpen.value = true
+}
+
 const saveItem = async () => {
   try {
     if (selectedItem.value) {
       await updateItem(selectedItem.value.id, form.value)
-      showToast('Data hattı başarıyla güncellendi', 'success')
+      showToast('Kayıt başarıyla güncellendi', 'success')
     } else {
       await createItem(form.value)
-      showToast('Yeni data hattı başarıyla eklendi', 'success')
+      showToast('Yeni kayıt başarıyla eklendi', 'success')
     }
     isModalOpen.value = false
-  } catch (err) { showToast('Hata: ' + err.message, 'error') }
+    fetchList()
+  } catch (err) { 
+    showToast('Hata: ' + err.message, 'error') 
+  }
 }
 
 const handleDelete = async (row) => {
   const confirmed = await ask({
-    title: 'Hattı Sil',
-    message: `"${row.iccid}" ICCID'li data hattını silmek istediğinize emin misiniz?`,
+    title: 'Kaydı Sil',
+    message: `"${row.phone_no || row.iccid}" numaralı SIM kartı silmek istediğinize emin misiniz?`,
     confirmLabel: 'Evet, Sil'
   })
   if (confirmed) {
     try {
       startLoading()
       await deleteItem(row.id)
-      showToast('Hat başarıyla silindi', 'success')
+      showToast('Kayıt başarıyla silindi', 'success')
     } catch (e) {
       showToast('Hata: ' + e.message, 'error')
     } finally {
@@ -100,6 +108,7 @@ onMounted(() => {
   masterData.fetchLocations()
   masterData.fetchOperators()
   masterData.fetchCompanies()
+  masterData.fetchDepartments()
   masterData.fetchPackages('data')
 })
 </script>
@@ -113,22 +122,17 @@ onMounted(() => {
       :quick-filters="quickFilters"
       :selectable="true"
       empty-text="Kayıtlı veri bulunamadı"
-      @row-edit="openEditModal"
-      @row-delete="handleDelete"
       @selection-change="onSelectionChange"
+      @row-edit="openEditModal"
+      @row-history="openHistory"
+      @row-delete="handleDelete"
     >
       <template #toolbar>
         <template v-if="selectedIds.length > 0">
           <span class="text-[13px] font-bold text-[#1a73e8]">{{ selectedIds.length }} Kayıt Seçildi</span>
-          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-md text-[12px] font-bold hover:bg-blue-100">
-            <i class="fas fa-edit"></i> Toplu Düzenle
-          </button>
           <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-md text-[12px] font-bold hover:bg-emerald-100"
             @click="exportSelected">
             <i class="fas fa-file-excel"></i> Seçilenleri İndir
-          </button>
-          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-md text-[12px] font-bold hover:bg-red-100">
-            <i class="fas fa-trash"></i> Toplu Sil
           </button>
         </template>
       </template>
@@ -158,79 +162,115 @@ onMounted(() => {
       </template>
     </AppTable>
 
-    <!-- Modal -->
-    <dialog class="modal" :class="{ 'modal-open': isModalOpen }">
-      <div class="modal-box bg-white p-6 rounded-md shadow-md border border-[#dadce0] max-w-xl">
-        <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
-          <h3 class="font-bold text-[15px] text-gray-900">{{ selectedItem ? 'Data Hattı Düzenle' : 'Yeni Data Hattı Ekle' }}</h3>
-          <button type="button" @click="isModalOpen = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+    <!-- Edit Modal -->
+    <Teleport to="body">
+      <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" @click.self="isModalOpen = false">
+        <div class="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
+          <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <div>
+              <h2 class="text-[16px] font-bold text-gray-900">
+                {{ selectedItem ? 'Data Hattını Düzenle' : 'Yeni Data Hattı Ekle' }}
+              </h2>
+            </div>
+            <button type="button" @click="isModalOpen = false" class="text-gray-400 hover:text-gray-700 w-8 h-8 rounded-lg hover:bg-gray-100 inline-flex items-center justify-center">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <form @submit.prevent="saveItem">
+            <div class="p-7 grid grid-cols-2 gap-5">
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Telefon No</label>
+                <input v-model="form.phone_no" type="text" required placeholder="5XX XXX XX XX"
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 font-bold">
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">ICCID</label>
+                <input v-model="form.iccid" type="text" placeholder="8990..."
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 font-mono">
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Operatör</label>
+                <select v-model="form.operator" required
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
+                  <option value="">Seçiniz</option>
+                  <option v-for="op in masterData.operators" :key="op.id" :value="op.name">{{ op.name }}</option>
+                </select>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Paket</label>
+                <select v-model="form.package_id"
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
+                  <option :value="null">Seçiniz</option>
+                  <option v-for="p in masterData.packages" :key="p.id" :value="p.id">{{ p.name }}</option>
+                </select>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Lokasyon</label>
+                <select v-model="form.location_id"
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
+                  <option :value="null">Seçiniz</option>
+                  <option v-for="l in masterData.locations" :key="l.id" :value="l.id">{{ l.name }}</option>
+                </select>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Durum</label>
+                <select v-model="form.status" required
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
+                  <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+                </select>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Şirket</label>
+                <select v-model="form.company_id"
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
+                  <option :value="null">Seçiniz</option>
+                  <option v-for="c in masterData.companies" :key="c.id" :value="c.id">{{ c.name }}</option>
+                </select>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Departman</label>
+                <select v-model="form.department_id"
+                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
+                  <option :value="null">Seçiniz</option>
+                  <option v-for="d in masterData.departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+                </select>
+              </div>
+
+              <div class="col-span-2 space-y-1.5">
+                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Notlar</label>
+                <textarea v-model="form.notes" rows="2"
+                  class="w-full p-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 resize-none"></textarea>
+              </div>
+            </div>
+
+            <div class="px-7 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
+              <button type="button" @click="isModalOpen = false" class="px-4 py-2 text-[13px] font-bold text-gray-500 hover:text-gray-700">İptal</button>
+              <button type="submit" class="px-8 py-2 bg-blue-600 text-white text-[13px] font-bold rounded-xl hover:bg-blue-700 shadow-sm transition-all">
+                {{ selectedItem ? 'Güncelle' : 'Oluştur' }}
+              </button>
+            </div>
+          </form>
         </div>
-        <form @submit.prevent="saveItem" class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div class="flex flex-col gap-1.5">
-              <label class="text-[12px] font-bold text-gray-500">ICCID</label>
-              <input v-model="form.iccid" type="text" required
-                class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8]">
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-[12px] font-bold text-gray-500">Telefon No</label>
-              <input v-model="form.phone_no" type="text"
-                class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8]">
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-[12px] font-bold text-gray-500">Operatör</label>
-              <select v-model="form.operator" required
-                class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8]">
-                <option value="">Seçiniz</option>
-                <option v-for="op in masterData.operators" :key="op.id" :value="op.name">{{ op.name }}</option>
-              </select>
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-[12px] font-bold text-gray-500">Lokasyon</label>
-              <select v-model="form.location_id" required
-                class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8]">
-                <option value="">Seçiniz</option>
-                <option v-for="loc in masterData.locations" :key="loc.id" :value="loc.id">{{ loc.name }}</option>
-              </select>
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-[12px] font-bold text-gray-500">Cihaz / Terminal</label>
-              <input v-model="form.device_info" type="text"
-                class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8]">
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-[12px] font-bold text-gray-500">Şirket</label>
-              <select v-model="form.company_id" required
-                class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8]">
-                <option value="">Seçiniz</option>
-                <option v-for="c in masterData.companies" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-[12px] font-bold text-gray-500">Paket</label>
-              <select v-model="form.package_id" required
-                class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8]">
-                <option value="">Seçiniz</option>
-                <option v-for="p in masterData.packages" :key="p.id" :value="p.id">{{ p.name }}</option>
-              </select>
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <label class="text-[12px] font-bold text-gray-500">Durum</label>
-              <select v-model="form.status" required
-                class="w-full border border-gray-200 text-[13px] px-3 py-2 rounded-md outline-none focus:border-[#1a73e8]">
-                <option v-for="st in statuses" :key="st" :value="st">{{ st }}</option>
-              </select>
-            </div>
-          </div>
-          <div class="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-100">
-            <button type="button" @click="isModalOpen = false"
-              class="px-6 py-2 text-[13px] font-bold text-gray-500 hover:text-gray-900">İPTAL</button>
-            <button type="submit"
-              class="px-8 py-2 bg-[#1a73e8] text-white text-[13px] font-bold rounded-md hover:bg-[#174ea6] shadow-sm">KAYDET</button>
-          </div>
-        </form>
       </div>
-      <form method="dialog" class="modal-backdrop" @click="isModalOpen = false"><button>close</button></form>
-    </dialog>
+    </Teleport>
+
+    <!-- History Modal -->
+    <HistoryModal
+      v-if="isHistoryModalOpen"
+      module="SIM_DATA"
+      :resource-id="historyResourceId"
+      title="Data Hattı Düzenleme Geçmişi"
+      @close="isHistoryModalOpen = false"
+    />
   </div>
 </template>
+
+<style scoped>
+</style>

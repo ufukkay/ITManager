@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../../../database/db');
+const { db } = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
 const fs = require('fs');
@@ -60,7 +60,6 @@ router.get('/:id', (req, res) => {
 router.post('/', hasPermission('sim:edit'), (req, res) => {
   const { iccid, phone_no, operator, status, location_id, company_id, notes, package_id } = req.body;
   if (!operator) return res.status(400).json({ message: 'Operatör zorunludur.' });
-  if (!location_id) return res.status(400).json({ message: 'Lokasyon seçimi zorunludur.' });
 
   // Duplicate check
   if (phone_no) {
@@ -82,7 +81,7 @@ router.post('/', hasPermission('sim:edit'), (req, res) => {
     const result = db.prepare(`
       INSERT INTO sim_data (iccid, phone_no, operator, status, location_id, company_id, notes, package_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(iccid || null, phone_no || null, operator, status || 'active', 
+    `).run(iccid || null, phone_no || null, operator, status || 'Aktif', 
            loc_id, company_id || null, notes || null, package_id || null);
     
     console.log('[DEBUG] Insert result:', result);
@@ -113,19 +112,18 @@ router.put('/:id', hasPermission('sim:edit'), (req, res) => {
   logToFile(`PUT /api/data/${req.params.id} - Body: ${JSON.stringify(req.body)}`);
   try {
     const loc_id = location_id ? parseInt(location_id) : null;
-    console.log('[DEBUG] Updating with location_id:', loc_id);
-    logToFile(`Updating with loc_id: ${loc_id}`);
+    const comp_id = company_id ? parseInt(company_id) : null;
+    const pkg_id = package_id ? parseInt(package_id) : null;
+
     const result = db.prepare(`
       UPDATE sim_data 
       SET iccid=?, phone_no=?, operator=?, status=?, location_id=?, company_id=?, notes=?, package_id=?,
       updated_at=CURRENT_TIMESTAMP WHERE id=?
     `).run(iccid || null, phone_no || null, operator, status,
-           loc_id, company_id || null, notes || null, package_id || null, req.params.id);
+           loc_id, comp_id, notes || null, pkg_id, req.params.id);
     
     if (result.changes === 0) return res.status(404).json({ message: 'Kayıt bulunamadı.' });
     
-    console.log('[DEBUG] Update result:', result);
-    logToFile(`Update result: ${JSON.stringify(result)}`);
     logActivity(req, 'UPDATE', 'DATA', req.params.id, { iccid, phone_no, location_id: loc_id });
     res.json({ message: 'Data hattı güncellendi.' });
   } catch (err) {

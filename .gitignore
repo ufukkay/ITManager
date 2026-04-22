@@ -16,6 +16,10 @@ data/*.db-shm
 data/*.db-wal
 data/*.sqlite
 data/*.sqlite3
+src/database/*.db
+src/database/*.db-shm
+src/database/*.db-wal
+src/modules/simcardtracking/uploads/
 
 # Agent Build Outputs
 agent/installer/app/
