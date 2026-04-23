@@ -550,6 +550,36 @@ class MasterDataController {
             res.status(500).json({ error: e.message });
         }
     }
+    // --- LICENSE ALLOCATIONS ---
+    static async getAllAllocations(req, res) {
+        try {
+            const data = await MasterDataService.getAllAllocations();
+            res.json(data);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async assignLicenseToPersonnel(req, res) {
+        try {
+            const { personnelId, licenseId } = req.body;
+            if (!personnelId || !licenseId) return res.status(400).json({ message: 'Personel ve lisans seçimi zorunludur.' });
+            
+            await MasterDataService.assignLicenseToPersonnel(personnelId, licenseId);
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async unassignLicense(req, res) {
+        try {
+            await MasterDataService.unassignLicense(req.params.id);
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
 }
 
 module.exports = MasterDataController;

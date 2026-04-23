@@ -518,11 +518,20 @@ const initDb = () => {
     CREATE TABLE IF NOT EXISTS m365_licenses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE NOT NULL,
+        category TEXT DEFAULT 'M365', -- M365, Adobe, CAD, Antivirus, etc.
         quantity INTEGER DEFAULT 0,
         unit_price REAL DEFAULT 0.0,
         currency TEXT DEFAULT 'USD'
     )
   `).run();
+
+  try {
+    const columns = db.prepare("PRAGMA table_info(m365_licenses)").all();
+    if (columns.length > 0 && !columns.some(c => c.name === 'category')) {
+        console.log("Adding category to m365_licenses table...");
+        db.prepare("ALTER TABLE m365_licenses ADD COLUMN category TEXT DEFAULT 'M365'").run();
+    }
+  } catch (e) { console.log("m365_licenses migration skipped:", e.message); }
 
   db.prepare(`
     CREATE TABLE IF NOT EXISTS m365_allocations (
@@ -535,6 +544,20 @@ const initDb = () => {
         UNIQUE(company_id, license_id)
     )
   `).run();
+
+  // Migration: Check if company_id incorrectly references m365_companies
+  try {
+    const fks = db.prepare("PRAGMA foreign_key_list('m365_allocations')").all();
+    if (fks.some(fk => fk.table === 'm365_companies')) {
+        console.log("Fixing m365_allocations foreign key (pointing to companies)...");
+        db.prepare("PRAGMA foreign_keys = OFF").run();
+        db.prepare("CREATE TABLE m365_allocations_new (id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE, license_id INTEGER REFERENCES m365_licenses(id) ON DELETE CASCADE, quantity INTEGER DEFAULT 0, period TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(company_id, license_id))").run();
+        db.prepare("INSERT INTO m365_allocations_new SELECT * FROM m365_allocations").run();
+        db.prepare("DROP TABLE m365_allocations").run();
+        db.prepare("ALTER TABLE m365_allocations_new RENAME TO m365_allocations").run();
+        db.prepare("PRAGMA foreign_keys = ON").run();
+    }
+  } catch (e) { console.log("m365_allocations FK migration skipped:", e.message); }
   
   // Migration for m365_allocation_users (Adding personnel_id if missing)
   try {

@@ -313,6 +313,37 @@ export const useMasterDataStore = defineStore('masterData', {
         console.error('Resource history fetch error:', err)
         return []
       }
+    },
+
+    async fetchAllocations() {
+      this.loading = true
+      try {
+        const response = await api.get('/api/master-data/licenses/allocations')
+        return response.data
+      } catch (err) {
+        console.error('Fetch allocations error:', err)
+        return []
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async assignLicense(personnelId, licenseId) {
+      this.loading = true
+      try {
+        await api.post('/api/master-data/licenses/assign', { personnelId, licenseId })
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async unassignLicense(id) {
+      this.loading = true
+      try {
+        await api.delete(`/api/master-data/licenses/unassign/${id}`)
+      } finally {
+        this.loading = false
+      }
     }
   }
 })

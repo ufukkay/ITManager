@@ -340,16 +340,16 @@ class MasterDataService {
     }
 
     static async createLicense(data) {
-        const { name, quantity, unit_price, currency } = data;
-        const info = db.prepare("INSERT INTO m365_licenses (name, quantity, unit_price, currency) VALUES (?, ?, ?, ?)")
-            .run(name, quantity || 0, unit_price || 0, currency || 'USD');
+        const { name, category, quantity, unit_price, currency } = data;
+        const info = db.prepare("INSERT INTO m365_licenses (name, category, quantity, unit_price, currency) VALUES (?, ?, ?, ?, ?)")
+            .run(name, category || 'M365', quantity || 0, unit_price || 0, currency || 'USD');
         return info.lastInsertRowid;
     }
 
     static async updateLicense(id, data) {
-        const { name, quantity, unit_price, currency } = data;
-        db.prepare("UPDATE m365_licenses SET name = ?, quantity = ?, unit_price = ?, currency = ? WHERE id = ?")
-            .run(name, quantity || 0, unit_price || 0, currency || 'USD', id);
+        const { name, category, quantity, unit_price, currency } = data;
+        db.prepare("UPDATE m365_licenses SET name = ?, category = ?, quantity = ?, unit_price = ?, currency = ? WHERE id = ?")
+            .run(name, category || 'M365', quantity || 0, unit_price || 0, currency || 'USD', id);
     }
 
     static async deleteLicense(id) {
@@ -654,6 +654,70 @@ class MasterDataService {
             data.total_amount,
             data.is_matched
         );
+    }
+
+    // --- LICENSE ALLOCATIONS ---
+    static async getAllAllocations() {
+        return db.prepare(`
+            SELECT 
+                mau.id,
+                p.first_name || ' ' || p.last_name as personnel_name,
+                c.name as company_name,
+                ml.name as license_name,
+                ml.id as license_id,
+                p.id as personnel_id
+            FROM m365_allocation_users mau
+            JOIN personnel p ON mau.personnel_id = p.id
+            JOIN m365_allocations ma ON mau.allocation_id = ma.id
+            JOIN m365_licenses ml ON ma.license_id = ml.id
+            JOIN companies c ON p.company_id = c.id
+            ORDER BY personnel_name ASC
+        `).all();
+    }
+
+    static async assignLicenseToPersonnel(personnelId, licenseId) {
+        const personnel = db.prepare("SELECT company_id FROM personnel WHERE id = ?").get(personnelId);
+        if (!personnel) throw new Error("Personel bulunamadı.");
+        if (!personnel.company_id) throw new Error("Personelin bağlı olduğu bir şirket bulunamadı. Önce şirket ataması yapınız.");
+
+        const transaction = db.transaction(() => {
+            // 1. Şirket için bu lisansın bir tahsisi var mı bak (yoksa oluştur)
+            let allocation = db.prepare("SELECT id FROM m365_allocations WHERE company_id = ? AND license_id = ?")
+                .get(personnel.company_id, licenseId);
+            
+            if (!allocation) {
+                const info = db.prepare("INSERT INTO m365_allocations (company_id, license_id, quantity) VALUES (?, ?, ?)")
+                    .run(personnel.company_id, licenseId, 0);
+                allocation = { id: info.lastInsertRowid };
+            }
+
+            // 2. Personelin zaten bu lisansı var mı bak
+            const existing = db.prepare("SELECT id FROM m365_allocation_users WHERE allocation_id = ? AND personnel_id = ?")
+                .get(allocation.id, personnelId);
+            
+            if (existing) throw new Error("Bu personel zaten bu lisansa sahip.");
+
+            // 3. Atamayı yap
+            db.prepare("INSERT INTO m365_allocation_users (allocation_id, personnel_id) VALUES (?, ?)")
+                .run(allocation.id, personnelId);
+            
+            // 4. Şirket bazlı toplam adedi güncelle
+            db.prepare("UPDATE m365_allocations SET quantity = (SELECT COUNT(*) FROM m365_allocation_users WHERE allocation_id = ?) WHERE id = ?")
+                .run(allocation.id, allocation.id);
+        });
+        transaction();
+    }
+
+    static async unassignLicense(allocationUserId) {
+        const transaction = db.transaction(() => {
+            const row = db.prepare("SELECT allocation_id FROM m365_allocation_users WHERE id = ?").get(allocationUserId);
+            if (row) {
+                db.prepare("DELETE FROM m365_allocation_users WHERE id = ?").run(allocationUserId);
+                db.prepare("UPDATE m365_allocations SET quantity = (SELECT COUNT(*) FROM m365_allocation_users WHERE allocation_id = ?) WHERE id = ?")
+                    .run(row.allocation_id, row.allocation_id);
+            }
+        });
+        transaction();
     }
 }
 
