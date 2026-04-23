@@ -62,6 +62,7 @@ router.delete('/licenses/:id', MasterDataController.deleteLicense);
 router.get('/licenses/allocations', MasterDataController.getAllAllocations);
 router.post('/licenses/assign', MasterDataController.assignLicenseToPersonnel);
 router.delete('/licenses/unassign/:id', MasterDataController.unassignLicense);
+router.post('/licenses/bulk-assign', MasterDataController.bulkAssignLicenses);
 
 // Servers (Sunucu Envanteri)
 router.get('/servers', MasterDataController.getServers);

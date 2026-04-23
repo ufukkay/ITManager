@@ -68,73 +68,73 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto bg-[#fbfbfb]">
+  <div class="h-full overflow-y-auto bg-[#fcfcfc]">
     <div class="max-w-6xl mx-auto py-10 px-8">
         <!-- Header -->
-        <div class="mb-12">
-            <div class="flex items-center gap-4 mb-4">
-                <div class="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+        <div class="mb-10">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-12 h-12 bg-white border border-gray-100 text-blue-600 rounded-2xl flex items-center justify-center shadow-sm">
                     <i class="fas fa-database text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Sistem Master Veri</h1>
-                    <p class="text-gray-500 text-sm font-medium">Platform genelindeki merkezi veri havuzunu buradan yönetin.</p>
+                    <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Master Veri Konsolu</h1>
+                    <p class="text-gray-400 text-[13px] font-medium mt-1">Platform genelindeki merkezi veri havuzunu buradan yönetin.</p>
                 </div>
             </div>
 
-            <!-- Stats Bar -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+            <!-- Stats Bar (Subtle) -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div v-for="stat in [
-                    { label: 'Personeller', count: masterData.personnel.length, color: 'text-blue-600' },
-                    { label: 'Şirketler', count: masterData.companies.length, color: 'text-indigo-600' },
-                    { label: 'Sunucular', count: masterData.servers.length, color: 'text-slate-600' },
-                    { label: 'Araçlar', count: masterData.vehicles.length, color: 'text-emerald-600' }
-                ]" :key="stat.label" class="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                    <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">{{ stat.label }}</div>
-                    <div class="text-2xl font-black" :class="stat.color">{{ stat.count }}</div>
+                    { label: 'Personeller', count: masterData.personnel.length, icon: 'fa-users' },
+                    { label: 'Şirketler', count: masterData.companies.length, icon: 'fa-building' },
+                    { label: 'Sunucular', count: masterData.servers.length, icon: 'fa-server' },
+                    { label: 'Araçlar', count: masterData.vehicles.length, icon: 'fa-truck' }
+                ]" :key="stat.label" class="bg-white border border-gray-100/60 p-5 rounded-2xl shadow-sm flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                        <i :class="['fas text-[14px]', stat.icon]"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ stat.label }}</div>
+                        <div class="text-xl font-black text-gray-900">{{ stat.count }}</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Grid (Simple & Beautiful) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <router-link
                 v-for="m in masterModules"
                 :key="m.path"
                 :to="m.path"
-                class="group bg-white border border-gray-100 rounded-2xl p-6 hover:border-transparent hover:shadow-xl hover:shadow-indigo-500/10 transition-all duration-300 flex flex-col items-start gap-4 relative overflow-hidden"
+                class="group bg-white border border-gray-100 rounded-2xl p-6 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-500/[0.03] transition-all duration-300 flex flex-col items-start gap-4"
             >
-                <!-- Background Accent -->
-                <div class="absolute top-0 right-0 p-8 opacity-0 group-hover:opacity-5 transition-opacity">
-                    <i :class="['fas text-8xl', m.icon]"></i>
-                </div>
-
-                <div :class="['w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110 relative z-10', m.color]">
-                    <i :class="['fas text-xl', m.icon]"></i>
+                <div class="w-11 h-11 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">
+                    <i :class="['fas text-[16px]', m.icon]"></i>
                 </div>
                 
-                <div class="flex-1 relative z-10">
-                    <h3 class="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{{ m.title }}</h3>
-                    <p class="text-gray-500 mt-1 text-[13px] leading-relaxed">{{ m.desc }}</p>
+                <div class="flex-1">
+                    <h3 class="text-[15px] font-bold text-gray-900">{{ m.title }}</h3>
+                    <p class="text-gray-400 mt-1.5 text-[12.5px] leading-relaxed">{{ m.desc }}</p>
                 </div>
 
-                <div class="w-full pt-4 border-t border-gray-100 flex items-center justify-between text-[13px] font-bold text-blue-600 relative z-10">
+                <div class="w-full pt-4 border-t border-gray-50 flex items-center justify-between text-[11px] font-bold text-gray-300 group-hover:text-blue-600 transition-colors">
                     <span>YÖNETİME GİT</span>
-                    <i class="fas fa-arrow-right transition-transform group-hover:translate-x-1"></i>
+                    <i class="fas fa-chevron-right text-[10px] transition-transform group-hover:translate-x-1"></i>
                 </div>
             </router-link>
         </div>
 
-        <!-- Info Card -->
-        <div class="mt-12 bg-white border border-dashed border-gray-200 rounded-3xl p-8 flex flex-col md:flex-row items-center gap-8">
-            <div class="w-16 h-16 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
-                <i class="fas fa-shield-halved text-2xl"></i>
+        <!-- Info Card (Minimalist) -->
+        <div class="mt-12 p-8 bg-blue-50/30 rounded-[2rem] border border-blue-100/50 flex flex-col md:flex-row items-center gap-8">
+            <div class="w-14 h-14 rounded-2xl bg-white text-blue-500 flex items-center justify-center shrink-0 shadow-sm">
+                <i class="fas fa-info-circle text-xl"></i>
             </div>
             <div>
-                <h4 class="text-gray-900 font-bold text-lg">Biliyor muydunuz?</h4>
-                <p class="text-gray-500 text-[14px] mt-1 pr-10">
-                    Buradaki veriler "Tek Kaynak Gerçekliği" (Single Source of Truth) ilkesine göre çalışır. 
-                    Bir aracın plakasını buradan güncellediğinizde, SIM Takip modülünde o araca bağlı olan tüm sim kartlardaki plaka bilgisi de anında güncellenir.
+                <h4 class="text-gray-900 font-bold text-[15px]">Veri Bütünlüğü Hakkında</h4>
+                <p class="text-gray-500 text-[13px] mt-1.5 pr-10 leading-relaxed">
+                    Buradaki veriler "Tek Kaynak Gerçekliği" ilkesine göre çalışır. 
+                    Yapılan her güncelleme tüm modüllerde anında geçerli olur.
                 </p>
             </div>
         </div>

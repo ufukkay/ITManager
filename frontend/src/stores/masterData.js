@@ -344,6 +344,14 @@ export const useMasterDataStore = defineStore('masterData', {
       } finally {
         this.loading = false
       }
+    },
+    async bulkAssignLicenses(personnelIds, licenseIds) {
+      this.loading = true
+      try {
+        await api.post('/api/master-data/licenses/bulk-assign', { personnelIds, licenseIds })
+      } finally {
+        this.loading = false
+      }
     }
   }
 })

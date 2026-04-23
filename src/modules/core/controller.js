@@ -580,6 +580,19 @@ class MasterDataController {
             res.status(500).json({ error: e.message });
         }
     }
+
+    static async bulkAssignLicenses(req, res) {
+        try {
+            const { personnelIds, licenseIds } = req.body;
+            if (!personnelIds?.length || !licenseIds?.length) 
+                return res.status(400).json({ message: 'Personel ve lisans seçimi zorunludur.' });
+            
+            await MasterDataService.bulkAssignLicenses(personnelIds, licenseIds);
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
 }
 
 module.exports = MasterDataController;

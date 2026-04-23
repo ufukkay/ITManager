@@ -17,19 +17,6 @@ router.get('/api/permissions', (req, res) => {
     });
 });
 
-// GET /admin/permissions (Geriye dönük uyumluluk için - EJS dosyası silindiği için artık render edilmez)
-router.get('/permissions', (req, res) => {
-    const roles = db.prepare('SELECT * FROM roles').all();
-    const permissions = db.prepare('SELECT * FROM permissions').all();
-    const rolePermissions = db.prepare('SELECT * FROM role_permissions').all();
-
-    res.render('admin/permissions', { 
-        title: 'Yetki Yönetimi',
-        roles,
-        permissions,
-        rolePermissions
-    });
-});
 
 // POST /admin/api/permissions/update - Yetkileri güncelle
 router.post('/api/permissions/update', (req, res) => {
@@ -234,4 +221,3 @@ router.post('/api/users/:id/permissions', (req, res) => {
 });
 
 module.exports = router;
-

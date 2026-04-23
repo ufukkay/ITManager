@@ -2,27 +2,22 @@
 import { ref, onMounted, computed } from 'vue'
 import { useMasterDataStore } from '../../stores/masterData'
 import { useToast } from '../../composables/useToast'
+import { useConfirm } from '../../composables/useConfirm'
+import AppTable from '../../components/AppTable.vue'
 
 const masterData = useMasterDataStore()
 const { showToast } = useToast()
+const { ask, startLoading, stopLoading } = useConfirm()
+
 const loading = ref(false)
-const processingId = ref(null)
-const searchQuery = ref('')
-const selectedCompany = ref('all')
-const selectedCategory = ref('all')
-
 const allocations = ref([])
+const selectedIds = ref([])
 
-const categories = computed(() => {
-  const cats = [...new Set(masterData.licenses.map(l => l.category).filter(Boolean))]
-  return cats
-})
-
-const filteredLicenses = computed(() => {
-  return masterData.licenses.filter(l => {
-    return selectedCategory.value === 'all' || l.category === selectedCategory.value
-  })
-})
+// Modals
+const isManageModalOpen = ref(false)
+const isBulkModalOpen = ref(false)
+const selectedPerson = ref(null)
+const bulkSelectedLicenseIds = ref([])
 
 const fetchData = async () => {
   loading.value = true
@@ -30,7 +25,8 @@ const fetchData = async () => {
     await Promise.all([
       masterData.fetchPersonnel(),
       masterData.fetchCompanies(),
-      masterData.fetchLicenses()
+      masterData.fetchLicenses(),
+      masterData.fetchDepartments()
     ])
     allocations.value = await masterData.fetchAllocations()
   } catch (error) {
@@ -40,45 +36,38 @@ const fetchData = async () => {
   }
 }
 
-const columns = computed(() => {
-  const baseCols = [
-    { key: 'full_name',    label: 'Personel', sortable: true, sticky: true },
-    { key: 'company_name', label: 'Şirket',   sortable: true },
-  ]
-  const licenseCols = filteredLicenses.value.map(l => ({
-    key: `license_${l.id}`,
-    label: l.name,
-    isLicense: true,
-    licenseId: l.id,
-    align: 'center'
-  }))
-  return [...baseCols, ...licenseCols]
-})
+const columns = [
+  { key: 'full_name',    label: 'Personel', sortable: true },
+  { key: 'company_name', label: 'Şirket',   sortable: true, width: '180px' },
+  { key: 'department_name', label: 'Departman', sortable: true, width: '180px' },
+  { key: 'assigned_licenses', label: 'Atanmış Lisanslar', sortable: false },
+]
 
 const tableRows = computed(() => {
   return masterData.personnel.map(p => {
-    const row = { ...p, full_name: `${p.first_name} ${p.last_name}` }
-    filteredLicenses.value.forEach(l => {
-      const alloc = allocations.value.find(a => a.personnel_id === p.id && a.license_id === l.id)
-      row[`license_${l.id}`] = alloc ? { has: true, id: alloc.id } : { has: false }
-    })
-    return row
+    const personAllocations = allocations.value.filter(a => a.personnel_id === p.id)
+    return { 
+      ...p, 
+      full_name: `${p.first_name} ${p.last_name}`,
+      assigned_licenses: personAllocations
+    }
   })
 })
 
-const filteredTableRows = computed(() => {
-  return tableRows.value.filter(row => {
-    const matchesSearch = row.full_name.toLowerCase().includes(searchQuery.value.toLowerCase())
-    const matchesCompany = selectedCompany.value === 'all' || row.company_name === selectedCompany.value
-    return matchesSearch && matchesCompany
-  })
-})
+const onSelectionChange = (rows) => {
+  selectedIds.value = rows.map(r => r.id)
+}
 
-const toggleLicense = async (personnelId, licenseId, currentAlloc) => {
-  const cellKey = `${personnelId}-${licenseId}`
-  processingId.value = cellKey
+const openManageModal = (row) => {
+  selectedPerson.value = row
+  isManageModalOpen.value = true
+}
+
+const toggleLicense = async (personnelId, licenseId) => {
+  const currentAlloc = allocations.value.find(a => a.personnel_id === personnelId && a.license_id === licenseId)
+  
   try {
-    if (currentAlloc.has) {
+    if (currentAlloc) {
       await masterData.unassignLicense(currentAlloc.id)
       showToast('Lisans kaldırıldı', 'success')
     } else {
@@ -88,8 +77,24 @@ const toggleLicense = async (personnelId, licenseId, currentAlloc) => {
     allocations.value = await masterData.fetchAllocations()
   } catch (err) {
     showToast('Hata: ' + (err.response?.data?.error || err.message), 'error')
+  }
+}
+
+const bulkAssign = async () => {
+  if (selectedIds.value.length === 0 || bulkSelectedLicenseIds.value.length === 0) return
+  
+  try {
+    startLoading()
+    await masterData.bulkAssignLicenses(selectedIds.value, bulkSelectedLicenseIds.value)
+    showToast('Toplu atama başarıyla tamamlandı', 'success')
+    allocations.value = await masterData.fetchAllocations()
+    isBulkModalOpen.value = false
+    bulkSelectedLicenseIds.value = []
+    selectedIds.value = []
+  } catch (err) {
+    showToast('Hata: ' + err.message, 'error')
   } finally {
-    processingId.value = null
+    stopLoading()
   }
 }
 
@@ -97,223 +102,179 @@ onMounted(fetchData)
 </script>
 
 <template>
-  <div class="h-full flex flex-col text-gray-900 bg-[#f8fafc] overflow-hidden">
-    <!-- Header: Premium Matrix Design -->
-    <div class="bg-white/80 backdrop-blur-md border-b border-gray-100 px-8 py-5 flex items-center justify-between shrink-0 z-30">
-        <div class="flex items-center gap-5">
-            <div class="w-12 h-12 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-100 rotate-3 group-hover:rotate-0 transition-transform">
-                <i class="fas fa-layer-group text-xl"></i>
+  <div class="h-full flex flex-col bg-white overflow-hidden">
+    <!-- Header -->
+    <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between shrink-0">
+      <div>
+        <h1 class="text-[18px] font-black text-gray-900 tracking-tight leading-none mb-1.5">Lisans Yönetimi</h1>
+        <p class="text-[12px] text-gray-400 font-medium">Personel bazlı lisans atamaları ve toplu lisans dağıtımı</p>
+      </div>
+      
+      <div class="flex items-center gap-3">
+        <button @click="fetchData" class="h-9 w-9 bg-white hover:bg-gray-50 text-gray-400 hover:text-blue-600 rounded-xl border border-gray-200 transition-all flex items-center justify-center active:scale-95">
+          <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main List -->
+    <div class="flex-1 overflow-hidden">
+      <AppTable
+        :columns="columns"
+        :rows="tableRows"
+        :loading="loading"
+        :selectable="true"
+        :actions="true"
+        @selection-change="onSelectionChange"
+        @row-edit="openManageModal"
+      >
+        <template #toolbar>
+          <div v-if="selectedIds.length > 0" class="flex items-center gap-3 ml-2">
+            <span class="text-[12px] font-bold text-blue-600">{{ selectedIds.length }} Seçili</span>
+            <button @click="isBulkModalOpen = true" class="px-4 py-1.5 bg-blue-600 text-white text-[11px] font-bold rounded-lg hover:bg-blue-700 shadow-sm transition-all flex items-center gap-2">
+              <i class="fas fa-layer-group"></i> TOPLU LİSANS ATA
+            </button>
+          </div>
+        </template>
+
+        <template #cell-full_name="{ row, value }">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center font-bold text-[11px] border border-gray-200">
+              {{ row.first_name?.[0] }}{{ row.last_name?.[0] }}
             </div>
+            <div class="flex flex-col">
+              <span class="font-bold text-gray-900">{{ value }}</span>
+              <span class="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{{ row.title || '—' }}</span>
+            </div>
+          </div>
+        </template>
+
+        <template #cell-assigned_licenses="{ value }">
+          <div class="flex flex-wrap gap-1.5">
+            <span v-for="a in value" :key="a.id" class="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold border border-blue-100 flex items-center gap-1.5">
+              {{ a.license_name }}
+            </span>
+            <span v-if="!value?.length" class="text-gray-300 text-[11px] italic">Atanmış lisans yok</span>
+          </div>
+        </template>
+
+        <template #actions="{ row }">
+          <button @click="openManageModal(row)" class="px-3 py-1.5 bg-gray-50 text-gray-600 hover:bg-blue-50 hover:text-blue-600 rounded-lg text-[11px] font-bold border border-gray-100 transition-all flex items-center gap-1.5">
+            <i class="fas fa-cog"></i> YÖNET
+          </button>
+        </template>
+      </AppTable>
+    </div>
+
+    <!-- Individual Management Modal -->
+    <Teleport to="body">
+      <div v-if="isManageModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" @click.self="isManageModalOpen = false">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+          <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
             <div>
-                <h1 class="text-[20px] font-black text-gray-900 tracking-tight leading-none mb-1.5">Lisans Atama Matrisi</h1>
-                <div class="flex items-center gap-3">
-                  <span class="flex items-center gap-1.5 text-[11px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-full">
-                    <i class="fas fa-user-check text-[9px]"></i> {{ filteredTableRows.length }} Personel
-                  </span>
-                  <span class="flex items-center gap-1.5 text-[11px] text-violet-600 font-bold bg-violet-50 px-2 py-0.5 rounded-full">
-                    <i class="fas fa-key text-[9px]"></i> {{ filteredLicenses.length }} / {{ masterData.licenses.length }} Lisans
-                  </span>
-                </div>
+              <h3 class="text-[15px] font-bold text-gray-900">Lisansları Yönet</h3>
+              <p class="text-[11px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">{{ selectedPerson?.full_name }}</p>
             </div>
-        </div>
-        
-        <div class="flex items-center gap-4">
-          <!-- Search & Filters -->
-          <div class="flex items-center gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-100">
-            <div class="relative">
-              <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[12px]"></i>
-              <input 
-                v-model="searchQuery"
-                type="text" 
-                placeholder="Personel Ara..." 
-                class="h-9 pl-9 pr-4 bg-white border-none rounded-lg text-[13px] font-bold text-gray-700 w-40 focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-sm placeholder:text-gray-300"
-              />
-            </div>
-            
-            <div class="h-6 w-[1px] bg-gray-200 mx-1"></div>
-
-            <select 
-              v-model="selectedCategory"
-              class="h-9 px-3 bg-white border-none rounded-lg text-[12px] font-bold text-indigo-600 focus:ring-2 focus:ring-indigo-500/20 shadow-sm outline-none"
-            >
-              <option value="all">Tüm Kategoriler</option>
-              <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-            </select>
-
-            <select 
-              v-model="selectedCompany"
-              class="h-9 px-3 bg-white border-none rounded-lg text-[12px] font-bold text-gray-600 focus:ring-2 focus:ring-indigo-500/20 shadow-sm outline-none"
-            >
-              <option value="all">Tüm Şirketler</option>
-              <option v-for="c in masterData.companies" :key="c.id" :value="c.name">{{ c.name }}</option>
-            </select>
+            <button @click="isManageModalOpen = false" class="text-gray-400 hover:text-gray-700 w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+              <i class="fas fa-times"></i>
+            </button>
           </div>
 
-          <button @click="fetchData" class="h-10 w-10 bg-white hover:bg-gray-50 text-gray-400 hover:text-indigo-600 rounded-xl transition-all flex items-center justify-center border border-gray-100 shadow-sm active:scale-95">
-            <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i>
-          </button>
-        </div>
-    </div>
-
-    <!-- Matrix Grid -->
-    <div class="flex-1 overflow-auto custom-scrollbar relative">
-      <table class="w-full text-left border-separate border-spacing-0 min-w-max">
-        <thead>
-          <tr class="sticky top-0 z-40">
-            <!-- Personnel Column Header -->
-            <th class="p-0 sticky left-0 z-50 bg-[#f8fafc]">
-               <div class="px-6 py-4 h-[160px] flex items-end bg-white border-b border-r border-gray-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                  <span class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Personel Detayları</span>
-               </div>
-            </th>
-            
-            <!-- Company Column Header -->
-            <th class="p-0 bg-[#f8fafc]">
-               <div class="px-6 py-4 h-[160px] flex items-end bg-white border-b border-gray-100">
-                  <span class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Şirket</span>
-               </div>
-            </th>
-
-            <!-- Rotated License Headers -->
-            <th v-for="col in columns.filter(c => c.isLicense)" :key="col.key" 
-                class="p-0 border-b border-gray-100 bg-white group hover:bg-indigo-50/30 transition-colors">
-              <div class="rotated-th-container flex flex-col items-center justify-end h-[160px] pb-6 px-2 min-w-[50px]">
-                <div class="rotated-text-wrapper">
-                  <span class="rotated-text text-gray-500 group-hover:text-indigo-600 transition-colors">
-                    {{ col.label }}
-                  </span>
-                </div>
-              </div>
-            </th>
-          </tr>
-        </thead>
-        <tbody class="bg-white">
-          <tr v-for="row in filteredTableRows" :key="row.id" class="hover:bg-gray-50/80 transition-colors group">
-            <!-- Personnel -->
-            <td class="p-0 sticky left-0 z-20 group-hover:z-30">
-              <div class="px-6 py-3.5 bg-white group-hover:bg-indigo-50/40 border-r border-b border-gray-50 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.03)] flex items-center gap-3 transition-colors">
-                <div class="relative">
-                  <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-50 to-white text-indigo-600 flex items-center justify-center font-black text-[11px] shrink-0 border border-indigo-100 shadow-sm">
-                    {{ row.first_name?.[0] }}{{ row.last_name?.[0] }}
+          <div class="p-7">
+            <div class="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              <div v-for="cat in [...new Set(masterData.licenses.map(l => l.category))]" :key="cat" class="space-y-2">
+                <h4 class="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] pt-2 pb-1">{{ cat }}</h4>
+                <div v-for="l in masterData.licenses.filter(l => l.category === cat)" :key="l.id" 
+                  @click="toggleLicense(selectedPerson.id, l.id)"
+                  class="flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all hover:border-blue-200 group"
+                  :class="allocations.find(a => a.personnel_id === selectedPerson.id && a.license_id === l.id) ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100 hover:bg-gray-50'">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center" :class="allocations.find(a => a.personnel_id === selectedPerson.id && a.license_id === l.id) ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'">
+                      <i class="fas fa-key text-[12px]"></i>
+                    </div>
+                    <span class="text-[13px] font-bold" :class="allocations.find(a => a.personnel_id === selectedPerson.id && a.license_id === l.id) ? 'text-blue-700' : 'text-gray-700'">
+                      {{ l.name }}
+                    </span>
                   </div>
-                  <div class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-white rounded-full flex items-center justify-center shadow-sm">
-                    <div class="w-2 h-2 rounded-full" :class="row.status === 'Active' ? 'bg-emerald-500' : 'bg-gray-300'"></div>
+                  <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
+                    :class="allocations.find(a => a.personnel_id === selectedPerson.id && a.license_id === l.id) ? 'border-blue-600 bg-blue-600' : 'border-gray-200 bg-white'">
+                    <i v-if="allocations.find(a => a.personnel_id === selectedPerson.id && a.license_id === l.id)" class="fas fa-check text-white text-[9px]"></i>
                   </div>
                 </div>
-                <div class="flex flex-col">
-                  <span class="text-[13px] font-black text-gray-900 group-hover:text-indigo-700 transition-colors">{{ row.full_name }}</span>
-                  <span class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{{ row.position_tr || 'Pozisyon Yok' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-7 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end">
+            <button @click="isManageModalOpen = false" class="px-6 py-2 bg-gray-900 text-white text-[12px] font-bold rounded-xl hover:bg-black transition-all shadow-lg shadow-gray-200">
+              TAMAMLA
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Bulk Assignment Modal -->
+    <Teleport to="body">
+      <div v-if="isBulkModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" @click.self="isBulkModalOpen = false">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
+          <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between bg-blue-600">
+            <h3 class="text-[15px] font-bold text-white">Toplu Lisans Ata</h3>
+            <button @click="isBulkModalOpen = false" class="text-white/70 hover:text-white w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div class="p-7 space-y-6">
+            <div class="p-4 bg-blue-50 rounded-xl border border-blue-100">
+              <p class="text-[12px] text-blue-700 font-medium">
+                Seçili <strong>{{ selectedIds.length }}</strong> personele aşağıdaki lisanslar atanacaktır.
+              </p>
+            </div>
+
+            <div class="space-y-4">
+              <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Atanacak Lisansları Seçin</label>
+              <div class="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                <div v-for="l in masterData.licenses" :key="l.id" 
+                  @click="bulkSelectedLicenseIds.includes(l.id) ? bulkSelectedLicenseIds = bulkSelectedLicenseIds.filter(id => id !== l.id) : bulkSelectedLicenseIds.push(l.id)"
+                  class="flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all"
+                  :class="bulkSelectedLicenseIds.includes(l.id) ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100 hover:bg-gray-50'">
+                  <div class="flex items-center gap-3">
+                    <span class="text-[13px] font-bold text-gray-700">{{ l.name }}</span>
+                    <span class="text-[9px] font-black text-gray-300 uppercase px-1.5 py-0.5 bg-gray-50 rounded border border-gray-100">{{ l.category }}</span>
+                  </div>
+                  <div class="w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all"
+                    :class="bulkSelectedLicenseIds.includes(l.id) ? 'border-blue-600 bg-blue-600' : 'border-gray-200 bg-white'">
+                    <i v-if="bulkSelectedLicenseIds.includes(l.id)" class="fas fa-check text-white text-[9px]"></i>
+                  </div>
                 </div>
               </div>
-            </td>
+            </div>
+          </div>
 
-            <!-- Company -->
-            <td class="px-6 py-3.5 border-b border-gray-50">
-              <span class="text-[12px] font-bold text-gray-400">{{ row.company_name }}</span>
-            </td>
-
-            <!-- License Matrix Cells -->
-            <td v-for="col in columns.filter(c => c.isLicense)" :key="col.key"
-              class="px-2 py-3.5 border-b border-gray-50 border-r border-gray-50/50 text-center group/cell">
-              <div class="flex justify-center">
-                <button 
-                  @click="toggleLicense(row.id, col.licenseId, row[col.key])"
-                  :disabled="processingId === `${row.id}-${col.licenseId}`"
-                  class="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-300 active:scale-90"
-                  :class="[
-                    row[col.key].has 
-                      ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-100 ring-2 ring-indigo-500/10' 
-                      : 'bg-gray-100 text-transparent hover:bg-indigo-100/50 hover:text-indigo-400 hover:scale-110'
-                  ]">
-                  <i v-if="processingId === `${row.id}-${col.licenseId}`" class="fas fa-circle-notch fa-spin text-[10px]"></i>
-                  <i v-else :class="[row[col.key].has ? 'fas fa-check' : 'fas fa-plus', 'text-[10px]']"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      
-      <!-- Empty/Loading State -->
-      <div v-if="loading && !filteredTableRows.length" class="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm z-50">
-        <div class="w-16 h-16 border-4 border-indigo-50 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-        <p class="text-[13px] font-black text-indigo-900 uppercase tracking-[0.3em]">Veri Yükleniyor</p>
-      </div>
-
-      <div v-if="!loading && !filteredTableRows.length" class="p-20 text-center">
-        <div class="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
-          <i class="fas fa-search text-gray-200 text-3xl"></i>
-        </div>
-        <h3 class="text-gray-900 font-black text-lg mb-2">Kayıt Bulunamadı</h3>
-        <p class="text-gray-400 text-sm font-medium">Arama kriterlerinize uygun personel bulunamadı.</p>
-      </div>
-    </div>
-
-    <!-- Minimalist Glass Footer -->
-    <div class="px-8 py-4 bg-white border-t border-gray-100 flex items-center justify-between z-30">
-      <div class="flex items-center gap-8">
-        <div class="flex items-center gap-3">
-          <div class="w-4 h-4 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-md shadow-sm"></div>
-          <span class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Lisans Atanmış</span>
-        </div>
-        <div class="flex items-center gap-3">
-          <div class="w-4 h-4 bg-gray-100 rounded-md border border-gray-200"></div>
-          <span class="text-[10px] font-black text-gray-300 uppercase tracking-widest">Atama Yok</span>
+          <div class="px-7 py-5 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
+            <button @click="isBulkModalOpen = false" class="px-4 py-2 text-[12px] font-bold text-gray-400 hover:text-gray-600">İPTAL</button>
+            <button @click="bulkAssign" :disabled="bulkSelectedLicenseIds.length === 0"
+              class="px-8 py-2 bg-blue-600 text-white rounded-xl text-[12px] font-bold hover:bg-blue-700 disabled:opacity-50 transition-all shadow-lg shadow-blue-100">
+              ATAMAYI BAŞLAT
+            </button>
+          </div>
         </div>
       </div>
-      
-      <div class="flex items-center gap-4 text-[11px] font-bold text-gray-400">
-        <i class="fas fa-info-circle text-indigo-400"></i>
-        <span class="italic">Değişiklikler sunucu ile anlık olarak senkronize edilir.</span>
-      </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
 .custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #f8fafc;
+  background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #e2e8f0;
   border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
-}
-
-.rotated-text-wrapper {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  white-space: nowrap;
-}
-
-.rotated-text {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  line-height: 1;
-}
-
-/* Ensure sticky columns don't overlap shadows in weird ways */
-th.sticky.left-0 {
-  box-shadow: 2px 0 5px -2px rgba(0,0,0,0.05);
-}
-
-/* Row hover highlight for the whole line including sticky part */
-tr:hover td.sticky {
-  background-color: #f5f7ff !important;
-}
-
-/* Cell hover effect */
-.group\/cell:hover {
-  background-color: rgba(99, 102, 241, 0.03);
 }
 </style>
 

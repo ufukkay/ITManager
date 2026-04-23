@@ -198,208 +198,195 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-[#f8f9fa] text-[#3c4043] font-sans overflow-hidden">
+  <div class="h-full flex flex-col bg-white text-gray-900 overflow-hidden">
     
-    <!-- HEADER -->
-    <header class="bg-white border-b border-[#dadce0] px-8 py-4 shrink-0 flex items-center justify-between z-20 shadow-sm">
-        <div class="flex items-center gap-10">
-            <h1 class="text-[22px] font-medium text-[#202124]">Yönetim Paneli</h1>
-            <nav class="flex items-center gap-2">
-                <button @click="activeTab = 'users'" class="tab-btn" :class="{ 'active': activeTab === 'users' }">Kullanıcı & Yetki</button>
-                <button @click="activeTab = 'mail'" class="tab-btn" :class="{ 'active': activeTab === 'mail' }">Sistem Ayarları</button>
-            </nav>
+    <!-- HEADER (SIM STYLE) -->
+    <header class="h-14 border-b border-gray-100 flex items-center px-6 gap-8 bg-white shrink-0 sticky top-0 z-50">
+        <div class="flex items-center gap-2.5 shrink-0">
+            <i class="fas fa-shield-halved text-gray-400 text-lg"></i>
+            <h1 class="text-[16px] font-bold text-gray-900 tracking-tight">Yetki Yönetimi</h1>
         </div>
-        <button v-if="activeTab === 'users'" @click="showUserModal = true" class="btn-primary">
-            <i class="fas fa-plus"></i> Yeni Kullanıcı
-        </button>
+        
+        <nav class="flex h-full">
+            <button @click="activeTab = 'users'" class="tab-item" :class="{ 'active': activeTab === 'users' }">Kullanıcılar</button>
+            <button @click="activeTab = 'mail'" class="tab-item" :class="{ 'active': activeTab === 'mail' }">Sistem Ayarları</button>
+        </nav>
+
+        <div class="ml-auto">
+            <button v-if="activeTab === 'users'" @click="showUserModal = true" class="btn-action-primary">
+                <i class="fas fa-plus"></i> Yeni Kullanıcı
+            </button>
+        </div>
     </header>
 
     <main class="flex-1 flex overflow-hidden">
 
         <!-- TAB: KULLANICI & YETKİ -->
         <template v-if="activeTab === 'users'">
-            <!-- SOL: KULLANICI LİSTESİ -->
-            <aside class="w-[320px] bg-white border-r border-[#dadce0] flex flex-col shrink-0 shadow-sm">
-                <div class="p-4 border-b border-[#f1f3f4] bg-[#f8f9fa]">
+            <!-- SOL: KULLANICI LİSTESİ (Minimal Sidebar) -->
+            <aside class="w-[260px] bg-white border-r border-gray-100 flex flex-col shrink-0">
+                <div class="p-3 border-b border-gray-50 bg-gray-50/30">
                     <div class="relative">
-                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-                        <input type="text" placeholder="Kullanıcı ara..." class="w-full h-9 pl-9 pr-3 bg-white border border-[#dadce0] rounded-full text-sm outline-none focus:border-[#1a73e8]">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[11px]"></i>
+                        <input type="text" placeholder="Kullanıcı ara..." class="w-full h-8 pl-8 pr-3 bg-white border border-gray-100 rounded text-[12px] outline-none focus:border-blue-500 transition-all">
                     </div>
                 </div>
-                <div class="flex-1 overflow-y-auto p-2 scroll-modern">
+                <div class="flex-1 overflow-y-auto p-1.5 space-y-0.5">
                     <button
                         v-for="user in users"
                         :key="user.id"
                         @click="selectedUserId = user.id"
-                        class="user-card"
+                        class="user-row"
                         :class="{ 'active': selectedUserId === user.id }"
                     >
-                        <div class="avatar" :class="{ 'active': selectedUserId === user.id }">
+                        <div class="user-dot" :class="{ 'active': selectedUserId === user.id }">
                             {{ user.full_name?.charAt(0) }}
                         </div>
                         <div class="flex flex-col min-w-0">
-                            <span class="text-sm font-medium truncate">{{ user.full_name }}</span>
-                            <span class="text-xs text-gray-500 truncate">{{ roles.find(r => r.id === user.role_id)?.name }}</span>
+                            <span class="text-[12.5px] font-semibold truncate">{{ user.full_name }}</span>
+                            <span class="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{{ roles.find(r => r.id === user.role_id)?.name }}</span>
                         </div>
-                        <i v-if="selectedUserId === user.id" class="fas fa-chevron-right ml-auto text-[#1a73e8] text-[10px]"></i>
                     </button>
                 </div>
             </aside>
 
-            <!-- SAĞ: YETKİ MATRİSİ -->
-            <section class="flex-1 overflow-y-auto bg-white p-10 scroll-modern">
-                <div v-if="selectedUser" class="max-w-4xl mx-auto animate-fade-in">
+            <!-- SAĞ: YETKİ TABLOSU (SIM Table Style) -->
+            <section class="flex-1 overflow-y-auto bg-white flex flex-col">
+                <div v-if="selectedUser" class="flex flex-col h-full">
                     
-                    <!-- USER INFO HEADER -->
-                    <div class="flex items-center justify-between mb-8 pb-8 border-b border-[#f1f3f4]">
-                        <div class="flex items-center gap-5">
-                            <div class="w-16 h-16 rounded-2xl bg-[#e8f0fe] text-[#1a73e8] flex items-center justify-center text-3xl font-semibold shadow-inner">
+                    <!-- USER INFO BAR -->
+                    <div class="px-6 py-4 border-b border-gray-50 bg-[#fafafa] flex items-center justify-between shrink-0">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center text-lg font-bold">
                                 {{ selectedUser.full_name?.charAt(0) }}
                             </div>
                             <div>
-                                <h2 class="text-2xl font-medium text-[#202124]">{{ selectedUser.full_name }}</h2>
-                                <p class="text-sm text-gray-500 flex items-center gap-2 mt-1">
-                                    <i class="fas fa-envelope opacity-50"></i> {{ selectedUser.email }}
-                                </p>
+                                <h2 class="text-[15px] font-bold text-gray-900">{{ selectedUser.full_name }}</h2>
+                                <p class="text-[11px] text-gray-400 font-medium">{{ selectedUser.email }}</p>
                             </div>
                         </div>
-                        <div class="flex flex-col items-end">
-                             <span class="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2">Mevcut Rol</span>
-                             <select :value="selectedUser.role_id" @change="updateUserRole(selectedUser.id, $event.target.value)" class="role-select">
-                                <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
-                             </select>
-                        </div>
-                    </div>
-
-                    <!-- PERMISSION MATRIX -->
-                    <div class="bg-white rounded-xl border border-[#dadce0] overflow-hidden shadow-sm">
-                        <div class="px-6 py-4 bg-[#f8f9fa] border-b border-[#dadce0] flex items-center justify-between">
-                            <h3 class="text-sm font-semibold text-[#3c4043] flex items-center gap-2">
-                                <i class="fas fa-shield-alt text-[#1a73e8]"></i>
-                                Yetki Matrisi
-                            </h3>
-                            <button @click="saveUserPermissions" :disabled="isSavingPerms" class="btn-save">
+                        <div class="flex items-center gap-4">
+                             <div class="flex flex-col items-end">
+                                 <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Sistem Rolü</span>
+                                 <select :value="selectedUser.role_id" @change="updateUserRole(selectedUser.id, $event.target.value)" class="role-select-minimal">
+                                    <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
+                                 </select>
+                             </div>
+                             <button @click="saveUserPermissions" :disabled="isSavingPerms" class="btn-save-minimal">
                                 <i class="fas" :class="isSavingPerms ? 'fa-spinner fa-spin' : 'fa-save'"></i>
-                                {{ isSavingPerms ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet' }}
+                                {{ isSavingPerms ? 'Kaydediliyor...' : 'YETKİLERİ KAYDET' }}
                             </button>
                         </div>
-
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead class="bg-[#fcfcfc] border-b border-[#dadce0]">
-                                    <tr>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider w-1/3">Modül / İşlev</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-center">Görüntüleme</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-center">Düzenleme / Yönetim</th>
-                                        <th class="px-6 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-center">Durum</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-[#f1f3f4]">
-                                    <tr v-for="mod in modules" :key="mod.name" class="hover:bg-[#fcfcfc] transition-colors">
-                                        <td class="px-6 py-4">
-                                            <span class="text-sm font-medium text-[#202124]">{{ mod.name }}</span>
-                                            <p class="text-[11px] text-gray-400 mt-0.5">{{ mod.view?.description || mod.edit?.description }}</p>
-                                        </td>
-                                        
-                                        <!-- VIEW TOGGLE -->
-                                        <td class="px-6 py-4 text-center">
-                                            <div class="flex justify-center">
-                                                <label class="switch" :class="{ 'opacity-50 cursor-not-allowed': isInherited(mod.view?.id) || selectedUser.role_id === 1 }">
-                                                    <input type="checkbox" :checked="isPermissionGranted(mod.view?.id)" @change="togglePermission(mod.view?.id)" :disabled="isInherited(mod.view?.id) || selectedUser.role_id === 1">
-                                                    <span class="slider"></span>
-                                                </label>
-                                            </div>
-                                        </td>
-
-                                        <!-- EDIT TOGGLE -->
-                                        <td class="px-6 py-4 text-center">
-                                            <div class="flex justify-center" v-if="mod.edit">
-                                                <label class="switch" :class="{ 'opacity-50 cursor-not-allowed': isInherited(mod.edit?.id) || selectedUser.role_id === 1 }">
-                                                    <input type="checkbox" :checked="isPermissionGranted(mod.edit?.id)" @change="togglePermission(mod.edit?.id)" :disabled="isInherited(mod.edit?.id) || selectedUser.role_id === 1">
-                                                    <span class="slider"></span>
-                                                </label>
-                                            </div>
-                                            <span v-else class="text-[10px] text-gray-300">—</span>
-                                        </td>
-
-                                        <!-- STATUS BADGE -->
-                                        <td class="px-6 py-4">
-                                            <div class="flex justify-center">
-                                                <span v-if="selectedUser.role_id === 1" class="badge bg-purple-50 text-purple-600 border-purple-100">Full Access</span>
-                                                <span v-else-if="isInherited(mod.view?.id) || isInherited(mod.edit?.id)" class="badge bg-blue-50 text-[#1a73e8] border-blue-100">Rolden Geliyor</span>
-                                                <span v-else-if="userOverrides.includes(mod.view?.id) || userOverrides.includes(mod.edit?.id)" class="badge bg-amber-50 text-amber-600 border-amber-100">Özel Yetki</span>
-                                                <span v-else class="badge bg-gray-50 text-gray-400 border-gray-100">Yetki Yok</span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
                     </div>
 
-                    <!-- ADMIN ROLE WARNING -->
-                    <div v-if="selectedUser.role_id === 1" class="mt-6 p-4 bg-purple-50 border border-purple-100 rounded-lg flex items-start gap-4">
-                        <i class="fas fa-info-circle text-purple-600 mt-1"></i>
-                        <div class="text-[13px] text-purple-800">
-                            <strong>Bilgi:</strong> Bu kullanıcı <strong>Admin</strong> rolünde olduğu için sistem genelindeki tüm modüllere tam erişim yetkisine sahiptir. Admin yetkileri üzerinden özel kısıtlama (override) yapılamaz.
-                        </div>
+                    <!-- MATRIX TABLE -->
+                    <div class="flex-1 overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="sticky top-0 bg-gray-50 z-10">
+                                <tr>
+                                    <th class="px-6 py-3 border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider w-[350px]">Modül / Yetki Tanımı</th>
+                                    <th class="px-6 py-3 border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">Görüntüleme</th>
+                                    <th class="px-6 py-3 border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">Düzenleme</th>
+                                    <th class="px-6 py-3 border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">Kaynak</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                <tr v-for="mod in modules" :key="mod.name" class="hover:bg-gray-50/50 transition-colors">
+                                    <td class="px-6 py-3.5">
+                                        <span class="text-[13px] font-bold text-gray-800 block">{{ mod.name }}</span>
+                                        <span class="text-[11px] text-gray-400">{{ mod.view?.description || mod.edit?.description }}</span>
+                                    </td>
+                                    
+                                    <td class="px-6 py-3.5 text-center">
+                                        <div class="flex justify-center">
+                                            <label class="sim-switch" :class="{ 'disabled': isInherited(mod.view?.id) || selectedUser.role_id === 1 }">
+                                                <input type="checkbox" :checked="isPermissionGranted(mod.view?.id)" @change="togglePermission(mod.view?.id)" :disabled="isInherited(mod.view?.id) || selectedUser.role_id === 1">
+                                                <span class="sim-slider"></span>
+                                            </label>
+                                        </div>
+                                    </td>
+
+                                    <td class="px-6 py-3.5 text-center">
+                                        <div class="flex justify-center" v-if="mod.edit">
+                                            <label class="sim-switch" :class="{ 'disabled': isInherited(mod.edit?.id) || selectedUser.role_id === 1 }">
+                                                <input type="checkbox" :checked="isPermissionGranted(mod.edit?.id)" @change="togglePermission(mod.edit?.id)" :disabled="isInherited(mod.edit?.id) || selectedUser.role_id === 1">
+                                                <span class="sim-slider"></span>
+                                            </label>
+                                        </div>
+                                        <span v-else class="text-[10px] text-gray-200">—</span>
+                                    </td>
+
+                                    <td class="px-6 py-3.5">
+                                        <div class="flex justify-center">
+                                            <span v-if="selectedUser.role_id === 1" class="tag-minimal purple">ADMIN</span>
+                                            <span v-else-if="isInherited(mod.view?.id) || isInherited(mod.edit?.id)" class="tag-minimal gray">ROL</span>
+                                            <span v-else-if="userOverrides.includes(mod.view?.id) || userOverrides.includes(mod.edit?.id)" class="tag-minimal blue">ÖZEL</span>
+                                            <span v-else class="text-[10px] text-gray-200">YOK</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- FOOTER INFO -->
+                    <div v-if="selectedUser.role_id === 1" class="px-6 py-3 border-t border-gray-50 bg-gray-50/50 flex items-center gap-3">
+                        <i class="fas fa-info-circle text-gray-400 text-[12px]"></i>
+                        <span class="text-[11px] text-gray-500 font-medium">Bu kullanıcı Admin yetkilerine sahiptir ve tüm kısıtlamalardan muaftır.</span>
                     </div>
 
                 </div>
-                <div v-else class="h-full flex flex-col items-center justify-center text-gray-400 gap-4">
-                    <div class="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center border-2 border-dashed border-gray-200">
-                        <i class="fas fa-user text-3xl opacity-20"></i>
-                    </div>
-                    <p class="text-sm">Detayları görmek için sol listeden bir kullanıcı seçin.</p>
+                <div v-else class="flex-1 flex items-center justify-center text-gray-300">
+                    <p class="text-[12px] font-bold uppercase tracking-widest opacity-40">Kullanıcı Seçin</p>
                 </div>
             </section>
         </template>
 
-        <!-- TAB: MAİL AYARLARI -->
+        <!-- TAB: MAİL AYARLARI (Minimal) -->
         <template v-if="activeTab === 'mail'">
-            <div class="flex-1 overflow-y-auto p-12 scroll-modern bg-white">
-                <div class="max-w-2xl mx-auto">
-                    <div class="flex items-center gap-4 mb-10 pb-6 border-b border-gray-100">
-                        <div class="w-14 h-14 bg-[#1a73e8]/10 text-[#1a73e8] rounded-xl flex items-center justify-center text-2xl">
-                            <i class="fas fa-paper-plane"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-2xl font-medium text-[#202124]">SMTP Bildirim Altyapısı</h2>
-                            <p class="text-sm text-gray-500 mt-1">Sistem bildirimleri ve hoşgeldin e-postaları için ayarlar.</p>
-                        </div>
-                    </div>
+            <div class="flex-1 overflow-y-auto bg-white p-8">
+                <div class="max-w-xl">
+                    <h2 class="text-[16px] font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        <i class="fas fa-paper-plane text-gray-400"></i>
+                        SMTP Ayarları
+                    </h2>
 
-                    <form @submit.prevent="saveSmtpSettings" class="grid grid-cols-2 gap-6 pb-10">
-                        <div class="form-group col-span-2">
-                            <label>Sunucu (Host)</label>
-                            <input v-model="smtpSettings.host" type="text" placeholder="smtp.gmail.com">
+                    <form @submit.prevent="saveSmtpSettings" class="space-y-5">
+                        <div class="grid grid-cols-4 gap-4">
+                            <div class="col-span-3 flex flex-col gap-1.5">
+                                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Sunucu (Host)</label>
+                                <input v-model="smtpSettings.host" type="text" class="sim-input" placeholder="smtp.gmail.com">
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Port</label>
+                                <input v-model="smtpSettings.port" type="number" class="sim-input" placeholder="587">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Port</label>
-                            <input v-model="smtpSettings.port" type="number" placeholder="587">
+
+                        <div class="flex items-center gap-2 py-1">
+                            <input type="checkbox" v-model="smtpSettings.secure" id="chk-secure" class="accent-blue-600">
+                            <label for="chk-secure" class="text-[12px] font-bold text-gray-600 cursor-pointer">SSL/TLS Güvenli Bağlantı</label>
                         </div>
-                        <div class="form-group flex items-end pb-3">
-                            <label class="flex items-center gap-3 cursor-pointer select-none">
-                                <input type="checkbox" v-model="smtpSettings.secure" class="w-5 h-5 accent-[#1a73e8]">
-                                <span class="text-sm font-medium text-gray-700">SSL/TLS Güvenli Bağlantı</span>
-                            </label>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Kullanıcı</label>
+                                <input v-model="smtpSettings.user" type="text" class="sim-input" placeholder="mail@talay.com">
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Yeni Şifre</label>
+                                <input v-model="smtpSettings.pass" type="password" class="sim-input" placeholder="••••••••">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Kullanıcı (Mail)</label>
-                            <input v-model="smtpSettings.user" type="text" placeholder="bildirim@talay.com">
-                        </div>
-                        <div class="form-group">
-                            <label>Yeni Şifre</label>
-                            <input v-model="smtpSettings.pass" type="password" placeholder="••••••••">
-                        </div>
-                        <div class="form-group col-span-2">
-                            <label>Gönderen E-Posta</label>
-                            <input v-model="smtpSettings.from_email" type="text" placeholder="noreply@talay.com">
+
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[11px] font-bold text-gray-400 uppercase tracking-tight">Gönderen E-Posta</label>
+                            <input v-model="smtpSettings.from_email" type="text" class="sim-input" placeholder="Talay IT <noreply@talay.com>">
                         </div>
                         
-                        <div class="col-span-2 flex items-center justify-between mt-6 pt-8 border-t border-gray-100">
-                            <button type="button" @click="showTestMailModal = true" class="btn-secondary">Test Maili Gönder</button>
-                            <button type="submit" class="btn-primary px-10">Güncellemeleri Kaydet</button>
+                        <div class="flex items-center gap-3 pt-6 border-t border-gray-50">
+                            <button type="submit" class="btn-action-primary">Kaydet</button>
+                            <button type="button" @click="showTestMailModal = true" class="btn-action-ghost">Test Gönder</button>
                         </div>
                     </form>
                 </div>
@@ -408,128 +395,99 @@ onMounted(() => {
 
     </main>
 
-    <!-- USER CREATION MODAL -->
-    <div v-if="showUserModal" class="modal-overlay" @click.self="showUserModal = false">
-        <div class="modal-content animate-slide-up">
-            <div class="modal-header">
-                <h3>Yeni Kullanıcı Ekle</h3>
-                <button @click="showUserModal = false"><i class="fas fa-times"></i></button>
+    <!-- MODAL (SIM STYLE) -->
+    <Teleport to="body">
+        <div v-if="showUserModal" class="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/30" @click.self="showUserModal = false">
+            <div class="bg-white rounded shadow-xl w-full max-w-sm overflow-hidden border border-gray-200">
+                <div class="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <h3 class="text-[14px] font-bold text-gray-800">Yeni Kullanıcı</h3>
+                    <button @click="showUserModal = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                </div>
+                <form @submit.prevent="createUser" class="p-5 space-y-4">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[11px] font-bold text-gray-400 uppercase">Ad Soyad</label>
+                        <input v-model="newUser.full_name" required class="sim-input" placeholder="Ad Soyad">
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[11px] font-bold text-gray-400 uppercase">E-posta</label>
+                        <input v-model="newUser.email" type="email" required class="sim-input" placeholder="mail@talay.com">
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[11px] font-bold text-gray-400 uppercase">Rol</label>
+                        <select v-model="newUser.role_id" required class="sim-input bg-white">
+                            <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2">
+                        <button type="button" @click="showUserModal = false" class="px-4 py-2 text-[12px] font-bold text-gray-400">İptal</button>
+                        <button type="submit" :disabled="isCreatingUser" class="px-6 py-2 bg-blue-600 text-white text-[12px] font-bold rounded">Oluştur</button>
+                    </div>
+                </form>
             </div>
-            <form @submit.prevent="createUser" class="p-8 space-y-6">
-                <div class="form-group">
-                    <label>Ad Soyad</label>
-                    <input v-model="newUser.full_name" required placeholder="Örn: Mehmet Öz">
-                </div>
-                <div class="form-group">
-                    <label>E-posta Adresi</label>
-                    <input v-model="newUser.email" type="email" required placeholder="mehmet@talay.com">
-                </div>
-                <div class="form-group">
-                    <label>Başlangıç Rolü</label>
-                    <select v-model="newUser.role_id" required>
-                        <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
-                    </select>
-                </div>
-                <div class="flex justify-end gap-3 pt-6">
-                    <button type="button" @click="showUserModal = false" class="btn-text">İptal</button>
-                    <button type="submit" :disabled="isCreatingUser" class="btn-primary px-8">Kullanıcıyı Oluştur</button>
-                </div>
-            </form>
         </div>
-    </div>
+    </Teleport>
 
   </div>
 </template>
 
 <style scoped>
-/* GOOGLE PREMIUM STYLING */
-.tab-btn {
-    @apply h-14 px-6 text-[13px] font-medium text-gray-500 border-b-2 border-transparent transition-all hover:text-[#1a73e8];
+.tab-item {
+    @apply h-full px-5 text-[13px] font-bold text-gray-400 border-b-2 border-transparent transition-all;
 }
-.tab-btn.active {
-    @apply text-[#1a73e8] border-[#1a73e8] bg-[#f8f9fa]/50;
-}
-
-.btn-primary {
-    @apply h-10 px-5 bg-[#1a73e8] text-white rounded-lg text-sm font-semibold hover:bg-[#174ea6] transition-all shadow-sm flex items-center gap-2;
-}
-.btn-secondary {
-    @apply h-10 px-5 border border-[#dadce0] text-[#1a73e8] rounded-lg text-sm font-semibold hover:bg-[#f8f9fa] transition-all;
-}
-.btn-save {
-    @apply h-8 px-4 bg-[#1a73e8]/10 text-[#1a73e8] rounded-md text-[12px] font-bold hover:bg-[#1a73e8] hover:text-white transition-all flex items-center gap-2 disabled:opacity-50;
-}
-.btn-text {
-    @apply h-10 px-5 text-gray-500 font-semibold text-sm hover:bg-gray-100 rounded-lg;
+.tab-item.active {
+    @apply text-blue-600 border-blue-600 bg-blue-50/10;
 }
 
-.user-card {
-    @apply w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all mb-1 hover:bg-[#f8f9fa] text-left border border-transparent;
+.btn-action-primary {
+    @apply h-9 px-4 bg-blue-600 text-white rounded text-[12px] font-bold hover:bg-blue-700 transition-all shadow-sm flex items-center gap-2;
 }
-.user-card.active {
-    @apply bg-[#e8f0fe] border-[#1a73e8]/20 text-[#1a73e8];
-}
-
-.avatar {
-    @apply w-10 h-10 rounded-full bg-[#f1f3f4] text-gray-600 flex items-center justify-center text-sm font-bold transition-all;
-}
-.avatar.active {
-    @apply bg-[#1a73e8] text-white scale-105 shadow-md;
+.btn-action-ghost {
+    @apply h-9 px-4 border border-gray-200 text-gray-500 rounded text-[12px] font-bold hover:bg-gray-50 transition-all;
 }
 
-.role-select {
-    @apply h-10 rounded-lg border-[#dadce0] bg-[#f8f9fa] text-sm font-medium px-4 outline-none focus:border-[#1a73e8] cursor-pointer;
+.user-row {
+    @apply w-full flex items-center gap-3 px-3 py-2 rounded transition-all text-left;
+}
+.user-row:hover { @apply bg-gray-50; }
+.user-row.active { @apply bg-blue-50/50; }
+.user-row.active span { @apply text-blue-600; }
+
+.user-dot {
+    @apply w-8 h-8 rounded bg-gray-100 text-gray-400 flex items-center justify-center text-[12px] font-bold;
+}
+.user-dot.active { @apply bg-blue-600 text-white; }
+
+.role-select-minimal {
+    @apply h-7 rounded border border-gray-100 bg-white text-[12px] font-bold px-2 outline-none focus:border-blue-500 transition-all cursor-pointer;
 }
 
-.badge {
-    @apply px-2.5 py-1 rounded-full text-[10px] font-bold border;
+.sim-input {
+    @apply w-full h-9 border border-gray-200 rounded px-3 text-[12px] font-medium outline-none focus:border-blue-500 transition-all;
 }
 
-.form-group label {
-    @apply block text-[13px] font-bold text-gray-700 mb-2;
-}
-.form-group input, .form-group select {
-    @apply w-full h-11 border border-[#dadce0] rounded-lg px-4 text-sm outline-none focus:border-[#1a73e8] focus:ring-2 focus:ring-[#1a73e8]/10 transition-all;
+.btn-save-minimal {
+    @apply h-8 px-4 bg-blue-600 text-white rounded text-[11px] font-bold hover:bg-blue-700 transition-all flex items-center gap-2 disabled:opacity-50;
 }
 
-/* SWITCH COMPONENT */
-.switch {
-    @apply relative inline-block w-11 h-5;
+.tag-minimal {
+    @apply px-2 py-0.5 rounded text-[9px] font-bold border uppercase;
 }
-.switch input {
-    @apply opacity-0 w-0 h-0;
-}
-.slider {
-    @apply absolute cursor-pointer inset-0 bg-[#bdc1c6] rounded-full transition-all;
-}
-.slider:before {
-    @apply absolute content-[''] h-4 w-4 left-0.5 bottom-0.5 bg-white rounded-full transition-all shadow-sm;
-}
-input:checked + .slider {
-    @apply bg-[#1a73e8];
-}
-input:checked + .slider:before {
-    @apply translate-x-6;
-}
+.tag-minimal.blue { @apply bg-blue-50 text-blue-600 border-blue-100; }
+.tag-minimal.purple { @apply bg-purple-50 text-purple-600 border-purple-100; }
+.tag-minimal.gray { @apply bg-gray-50 text-gray-400 border-gray-100; }
 
-/* MODAL */
-.modal-overlay {
-    @apply fixed inset-0 bg-[#202124]/60 backdrop-blur-sm z-[3000] flex items-center justify-center p-4;
+/* SIM SWITCH */
+.sim-switch {
+    @apply relative inline-block w-8 h-4 cursor-pointer;
 }
-.modal-content {
-    @apply bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#dadce0];
+.sim-switch input { @apply opacity-0 w-0 h-0; }
+.sim-slider {
+    @apply absolute inset-0 bg-gray-200 rounded-full transition-all duration-200;
 }
-.modal-header {
-    @apply px-8 py-5 border-b border-[#f1f3f4] flex justify-between items-center bg-[#f8f9fa];
+.sim-slider:before {
+    @apply absolute content-[''] h-3 w-3 left-0.5 bottom-0.5 bg-white rounded-full transition-all duration-200;
 }
-.modal-header h3 { @apply text-lg font-medium text-[#202124]; }
-
-/* UTILS */
-.scroll-modern::-webkit-scrollbar { width: 6px; }
-.scroll-modern::-webkit-scrollbar-thumb { @apply bg-gray-200 rounded-full hover:bg-gray-300; }
-.animate-fade-in { animation: fadeIn 0.4s ease-out; }
-.animate-slide-up { animation: slideUp 0.3s ease-out; }
-
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+input:checked + .sim-slider { @apply bg-blue-600; }
+input:checked + .sim-slider:before { @apply translate-x-4; }
+.sim-switch.disabled { @apply opacity-30 cursor-not-allowed; }
 </style>

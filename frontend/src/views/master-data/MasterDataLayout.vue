@@ -49,9 +49,9 @@ const isActive = (path) => route.path === path
               v-for="item in section.items"
               :key="item.path"
               :to="item.path"
-              class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all group"
+              class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-bold transition-all group"
               :class="isActive(item.path) 
-                ? 'bg-blue-50 text-blue-600' 
+                ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100/50' 
                 : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'"
             >
               <i :class="['fas', item.icon, 'w-4 text-center text-[14px]', isActive(item.path) ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-600']"></i>

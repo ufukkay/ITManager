@@ -33,7 +33,7 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
 </script>
 
 <template>
-  <header class="h-14 border-b border-gray-100 flex items-center px-6 gap-8 bg-white shrink-0 sticky top-0 z-50">
+  <header class="h-14 border-b border-gray-100 flex items-center px-6 gap-8 bg-white/80 backdrop-blur-md shrink-0 sticky top-0 z-50 shadow-sm shadow-black/[0.02]">
 
     <!-- Logo -->
     <router-link to="/" class="flex items-center gap-2.5 shrink-0">

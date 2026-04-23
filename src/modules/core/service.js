@@ -186,7 +186,6 @@ class MasterDataService {
     }
 
     static async updatePersonnel(id, data) {
-        console.log(`[MasterDataService] updatePersonnel: updating id ${id}`, data);
         const { employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes } = data;
         db.prepare(`
             UPDATE personnel SET 
@@ -713,6 +712,58 @@ class MasterDataService {
             const row = db.prepare("SELECT allocation_id FROM m365_allocation_users WHERE id = ?").get(allocationUserId);
             if (row) {
                 db.prepare("DELETE FROM m365_allocation_users WHERE id = ?").run(allocationUserId);
+                db.prepare("UPDATE m365_allocations SET quantity = (SELECT COUNT(*) FROM m365_allocation_users WHERE allocation_id = ?) WHERE id = ?")
+                    .run(row.allocation_id, row.allocation_id);
+            }
+        });
+        transaction();
+    }
+
+    static async bulkAssignLicenses(personnelIds, licenseIds) {
+        const transaction = db.transaction(() => {
+            for (const pId of personnelIds) {
+                const personnel = db.prepare("SELECT company_id FROM personnel WHERE id = ?").get(pId);
+                if (!personnel || !personnel.company_id) continue;
+
+                for (const lId of licenseIds) {
+                    // 1. Şirket tahsisi kontrol
+                    let alloc = db.prepare("SELECT id FROM m365_allocations WHERE company_id = ? AND license_id = ?")
+                        .get(personnel.company_id, lId);
+                    
+                    if (!alloc) {
+                        const info = db.prepare("INSERT INTO m365_allocations (company_id, license_id, quantity) VALUES (?, ?, 0)")
+                            .run(personnel.company_id, lId);
+                        alloc = { id: info.lastInsertRowid };
+                    }
+
+                    // 2. Mükerrer kontrol
+                    const existing = db.prepare("SELECT id FROM m365_allocation_users WHERE allocation_id = ? AND personnel_id = ?")
+                        .get(alloc.id, pId);
+                    
+                    if (!existing) {
+                        db.prepare("INSERT INTO m365_allocation_users (allocation_id, personnel_id) VALUES (?, ?)")
+                            .run(alloc.id, pId);
+                        
+                        db.prepare("UPDATE m365_allocations SET quantity = (SELECT COUNT(*) FROM m365_allocation_users WHERE allocation_id = ?) WHERE id = ?")
+                            .run(alloc.id, alloc.id);
+                    }
+                }
+            }
+        });
+        transaction();
+    }
+
+    static async unassignLicenseByPersonnel(personnelId, licenseId) {
+        const transaction = db.transaction(() => {
+            const row = db.prepare(`
+                SELECT mau.id, mau.allocation_id 
+                FROM m365_allocation_users mau
+                JOIN m365_allocations ma ON mau.allocation_id = ma.id
+                WHERE mau.personnel_id = ? AND ma.license_id = ?
+            `).get(personnelId, licenseId);
+
+            if (row) {
+                db.prepare("DELETE FROM m365_allocation_users WHERE id = ?").run(row.id);
                 db.prepare("UPDATE m365_allocations SET quantity = (SELECT COUNT(*) FROM m365_allocation_users WHERE allocation_id = ?) WHERE id = ?")
                     .run(row.allocation_id, row.allocation_id);
             }

@@ -335,24 +335,20 @@ onMounted(fetchData)
         </template>
 
         <template #cell-operator="{ value }">
-          <span v-if="value === 'Turkcell'" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-50 text-blue-600 border border-blue-100">Turkcell</span>
-          <span v-else-if="value === 'Vodafone'" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-50 text-red-600 border border-red-100">Vodafone</span>
-          <span v-else class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-gray-50 text-gray-600 border border-gray-100">{{ value || '—' }}</span>
+          <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-gray-50 text-gray-500 border border-gray-100 uppercase tracking-tight">
+            {{ value || '—' }}
+          </span>
         </template>
 
         <template #cell-status="{ value }">
           <div class="flex items-center gap-2">
-            <span v-if="value === 'Aktif' || value === 'active'" class="flex items-center gap-2 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span v-if="value === 'Aktif' || value === 'active'" class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
               AKTİF
             </span>
-            <span v-else-if="value === 'Pasif' || value === 'pasif' || value === 'passive'" class="flex items-center gap-2 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-50 text-amber-600 border border-amber-100">
-              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-              PASİF
-            </span>
-            <span v-else class="flex items-center gap-2 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-50 text-red-600 border border-red-100">
-              <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-              İPTAL
+            <span v-else class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-gray-50 text-gray-400 border border-gray-100">
+              <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+              {{ value?.toUpperCase() || '—' }}
             </span>
           </div>
         </template>

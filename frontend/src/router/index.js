@@ -87,6 +87,11 @@ const routes = [
         path: 'voice',
         name: 'sim-voice',
         component: () => import('../views/sim-tracking/VoiceView.vue')
+      },
+      {
+        path: 'transfer',
+        name: 'sim-transfer',
+        component: () => import('../views/sim-tracking/SimTransferView.vue')
       }
     ]
   },

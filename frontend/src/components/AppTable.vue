@@ -655,19 +655,20 @@ function resetPanel() {
   color: #9ca3af; font-size: 11px; pointer-events: none;
 }
 .at-search-input {
-  padding: 6px 10px 6px 30px; font-size: 12.5px;
-  border: 1px solid #e5e7eb; border-radius: 0; background: #fff;
-  outline: none; width: 220px; color: #1f2328; font-family: inherit;
+  padding: 8px 12px 8px 34px; font-size: 13px;
+  border: 1px solid var(--border); border-radius: var(--radius); background: #fff;
+  outline: none; width: 260px; color: var(--text-primary); font-family: inherit;
+  transition: all 0.2s ease;
 }
-.at-search-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,.15); }
+.at-search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-light); }
 
 .at-qs {
-  font-size: 12.5px; border: 1px solid #e5e7eb; border-radius: 0;
-  background: #fff; padding: 5px 10px; color: #374151;
+  font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: #fff; padding: 7px 12px; color: var(--text-primary);
   outline: none; cursor: pointer; font-family: inherit;
-  min-width: 140px;
+  min-width: 140px; transition: all 0.2s ease;
 }
-.at-qs:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,.15); }
+.at-qs:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-light); }
 
 .at-clear-btn {
   font-size: 12px; color: #6b7280; padding: 5px 12px;
@@ -692,8 +693,8 @@ function resetPanel() {
 
 /* ── Kart & tablo ────────────────────────────────────────────────────────────── */
 .at-card {
-  background: #fff; border: 1px solid #e5e7eb;
-  border-radius: 0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  background: #fff; border: 1px solid var(--border);
+  border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow);
   display: flex; flex-direction: column; flex: 1; min-height: 0;
 }
 .at-table-wrap { overflow-x: auto; overflow-y: auto; flex: 1; }
@@ -701,12 +702,12 @@ function resetPanel() {
 
 /* Başlık */
 .at-thead-row {
-  font-size: 11px; color: #6b7280; text-transform: uppercase;
-  letter-spacing: .05em; border-bottom: 1px solid #f3f4f6;
-  background: rgba(249,250,251,.6); font-weight: 600;
+  font-size: 11px; color: var(--text-secondary); text-transform: uppercase;
+  letter-spacing: .08em; border-bottom: 1px solid var(--border);
+  background: #fafafa; font-weight: 700;
 }
 .at-th {
-  padding: 10px 12px; white-space: nowrap;
+  padding: 14px 12px; white-space: nowrap;
   -webkit-user-select: none; user-select: none;
 }
 .at-th-check { width: 40px; text-align: center; }
