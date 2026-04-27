@@ -110,7 +110,7 @@ const initDb = () => {
         }
         if (!columns.some(c => c.name === 'created_at')) {
             console.log("Adding created_at to servers table...");
-            db.prepare("ALTER TABLE servers ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP").run();
+            db.prepare("ALTER TABLE servers ADD COLUMN created_at DATETIME DEFAULT '2024-01-01 00:00:00'").run();
         }
     }
   } catch (e) { console.log("Servers table migration skipped:", e.message); }
