@@ -20,7 +20,12 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     hasPermission(key) {
       if (this.isAdmin) return true
-      return this.userPermissions.includes(key)
+      if (this.userPermissions.includes(key)) return true
+      if (key.endsWith(':view')) {
+        const editKey = key.replace(':view', ':edit')
+        if (this.userPermissions.includes(editKey)) return true
+      }
+      return false
     },
     async checkAuth() {
       this.loading = true

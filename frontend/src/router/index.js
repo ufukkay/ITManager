@@ -30,7 +30,7 @@ const routes = [
   {
     path: '/monitoring',
     component: () => import('../layouts/MonitoringLayout.vue'),
-    meta: { layout: 'main', requiresAuth: true, fullBleed: true },
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true, permission: 'monitoring:view' },
     children: [
       {
         path: '',
@@ -61,7 +61,7 @@ const routes = [
   {
     path: '/hr-requests',
     component: () => import('../layouts/HRLayout.vue'),
-    meta: { layout: 'main', requiresAuth: true, fullBleed: true },
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true, permission: 'hr:view' },
     children: [
       {
         path: '',
@@ -74,7 +74,7 @@ const routes = [
   {
     path: '/sim-takip',
     component: () => import('../layouts/SimTrackingLayout.vue'),
-    meta: { layout: 'main', requiresAuth: true, fullBleed: true },
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true, permission: 'sim:view' },
     children: [
       {
         path: '',
@@ -106,7 +106,7 @@ const routes = [
   {
     path: '/licensing',
     component: () => import('../layouts/LicensingLayout.vue'),
-    meta: { layout: 'main', requiresAuth: true, fullBleed: true },
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true, permission: 'm365:view' },
     children: [
       {
         path: '',
@@ -128,7 +128,7 @@ const routes = [
   {
     path: '/inventory',
     component: () => import('../layouts/InventoryLayout.vue'),
-    meta: { layout: 'main', requiresAuth: true, fullBleed: true },
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true, permission: 'asset:view' },
     children: [
       {
         path: '',
@@ -149,6 +149,25 @@ const routes = [
         name: 'inventory-reports',
         component: () => import('../views/inventory/AmortizationView.vue')
       }
+    ]
+  },
+  // Kendi Zimmetlerim (Tüm personeller için)
+  {
+    path: '/my-assets',
+    name: 'my-assets',
+    component: () => import('../views/inventory/MyAssetsView.vue'),
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true }
+  },
+  // IT Destek Merkezi (Help Desk)
+  {
+    path: '/helpdesk',
+    component: () => import('../views/helpdesk/HelpDeskLayout.vue'),
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true },
+    children: [
+      { path: '', redirect: '/helpdesk/my-tickets' },
+      { path: 'my-tickets', component: () => import('../views/helpdesk/MyTicketsView.vue') },
+      { path: 'pool', component: () => import('../views/helpdesk/TechnicianPoolView.vue'), meta: { permission: 'helpdesk:manage' } },
+      { path: 'ticket/:id', component: () => import('../views/helpdesk/TicketDetailView.vue') }
     ]
   },
   // Master Data (Şirket, Personel, Organizasyon) - Unified Console
@@ -204,8 +223,15 @@ const routes = [
       },
       {
         path: 'smtp-settings',
-        name: 'master-smtp',
-        component: () => import('../views/master-data/SmtpSettingsView.vue')
+        name: 'master-smtp-settings',
+        component: () => import('../views/master-data/SmtpSettingsView.vue'),
+        meta: { permission: 'system:settings' }
+      },
+      {
+        path: 'helpdesk-settings',
+        name: 'master-helpdesk-settings',
+        component: () => import('../views/master-data/HelpDeskSettingsView.vue'),
+        meta: { permission: 'system:settings' }
       }
     ]
   },
@@ -214,14 +240,14 @@ const routes = [
     path: '/cost-management',
     name: 'cost-management',
     component: () => import('../views/cost-management/InvoicesView.vue'),
-    meta: { layout: 'main', requiresAuth: true, fullBleed: true }
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true, permission: 'invoice:view' }
   },
   // Raporlar ve Analitik
   {
     path: '/reports',
     name: 'reports',
     component: () => import('../views/reports/ReportsView.vue'),
-    meta: { layout: 'main', requiresAuth: true }
+    meta: { layout: 'main', requiresAuth: true, adminOnly: true }
   },
   {
     path: '/:pathMatch(.*)*',
@@ -253,6 +279,11 @@ router.beforeEach(async (to, from) => {
 
   // Admin korumalı rotalar
   if (to.meta.adminOnly && !authStore.isAdmin) {
+    return { name: 'dashboard' }
+  }
+
+  // Özel yetki gerektiren rotalar
+  if (to.meta.permission && !authStore.hasPermission(to.meta.permission)) {
     return { name: 'dashboard' }
   }
 

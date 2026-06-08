@@ -33,15 +33,22 @@ const hasPermission = (permissionKey) => {
         // Admin her zaman geçer
         if (userRole === 1) return next();
 
+        let keysToCheck = [permissionKey];
+        if (permissionKey.endsWith(':view')) {
+            keysToCheck.push(permissionKey.replace(':view', ':edit'));
+        }
+        const placeholders = keysToCheck.map(() => '?').join(',');
+
         // Yetki kontrolü: Rol yetkisi VAR MI ya da Kullanıcıya özel atanmış MI?
         const permission = db.prepare(`
             SELECT p.id 
             FROM permissions p
             LEFT JOIN role_permissions rp ON p.id = rp.permission_id AND rp.role_id = ?
             LEFT JOIN user_permissions up ON p.id = up.permission_id AND up.user_id = ?
-            WHERE p.permission_key = ? 
+            WHERE p.permission_key IN (${placeholders})
             AND (rp.permission_id IS NOT NULL OR up.granted = 1)
-        `).get(userRole, userId, permissionKey);
+            LIMIT 1
+        `).get(userRole, userId, ...keysToCheck);
 
         if (!permission) {
             // Eğer API isteğiyse JSON dön

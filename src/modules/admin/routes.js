@@ -218,4 +218,42 @@ router.post('/api/users/:id/permissions', (req, res) => {
     }
 });
 
+// GET /admin/api/settings/imap - IMAP ayarlarını getir
+router.get('/api/settings/imap', (req, res) => {
+    try {
+        const settings = db.prepare('SELECT host, port, user, tls, delete_after_read, is_active FROM imap_settings ORDER BY id DESC LIMIT 1').get();
+        res.json({ success: true, settings: settings || {} });
+    } catch (err) {
+        console.error('Get IMAP settings error:', err);
+        res.status(500).json({ success: false, message: 'IMAP ayarları alınırken bir hata oluştu.' });
+    }
+});
+
+// POST /admin/api/settings/imap - IMAP ayarlarını kaydet
+router.post('/api/settings/imap', (req, res) => {
+    try {
+        const { host, port, user, password, tls, delete_after_read, is_active } = req.body;
+        
+        let passToSave = password;
+        if (!password || password.trim() === '') {
+            const old = db.prepare('SELECT password FROM imap_settings ORDER BY id DESC LIMIT 1').get();
+            if (old) {
+                passToSave = old.password;
+            } else {
+                return res.status(400).json({ success: false, message: 'Lütfen parola girin.' });
+            }
+        }
+        
+        db.prepare(`
+            INSERT INTO imap_settings (host, port, user, password, tls, delete_after_read, is_active) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(host, port, user, passToSave, tls ? 1 : 0, delete_after_read ? 1 : 0, is_active ? 1 : 0);
+        
+        res.json({ success: true, message: 'IMAP ayarları kaydedildi. Mail okuyucu servis bir sonraki periyotta yeni ayarları kullanacaktır.' });
+    } catch (err) {
+        console.error('Save IMAP settings error:', err);
+        res.status(500).json({ success: false, message: 'IMAP ayarları kaydedilirken bir hata oluştu.' });
+    }
+});
+
 module.exports = router;

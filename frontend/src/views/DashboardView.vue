@@ -59,21 +59,24 @@ const modules = [
     desc: 'Canlı sistem sağlığı',
     count: 'Aktif',
     icon: 'fa-server',
-    href: '/monitoring'
+    href: '/monitoring',
+    permission: 'monitoring:view'
   },
   {
     title: 'SIM Kart Takip',
     desc: 'M2M, Data ve Ses hatları',
     count: 'Hatlar',
     icon: 'fa-sim-card',
-    href: '/sim-takip'
+    href: '/sim-takip',
+    permission: 'sim:view'
   },
   {
     title: 'İK Bildirimleri',
     desc: 'Personel giriş, çıkış, donanım',
     count: 'Talepler',
     icon: 'fa-user-clock',
-    href: '/hr-requests'
+    href: '/hr-requests',
+    permission: 'hr:view'
   },
 
   {
@@ -105,7 +108,8 @@ const modules = [
     desc: 'Merkezi raporlama sistemi',
     count: 'Analiz',
     icon: 'fa-chart-pie',
-    href: '/reports'
+    href: '/reports',
+    adminOnly: true
   },
   {
     title: 'Envanter Takibi',
@@ -115,12 +119,28 @@ const modules = [
     href: '/inventory',
     permission: 'asset:view'
   },
+  {
+    title: 'Zimmetlerim',
+    desc: 'Üzerime kayıtlı aktif cihazlar',
+    count: 'Zimmetler',
+    icon: 'fa-box-open',
+    href: '/my-assets',
+    allowedRoles: ['Personel', 'Teknisyen']
+  },
+  {
+    title: 'IT Destek Merkezi',
+    desc: 'Talep, Arıza ve İstek Bildirimleri',
+    count: 'Yardım',
+    icon: 'fa-headset',
+    href: '/helpdesk'
+  }
 ]
 
 const filteredModules = computed(() => {
   return modules.filter(m => {
     if (m.adminOnly && !authStore.isAdmin) return false
     if (m.permission && !authStore.hasPermission(m.permission)) return false
+    if (m.allowedRoles && !m.allowedRoles.includes(authStore.userRoleName)) return false
     return true
   })
 })

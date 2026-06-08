@@ -5,23 +5,24 @@ import { useToast } from '../../composables/useToast'
 
 const smtpSettings = ref({ host: '', port: 587, user: '', pass: '', secure: true, from_email: '' })
 const loading = ref(true)
-const saving = ref(false)
+const savingSmtp = ref(false)
 const showTestMailModal = ref(false)
 const testEmail = ref('')
 const isTestingSmtp = ref(false)
 const { showToast } = useToast()
 
-const loadSmtpSettings = async () => {
+const loadSettings = async () => {
     loading.value = true
     try {
-        const res = await api.get('/admin/api/settings/smtp')
-        if (res.data.success && res.data.settings) {
-            smtpSettings.value = { ...smtpSettings.value, ...res.data.settings }
-            smtpSettings.value.secure = res.data.settings.secure === 1
-            smtpSettings.value.pass = '' // Parolayı güvenlik için gizli tut veya boş bırak
+        const resSmtp = await api.get('/admin/api/settings/smtp')
+
+        if (resSmtp.data.success && resSmtp.data.settings) {
+            smtpSettings.value = { ...smtpSettings.value, ...resSmtp.data.settings }
+            smtpSettings.value.secure = resSmtp.data.settings.secure === 1
+            smtpSettings.value.pass = '' 
         }
     } catch (err) {
-        console.error('SMTP ayarları yüklenemedi:', err)
+        console.error('Ayarlar yüklenemedi:', err)
         showToast('Ayarlar yüklenemedi.', 'error')
     } finally {
         loading.value = false
@@ -29,7 +30,7 @@ const loadSmtpSettings = async () => {
 }
 
 const saveSmtpSettings = async () => {
-    saving.value = true
+    savingSmtp.value = true
     try {
         const payload = { ...smtpSettings.value, secure: smtpSettings.value.secure ? 1 : 0 }
         const res = await api.post('/admin/api/settings/smtp', payload)
@@ -39,9 +40,10 @@ const saveSmtpSettings = async () => {
     } catch(err) {
         showToast('SMTP ayarları kaydedilemedi.', 'error')
     } finally {
-        saving.value = false
+        savingSmtp.value = false
     }
 }
+
 
 const sendTestMail = async () => {
     if (!testEmail.value) {
@@ -65,7 +67,7 @@ const sendTestMail = async () => {
 }
 
 onMounted(() => {
-    loadSmtpSettings()
+    loadSettings()
 })
 </script>
 
@@ -127,13 +129,15 @@ onMounted(() => {
                     <button type="button" @click="showTestMailModal = true" class="px-5 py-2 text-[13px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
                         <i class="fas fa-flask mr-1"></i> Test Gönder
                     </button>
-                    <button type="submit" :disabled="saving || loading" class="px-8 py-2 text-[13px] font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
-                        <i :class="saving ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
-                        {{ saving ? 'Kaydediliyor...' : 'Ayarları Kaydet' }}
+                    <button type="submit" :disabled="savingSmtp || loading" class="px-8 py-2 text-[13px] font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                        <i :class="savingSmtp ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
+                        {{ savingSmtp ? 'Kaydediliyor...' : 'SMTP Ayarlarını Kaydet' }}
                     </button>
                 </div>
             </form>
         </div>
+
+
     </div>
 
     <!-- Test Mail Modalı -->

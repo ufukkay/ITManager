@@ -782,7 +782,7 @@ const seedInitialData = () => {
     }
 
     if (persRole) {
-        const persPerms = ['hr:view', 'asset:view'];
+        const persPerms = []; // Personel rolü varsayılan olarak yetkisiz gelsin, özel yetkiler matris üzerinden verilsin.
         persPerms.forEach(pkey => {
             const p = db.prepare('SELECT id FROM permissions WHERE permission_key = ?').get(pkey);
             if (p) db.prepare('INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)').run(persRole.id, p.id);

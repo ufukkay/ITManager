@@ -37,6 +37,10 @@ app.use((req, res, next) => {
 // Kimlik Doğrulama Rotaları
 app.use('/auth', require('./modules/auth/routes'));
 
+
+// IT Destek Merkezi (Help Desk)
+app.use('/api/helpdesk', require('./modules/helpdesk/routes'));
+
 // Yönetim Rotaları
 app.use('/admin', hasPermission('system:admin'), require('./modules/admin/routes'));
 
@@ -60,4 +64,8 @@ app.use('/api/master-data', hasPermission('system:admin'), require('./modules/co
 
 app.listen(PORT, () => {
     console.log(`ITManager server running at http://localhost:${PORT}`);
+    
+    // Start Mail Fetcher Service
+    const mailFetcher = require('./services/MailFetcherService');
+    mailFetcher.start();
 });

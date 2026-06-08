@@ -49,6 +49,10 @@ export default defineConfig({
       '/api/master-data': {
         target: 'http://localhost:3001',
         changeOrigin: true
+      },
+      '/api/helpdesk': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
       }
     }
   }

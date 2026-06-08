@@ -205,6 +205,55 @@ exports.getFinancialSummary = (req, res) => {
     }
 };
 
+// Get logged-in user's assets
+exports.getMyAssets = (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        const user = db.prepare('SELECT personnel_id FROM users WHERE id = ?').get(userId);
+        
+        if (!user || !user.personnel_id) {
+            return res.json({ active: [], history: [] });
+        }
+
+        const personnelId = user.personnel_id;
+
+        const activeAssets = db.prepare(`
+            SELECT a.*,
+                   am.name as model_name,
+                   ab.name as brand_name,
+                   ac.name as category_name,
+                   ast.name as status_name
+            FROM assets a
+            LEFT JOIN asset_models am ON a.model_id = am.id
+            LEFT JOIN asset_brands ab ON am.brand_id = ab.id
+            LEFT JOIN asset_categories ac ON am.category_id = ac.id
+            LEFT JOIN asset_statuses ast ON a.status_id = ast.id
+            WHERE a.personnel_id = ?
+        `).all(personnelId);
+
+        const historyLogs = db.prepare(`
+            SELECT l.*, 
+                   a.serial_no,
+                   am.name as model_name,
+                   ab.name as brand_name
+            FROM asset_logs l
+            JOIN assets a ON l.asset_id = a.id
+            LEFT JOIN asset_models am ON a.model_id = am.id
+            LEFT JOIN asset_brands ab ON am.brand_id = ab.id
+            WHERE l.target_type = 'PERSONNEL' AND l.target_id = ?
+            ORDER BY l.created_at DESC
+        `).all(personnelId);
+
+        res.json({
+            active: activeAssets,
+            history: historyLogs
+        });
+    } catch (err) {
+        console.error('getMyAssets error:', err);
+        res.status(500).json({ error: 'Kendi zimmetleriniz alınırken hata oluştu.' });
+    }
+};
+
 // Help-data configurations (Dropdown structures)
 exports.getMetadata = (req, res) => {
     try {

@@ -38,6 +38,9 @@ router.get('/financial-summary', assetController.getFinancialSummary);
 // Personnel asset assignment history
 router.get('/personnel/:id', hasPermission('asset:view'), assetController.getPersonnelAssets);
 
+// Logged-in user's assets
+router.get('/my-assets', assetController.getMyAssets);
+
 // CRUD routes with upload middleware for invoice and warranty documents
 router.get('/', hasPermission('asset:view'), assetController.getAssets);
 router.post('/', hasPermission('asset:edit'), upload.fields([

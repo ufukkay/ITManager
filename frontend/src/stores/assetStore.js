@@ -181,8 +181,18 @@ export const useAssetStore = defineStore('asset', {
         const response = await api.get(`/assets/personnel/${personnelId}`)
         return response.data
       } catch (err) {
-        console.error('Personnel assets error:', err)
-        return { active: [], history: [] }
+        console.error('Personnel assets fetch error:', err)
+        throw err
+      }
+    },
+
+    async fetchMyAssets() {
+      try {
+        const response = await api.get('/assets/my-assets')
+        return response.data
+      } catch (err) {
+        console.error('My assets fetch error:', err)
+        throw err
       }
     }
   }
