@@ -90,6 +90,9 @@ const showError = (msg) => {
               <i :class="['fas', showPass ? 'fa-eye-slash' : 'fa-eye']"></i>
             </button>
           </div>
+          <div class="forgot-pass-wrap">
+            <router-link to="/forgot-password" class="forgot-pass-link">Şifremi Unuttum</router-link>
+          </div>
         </div>
 
         <button type="submit" :disabled="isLoading" class="login-btn" id="login-submit">
@@ -264,6 +267,22 @@ const showError = (msg) => {
   transition: color .15s;
 }
 .eye-btn:hover { color: #6b7280; }
+
+.forgot-pass-wrap {
+  text-align: right;
+  margin-top: 4px;
+}
+.forgot-pass-link {
+  font-size: 11.5px;
+  color: var(--color-brand, #1a73e8);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+.forgot-pass-link:hover {
+  color: #1557b0;
+  text-decoration: underline;
+}
 
 /* ── Button ── */
 .login-btn {

@@ -1,5 +1,19 @@
 const { db } = require('../database/db');
 
+const wantsJson = (req) => {
+    return req.xhr || req.headers.accept?.indexOf('json') > -1 || req.originalUrl.includes('/api/');
+};
+
+const requireAuth = (req, res, next) => {
+    if (req.session.user) return next();
+
+    if (wantsJson(req)) {
+        return res.status(401).json({ message: 'Oturum açmanız gerekmektedir.' });
+    }
+
+    return res.redirect('/auth/login');
+};
+
 /**
  * Giriş yapan kullanıcının belirli bir yetkiye sahip olup olmadığını kontrol eden ara katman.
  * @param {string} permissionKey 
@@ -7,8 +21,7 @@ const { db } = require('../database/db');
 const hasPermission = (permissionKey) => {
     return (req, res, next) => {
         if (!req.session.user) {
-            // Eğer API isteğiyse JSON dön (veya 401)
-            if (req.xhr || req.headers.accept?.indexOf('json') > -1 || req.path.includes('/api/')) {
+            if (wantsJson(req)) {
                 return res.status(401).json({ message: 'Oturum açmanız gerekmektedir.' });
             }
             return res.redirect('/auth/login');
@@ -32,7 +45,7 @@ const hasPermission = (permissionKey) => {
 
         if (!permission) {
             // Eğer API isteğiyse JSON dön
-            if (req.xhr || req.headers.accept?.indexOf('json') > -1) {
+            if (wantsJson(req)) {
                 return res.status(403).json({ message: 'Yetkiniz bulunmamaktadır.' });
             }
             return res.status(403).send('Bu işlem için yetkiniz bulunmamaktadır.');
@@ -43,6 +56,7 @@ const hasPermission = (permissionKey) => {
 };
 
 module.exports = {
+    requireAuth,
     hasPermission
 };
 

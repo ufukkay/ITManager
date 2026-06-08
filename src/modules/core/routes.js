@@ -30,6 +30,10 @@ router.delete('/personnel/:id', MasterDataController.deletePersonnel);
 router.post('/personnel/bulk-delete', MasterDataController.bulkDeletePersonnel);
 router.post('/personnel/bulk-update', MasterDataController.bulkUpdatePersonnel);
 
+// Personnel User Accounts
+router.get('/personnel/:id/user', MasterDataController.getPersonnelUser);
+router.post('/personnel/:id/create-user', MasterDataController.createPersonnelUser);
+
 // Vehicles
 router.get('/vehicles', MasterDataController.getVehicles);
 router.post('/vehicles', MasterDataController.createVehicle);
@@ -71,15 +75,19 @@ router.put('/servers/:id', MasterDataController.updateServer);
 router.delete('/servers/:id', MasterDataController.deleteServer);
 
 // Financial Reports
+router.get('/reports/periods', MasterDataController.getAvailablePeriods);
 router.get('/reports/financial/personnel/:id', MasterDataController.getPersonnelFinancialHistory);
 router.get('/reports/financial/stats', MasterDataController.getFinancialStats);
+router.get('/reports/personnel', MasterDataController.getReportByPersonnel);
+router.get('/reports/service', MasterDataController.getReportByService);
+router.get('/reports/company', MasterDataController.getReportByCompany);
 router.post('/reports/financial/upload/m365', upload.array('file'), MasterDataController.uploadM365Invoice);
-
-// Impact Analysis
-router.get('/:type/:id/impact', MasterDataController.getDeleteImpact);
 
 // Audit Logs
 router.get('/audit-logs', MasterDataController.getAuditLogs);
 router.get('/audit-logs/:module/:id', MasterDataController.getResourceHistory);
+
+// Impact Analysis
+router.get('/:type/:id/impact', MasterDataController.getDeleteImpact);
 
 module.exports = router;

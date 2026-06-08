@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const jwt = require('jsonwebtoken');
 const { db } = require('../database/db');
 
 class MailerService {
@@ -30,43 +31,55 @@ class MailerService {
   }
 
   /**
-   * Sends a welcome email to a newly created user
+   * Sends a password reset or welcome email with a reset link
    * @param {string} toEmail User's email address
    * @param {string} fullName User's full name
-   * @param {string} plainPassword User's raw password to login
+   * @param {boolean} isWelcome If true, sends welcome message. Otherwise, sends reset message.
    */
-  static async sendWelcomeEmail(toEmail, fullName, plainPassword) {
+  static async sendPasswordResetEmail(toEmail, fullName, isWelcome = false) {
     try {
       const transporter = this.createTransporter();
       const settings = this.getSmtpSettings();
       const fromEmail = settings.from_email || settings.user;
 
+      const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'itmanager-dev-secret';
+      const token = jwt.sign({ email: toEmail }, secret, { expiresIn: '2h' });
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const resetUrl = `${frontendUrl.replace(/\/$/, '')}/reset-password?token=${token}`;
+
+      const subject = isWelcome 
+          ? 'IT Manager - Hesabınız Oluşturuldu: Parola Belirleyin'
+          : 'IT Manager - Parola Sıfırlama Talebi';
+
+      const messageHtml = isWelcome
+          ? `<p>Merhaba <b>${fullName}</b>,</p>
+             <p>IT Manager sisteminde hesabınız oluşturuldu. Güvenliğiniz için doğrudan bir parola ataması yapılmamıştır. Lütfen sisteme giriş yapabilmek için aşağıdaki bağlantıdan parolanızı belirleyin.</p>`
+          : `<p>Merhaba <b>${fullName}</b>,</p>
+             <p>IT Manager sistemindeki hesabınız için parola sıfırlama talebi aldık. Yeni bir parola belirlemek için aşağıdaki bağlantıya tıklayın. Bu talebi siz yapmadıysanız bu mesajı dikkate almayınız.</p>`;
+
       const mailOptions = {
         from: `"IT Manager" <${fromEmail}>`,
         to: toEmail,
-        subject: 'IT Manager - Hesabınız Oluşturuldu',
+        subject: subject,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-            <h2 style="color: #2c3e50; text-align: center;">IT Manager Sistemine Hoşgeldiniz</h2>
-            <p>Merhaba <b>${fullName}</b>,</p>
-            <p>Sistem yöneticisi tarafından IT Manager paneli için hesabınız oluşturulmuştur.</p>
-            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-              <p style="margin: 5px 0;"><strong>Giriş Bilgileriniz:</strong></p>
-              <p style="margin: 5px 0;">E-posta: <b>${toEmail}</b></p>
-              <p style="margin: 5px 0;">Şifre: <b>${plainPassword}</b></p>
+            <h2 style="color: #2c3e50; text-align: center;">IT Manager</h2>
+            ${messageHtml}
+            <div style="text-align:center; margin: 20px 0;">
+              <a href="${resetUrl}" style="display:inline-block; padding: 12px 18px; background:#1a73e8; color:white; text-decoration:none; border-radius:6px; font-weight:bold;">${isWelcome ? 'Parola Belirle' : 'Parolayı Sıfırla'}</a>
             </div>
-            <p style="color: #e74c3c; font-size: 13px;"><i>* Güvenliğiniz için sisteme giriş yaptıktan sonra şifrenizi değiştirmenizi öneririz.</i></p>
+            <p style="font-size:12px; color:#7f8c8d;">Bağlantı çalışmazsa aşağıdaki URL'yi kopyalayıp tarayıcınıza yapıştırın:</p>
+            <p style="font-size:12px; color:#7f8c8d; word-break:break-all;">${resetUrl}</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-            <p style="text-align: center; color: #7f8c8d; font-size: 12px;">Bu otomatik bir maildir, lütfen cevaplamayınız.</p>
+            <p style="text-align: center; color: #7f8c8d; font-size: 12px;">Bu otomatik bir maildir, lütfen cevaplamayınız.<br/>Bağlantı 2 saat boyunca geçerlidir.</p>
           </div>
         `
       };
 
       const info = await transporter.sendMail(mailOptions);
-      console.log('Welcome email sent: %s', info.messageId);
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('E-posta gönderim hatası:', error.message);
+      console.error('Password reset mail send error:', error);
       return { success: false, error: error.message };
     }
   }

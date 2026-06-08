@@ -6,7 +6,10 @@ import { useToast } from '../../composables/useToast'
 import { useConfirm } from '../../composables/useConfirm'
 import AppTable from '../../components/AppTable.vue'
 import AppFinancialHistory from '../../components/AppFinancialHistory.vue'
+import AppPersonnelAssets from '../../components/AppPersonnelAssets.vue'
+import AppPermissionMatrix from '../../components/AppPermissionMatrix.vue'
 import * as XLSX from 'xlsx'
+import api from '../../api'
 
 const masterData = useMasterDataStore()
 const route = useRoute()
@@ -36,6 +39,14 @@ const fetchData = async () => {
       masterData.fetchDepartments(),
       masterData.fetchCostCenters()
     ])
+    if (roles.value.length === 0) {
+        const permRes = await api.get('/admin/api/permissions')
+        if (permRes.data.success) {
+            roles.value = permRes.data.roles
+            permissions.value = permRes.data.permissions
+            rolePermissions.value = permRes.data.rolePermissions
+        }
+    }
   } finally {
     loading.value = false
   }
@@ -50,6 +61,7 @@ const columns = [
   { key: 'cost_center_name', label: 'Masraf Yeri', sortable: true, width: '140px' },
   { key: 'hire_date',        label: 'Giriş Tarihi',sortable: true, width: '120px' },
   { key: 'status',           label: 'Durum',       sortable: true, width: '100px' },
+  { key: 'account',          label: 'Sistem Erişimi', sortable: false, width: '130px' },
 ]
 
 const quickFilters = computed(() => [
@@ -70,9 +82,31 @@ const personnelRows = computed(() =>
 const selectedIds = ref([])
 const onSelectionChange = (rows) => { selectedIds.value = rows.map(r => r.id) }
 
-const openEditModal = (p = null) => {
+const openEditModal = async (p = null) => {
   if (p && p.id) {
-    editingPersonnel.value = { ...p }
+    editingPersonnel.value = { 
+        ...p,
+        has_account: !!p.has_account,
+        role_id: null,
+        custom_permissions: []
+    }
+    if (p.has_account) {
+        try {
+            startLoading()
+            const user = await masterData.getPersonnelUser(p.id)
+            if (user) {
+                editingPersonnel.value.role_id = user.role_id
+                const overrideRes = await api.get(`/admin/api/users/${user.id}/permissions`)
+                if (overrideRes.data.success) {
+                    editingPersonnel.value.custom_permissions = overrideRes.data.userPermissions.map(up => up.permission_id)
+                }
+            }
+        } catch(e) {
+            console.error("Yetki verileri alınamadı", e);
+        } finally {
+            stopLoading()
+        }
+    }
   } else {
     editingPersonnel.value = {
       employee_id: null,
@@ -86,7 +120,10 @@ const openEditModal = (p = null) => {
       cost_center_id: null,
       hire_date: new Date().toISOString().split('T')[0],
       status: 'active',
-      notes: ''
+      notes: '',
+      has_account: false,
+      role_id: roles.value.find(r => r.name === 'Personel')?.id || null,
+      custom_permissions: []
     }
   }
   showModal.value = true
@@ -107,6 +144,29 @@ const savePersonnel = async () => {
   } finally {
     saving.value = false
   }
+}
+
+// -- Permission & Auth Management (Unified) --
+const roles = ref([])
+const permissions = ref([])
+const rolePermissions = ref([])
+
+// Helper functions for roles
+const getRoleBadgeClass = (hasAccount, roleName) => {
+    if (!hasAccount) return 'bg-gray-100 text-gray-400 border-gray-200'
+    if (roleName === 'Admin') return 'bg-purple-50 text-purple-600 border-purple-100'
+    if (roleName === 'Teknisyen') return 'bg-blue-50 text-blue-600 border-blue-100'
+    return 'bg-emerald-50 text-emerald-600 border-emerald-100'
+}
+
+const getRoleNameForPersonnel = (row) => {
+    if (!row.has_account) return 'Erişim Yok'
+    // We don't have the role name in the raw personnel row initially, 
+    // but we can look it up if we fetched it, or just show 'Sistem Kullanıcısı'
+    // To be precise, we could add it to `getPersonnel` backend, but for now we can fallback.
+    // Wait, backend `getAllPersonnel` doesn't return role_name.
+    // For now we will display 'Aktif' if it has account.
+    return 'Aktif'
 }
 
 const handleDelete = async (row) => {
@@ -387,6 +447,15 @@ onMounted(fetchData)
           {{ value === 'active' ? 'Aktif' : 'Pasif' }}
         </span>
       </template>
+
+      <!-- Account / System Access -->
+      <template #cell-account="{ row }">
+        <span class="inline-flex items-center gap-1.5 px-2 py-1 border rounded text-[10px] font-bold uppercase tracking-wide" 
+              :class="row.has_account ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-gray-50 text-gray-400 border-gray-100'">
+            <i class="fas" :class="row.has_account ? 'fa-check-circle' : 'fa-times-circle'"></i>
+            {{ row.has_account ? 'Erişimi Var' : 'Erişim Yok' }}
+        </span>
+      </template>
     </AppTable>
 
     <!-- Modal -->
@@ -516,9 +585,60 @@ onMounted(fetchData)
                 class="w-full px-3 py-2 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 resize-none"></textarea>
             </div>
 
+            <!-- Sistem Erişimi ve Yetkiler Section -->
+            <div class="pt-6 border-t border-gray-100 space-y-4">
+               <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 text-[11px] font-bold text-blue-600 uppercase tracking-wider">
+                    <i class="fas fa-shield-alt"></i> Sistem Erişimi ve Yetkiler
+                  </div>
+                  <!-- Enable/Disable System Account -->
+                  <label class="flex items-center gap-2 cursor-pointer">
+                      <span class="text-[12px] font-bold text-gray-600">Sisteme Giriş Yapabilsin</span>
+                      <div class="relative inline-block w-9 h-5">
+                          <input type="checkbox" v-model="editingPersonnel.has_account" class="peer sr-only">
+                          <div class="w-full h-full bg-gray-200 rounded-full peer-checked:bg-blue-600 transition-colors"></div>
+                          <div class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition-all peer-checked:translate-x-4"></div>
+                      </div>
+                  </label>
+               </div>
+               
+               <div v-if="editingPersonnel.has_account" class="p-5 border border-blue-100 bg-blue-50/30 rounded-xl space-y-4">
+                  <div class="grid grid-cols-2 gap-5">
+                      <div>
+                          <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Kullanıcı Rolü / Statüsü</label>
+                          <select v-model="editingPersonnel.role_id" class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                              <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
+                          </select>
+                          <p class="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
+                              Rol seçimi ile personelin temel yetkilerini belirleyebilirsiniz. 'Admin' tüm kısıtlamalardan muaftır.
+                          </p>
+                      </div>
+                  </div>
+
+                  <!-- Inline Permission Matrix -->
+                  <div class="mt-4 border border-gray-100 bg-white rounded-xl overflow-hidden shadow-sm max-h-[400px] flex flex-col">
+                      <AppPermissionMatrix
+                          :user="editingPersonnel"
+                          :roles="roles"
+                          :permissions="permissions"
+                          :rolePermissions="rolePermissions"
+                          v-model:userOverrides="editingPersonnel.custom_permissions"
+                          :hideHeader="true"
+                          :hideActions="true"
+                          @update:role="editingPersonnel.role_id = parseInt($event)"
+                      />
+                  </div>
+               </div>
+            </div>
+
             <!-- Maliyet Analizi Section (Sadece Mevcut Personel İçin) -->
             <div v-if="editingPersonnel.id" class="pt-6 border-t border-gray-100">
                <AppFinancialHistory :personnel-id="editingPersonnel.id" />
+            </div>
+
+            <!-- Zimmet Geçmişi Section (Sadece Mevcut Personel İçin) -->
+            <div v-if="editingPersonnel.id" class="pt-6 border-t border-gray-100">
+               <AppPersonnelAssets :personnel-id="editingPersonnel.id" />
             </div>
           </div>
 

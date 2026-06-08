@@ -51,3 +51,61 @@ exports.logout = (req, res) => {
     });
 };
 
+exports.forgotPassword = async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ success: false, message: 'E-posta gerekli.' });
+
+    try {
+        const user = db.prepare('SELECT id, full_name, email FROM users WHERE email = ?').get(email);
+        if (!user) {
+            // Güvenlik açısından "Kullanıcı bulunamadı" demek yerine başarılı mesajı veriyoruz
+            return res.json({ success: true, message: 'Eğer sistemde kayıtlıysa, e-posta adresinize sıfırlama linki gönderildi.' });
+        }
+
+        const MailerService = require('../../services/MailerService');
+        const result = await MailerService.sendPasswordResetEmail(user.email, user.full_name, false);
+
+        if (result.success) {
+            return res.json({ success: true, message: 'Eğer sistemde kayıtlıysa, e-posta adresinize sıfırlama linki gönderildi.' });
+        } else {
+            return res.status(500).json({ success: false, message: 'E-posta gönderilirken bir hata oluştu (SMTP ayarlarını kontrol edin).' });
+        }
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        return res.status(500).json({ success: false, message: 'Bir hata oluştu.' });
+    }
+};
+
+exports.resetPassword = (req, res) => {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) return res.status(400).json({ success: false, message: 'Eksik parametre.' });
+
+    try {
+        const jwt = require('jsonwebtoken');
+        const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'itmanager-dev-secret';
+        
+        let decoded;
+        try {
+            decoded = jwt.verify(token, secret);
+        } catch (e) {
+            return res.status(400).json({ success: false, message: 'Geçersiz veya süresi dolmuş bağlantı.' });
+        }
+
+        const email = decoded.email;
+        const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
+        }
+
+        const hashedPass = bcrypt.hashSync(newPassword, 10);
+        db.prepare('UPDATE users SET password = ? WHERE email = ?').run(hashedPass, email);
+
+        return res.json({ success: true, message: 'Şifreniz başarıyla güncellendi. Artık giriş yapabilirsiniz.' });
+
+    } catch (error) {
+        console.error('Reset password error:', error);
+        return res.status(500).json({ success: false, message: 'Bir hata oluştu.' });
+    }
+};
+

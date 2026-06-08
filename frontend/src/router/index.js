@@ -9,6 +9,18 @@ const routes = [
     meta: { layout: 'auth', requiresAuth: false }
   },
   {
+    path: '/forgot-password',
+    name: 'forgot-password',
+    component: () => import('../views/ForgotPasswordView.vue'),
+    meta: { layout: 'auth', requiresAuth: false }
+  },
+  {
+    path: '/reset-password',
+    name: 'reset-password',
+    component: () => import('../views/ResetPasswordView.vue'),
+    meta: { layout: 'auth', requiresAuth: false }
+  },
+  {
     path: '/',
     name: 'dashboard',
     component: () => import('../views/DashboardView.vue'),
@@ -44,12 +56,7 @@ const routes = [
       }
     ]
   },
-  {
-    path: '/admin/permissions',
-    name: 'permissions',
-    component: () => import('../views/PermissionsView.vue'),
-    meta: { layout: 'main', requiresAuth: true }
-  },
+
   // İK Bildirimleri (Nested Layout)
   {
     path: '/hr-requests',
@@ -117,11 +124,38 @@ const routes = [
       }
     ]
   },
+  // Envanter Takip (Inventory Management)
+  {
+    path: '/inventory',
+    component: () => import('../layouts/InventoryLayout.vue'),
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true },
+    children: [
+      {
+        path: '',
+        redirect: '/inventory/assets'
+      },
+      {
+        path: 'assets',
+        name: 'inventory-assets',
+        component: () => import('../views/inventory/InventoryView.vue')
+      },
+      {
+        path: 'personnel',
+        name: 'inventory-personnel',
+        component: () => import('../views/inventory/PersonnelAssetsView.vue')
+      },
+      {
+        path: 'reports',
+        name: 'inventory-reports',
+        component: () => import('../views/inventory/AmortizationView.vue')
+      }
+    ]
+  },
   // Master Data (Şirket, Personel, Organizasyon) - Unified Console
   {
     path: '/master-data',
     component: () => import('../views/master-data/MasterDataLayout.vue'),
-    meta: { layout: 'main', requiresAuth: true, fullBleed: true },
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true, adminOnly: true },
     children: [
       {
         path: '',
@@ -168,6 +202,11 @@ const routes = [
         name: 'master-sims',
         component: () => import('../views/master-data/SimCardListView.vue')
       },
+      {
+        path: 'smtp-settings',
+        name: 'master-smtp',
+        component: () => import('../views/master-data/SmtpSettingsView.vue')
+      }
     ]
   },
   // Maliyet Yönetimi (Masraf Yansıtma)
@@ -212,9 +251,14 @@ router.beforeEach(async (to, from) => {
     return { name: 'login' }
   }
 
-  // Kullanıcı giriş yapmış ama login sayfasına gitmeye çalışıyorsa 
+  // Admin korumalı rotalar
+  if (to.meta.adminOnly && !authStore.isAdmin) {
+    return { name: 'dashboard' }
+  }
+
+  // Kullanıcı giriş yapmış ama auth sayfalarından birine gitmeye çalışıyorsa 
   // Ana sayfaya (Dashboard) yönlendir
-  if (to.name === 'login' && authStore.isAuthenticated) {
+  if (!to.meta.requiresAuth && authStore.isAuthenticated && to.name !== 'not-found') {
     return { name: 'dashboard' }
   }
 })

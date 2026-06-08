@@ -80,20 +80,18 @@ router.post('/api/users/create', async (req, res) => {
             VALUES (?, ?, ?, ?, ?)
         `).run(full_name, email, email, hashedPass, role_id);
 
-        // Arka planda mail gönder (beklemeden cevap dönüyoruz ama hata kontrolü yapıyoruz)
+        // Arka planda mail gönder (parola yerine parola-sıfırlama bağlantısı gönderiyoruz)
         try {
-            await MailerService.sendWelcomeEmail(email, full_name, tempPassword);
+            await MailerService.sendWelcomeEmail(email, full_name);
+            res.json({ success: true, message: 'Kullanıcı başarıyla oluşturuldu ve hoşgeldin maili gönderildi.' });
         } catch (mailErr) {
             console.error('Hoşgeldin maili gönderilemedi:', mailErr);
             // Mail gidememesi kullanıcı kaydını iptal etmez ama cevapta belirtilmeli
-            return res.json({ 
+            res.json({ 
                 success: true, 
-                message: 'Kullanıcı oluşturuldu ancak hoşgeldin maili gönderilemedi. Lütfen SMTP ayarlarını kontrol edin.',
-                password: tempPassword // Mail gidemediği için şifreyi ekranda gösterelim
+                message: 'Kullanıcı oluşturuldu ancak hoşgeldin maili gönderilemedi. Lütfen SMTP ayarlarını kontrol edin.'
             });
         }
-
-        res.json({ success: true, message: 'Kullanıcı başarıyla oluşturuldu ve hoşgeldin maili gönderildi.' });
     } catch (err) {
         if (err.message.includes('UNIQUE')) {
             return res.status(400).json({ message: 'Bu e-posta adresi zaten kullanımda.' });

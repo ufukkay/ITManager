@@ -3,7 +3,7 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const { initDb } = require('./database/db');
-const { hasPermission } = require('./middleware/auth');
+const { requireAuth, hasPermission } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,8 +25,6 @@ app.use(session({
     }
 }));
 
-
-
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Kullanıcı Verileri İçin Global Ara Katman
@@ -36,8 +34,6 @@ app.use((req, res, next) => {
 });
 
 // Rota Tanımlamaları
-// (Headless API - Ön yüz artık Vite tabanlı olduğu için kök dizin yönlendirmesi kaldırıldı)
-
 // Kimlik Doğrulama Rotaları
 app.use('/auth', require('./modules/auth/routes'));
 
@@ -56,10 +52,12 @@ app.use('/api/hr-requests', hasPermission('hr:view'), require('./modules/hr-requ
 // M365 Lisans Yönetimi Rotaları
 app.use('/api/m365', require('./modules/m365/routes'));
 
+// Envanter Takip Rotaları
+app.use('/api/assets', require('./modules/assets/routes'));
+
 // Merkezi Master Data Rotaları
-app.use('/api/master-data', require('./modules/core/routes'));
+app.use('/api/master-data', hasPermission('system:admin'), require('./modules/core/routes'));
 
 app.listen(PORT, () => {
     console.log(`ITManager server running at http://localhost:${PORT}`);
 });
-

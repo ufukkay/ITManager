@@ -75,14 +75,7 @@ const modules = [
     icon: 'fa-user-clock',
     href: '/hr-requests'
   },
-  {
-    title: 'Yetki Yönetimi',
-    desc: 'Kullanıcı ve rol ayarları',
-    count: 'Kullanıcılar',
-    icon: 'fa-user-shield',
-    href: '/admin/permissions',
-    adminOnly: true
-  },
+
   {
     title: 'Lisans Yönetimi',
     desc: 'Yazılım ve abonelik yönetimi',
@@ -96,7 +89,8 @@ const modules = [
     desc: 'Merkezi personel, araç ve operasyon verileri',
     count: 'MDM',
     icon: 'fa-database',
-    href: '/master-data'
+    href: '/master-data',
+    adminOnly: true
   },
   {
     title: 'Fatura Yönetimi',
@@ -115,10 +109,11 @@ const modules = [
   },
   {
     title: 'Envanter Takibi',
-    desc: 'Cihaz ve varlık envanteri',
-    count: 'Yakında',
+    desc: 'Cihaz, bilgisayar ve BT donanım envanteri',
+    count: 'Varlıklar',
     icon: 'fa-boxes',
-    soon: true
+    href: '/inventory',
+    permission: 'asset:view'
   },
 ]
 

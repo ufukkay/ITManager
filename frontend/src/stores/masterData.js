@@ -184,6 +184,29 @@ export const useMasterDataStore = defineStore('masterData', {
       }
     },
 
+    async getPersonnelUser(id) {
+        try {
+            const response = await api.get(`/api/master-data/personnel/${id}/user`)
+            return response.data.user
+        } catch (err) {
+            console.error('Fetch personnel user error:', err)
+            return null
+        }
+    },
+
+    async createPersonnelUser(id) {
+        this.loading = true
+        try {
+            const response = await api.post(`/api/master-data/personnel/${id}/create-user`)
+            return response.data.userId
+        } catch (err) {
+            this.error = err.response?.data?.message || err.message
+            throw err
+        } finally {
+            this.loading = false
+        }
+    },
+
     // Global CRUD helper for other entities
     async createItem(type, data) {
         this.loading = true

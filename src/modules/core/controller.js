@@ -219,6 +219,35 @@ class MasterDataController {
         }
     }
 
+    // Personnel User Accounts
+    static async getPersonnelUser(req, res) {
+        try {
+            const user = await MasterDataService.getPersonnelUser(req.params.id);
+            res.json({ success: true, user });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async createPersonnelUser(req, res) {
+        try {
+            const userId = await MasterDataService.createPersonnelUser(req.params.id);
+            
+            AuditService.logActivity({
+                userId: req.session?.user?.id,
+                module: 'PERSONNEL',
+                action: 'CREATE_USER',
+                resourceId: req.params.id,
+                details: { userId },
+                ipAddress: req.ip
+            });
+
+            res.status(201).json({ success: true, userId });
+        } catch (e) {
+            res.status(500).json({ success: false, message: e.message });
+        }
+    }
+
     // Araclar
     static async getVehicles(req, res) {
         try {
@@ -525,6 +554,43 @@ class MasterDataController {
             }
 
             res.json({ success: true, message: `${totalInserted} adet lisans maliyet kaydı işlendi.` });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    // --- REPORT ENDPOINTS ---
+    static async getAvailablePeriods(req, res) {
+        try {
+            const periods = await MasterDataService.getAvailablePeriods();
+            res.json(periods);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async getReportByPersonnel(req, res) {
+        try {
+            const data = await MasterDataService.getReportByPersonnel(req.query);
+            res.json(data);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async getReportByService(req, res) {
+        try {
+            const data = await MasterDataService.getReportByService(req.query);
+            res.json(data);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async getReportByCompany(req, res) {
+        try {
+            const data = await MasterDataService.getReportByCompany(req.query);
+            res.json(data);
         } catch (e) {
             res.status(500).json({ error: e.message });
         }

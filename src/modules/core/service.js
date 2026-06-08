@@ -129,7 +129,8 @@ class MasterDataService {
     // --- PERSONNEL ---
     static async getAllPersonnel(filters = {}) {
         let sql = `
-            SELECT p.*, c.name as company_name, d.name as department_name, cc.name as cost_center_name 
+            SELECT p.*, c.name as company_name, d.name as department_name, cc.name as cost_center_name,
+                   (SELECT COUNT(*) FROM users WHERE personnel_id = p.id) as has_account
             FROM personnel p
             LEFT JOIN companies c ON p.company_id = c.id
             LEFT JOIN departments d ON p.department_id = d.id
@@ -157,7 +158,7 @@ class MasterDataService {
     }
 
     static async createPersonnel(data) {
-        let { first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes } = data;
+        let { first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes, has_account, role_id, custom_permissions } = data;
         
         // --- Mükerrer Kayıt Kontrolü ---
         // 1. Email varsa kontrol et
@@ -178,22 +179,112 @@ class MasterDataService {
         const lastRow = db.prepare("SELECT MAX(employee_id) as max_id FROM personnel").get();
         const employee_id = Math.max(lastRow.max_id || 999, 999) + 1;
 
-        const info = db.prepare(`
-            INSERT INTO personnel (employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status || 'active', notes);
-        return info.lastInsertRowid;
+        const transaction = db.transaction(() => {
+            const info = db.prepare(`
+                INSERT INTO personnel (employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status || 'active', notes);
+            const personnelId = info.lastInsertRowid;
+
+            if (has_account) {
+                if (!email) throw new Error("Sistem hesabı oluşturmak için e-posta gereklidir.");
+                
+                const existingUser = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+                if (existingUser) throw new Error("Bu e-posta ile zaten bir sistem hesabı mevcut.");
+                
+                const bcrypt = require('bcryptjs');
+                const crypto = require('crypto');
+                const randomPassword = crypto.randomBytes(32).toString('hex');
+                const hashedPass = bcrypt.hashSync(randomPassword, 10);
+                const username = email.split('@')[0];
+
+                const userInfo = db.prepare(`
+                    INSERT INTO users (email, username, password, full_name, role_id, personnel_id)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `).run(email, username, hashedPass, `${first_name} ${last_name}`, role_id || null, personnelId);
+                const userId = userInfo.lastInsertRowid;
+
+                if (custom_permissions && Array.isArray(custom_permissions)) {
+                    const insertPerm = db.prepare('INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)');
+                    for (const pId of custom_permissions) insertPerm.run(userId, pId);
+                }
+
+                // Send welcome email (asynchronous)
+                try {
+                    const MailerService = require('../../services/MailerService');
+                    MailerService.sendPasswordResetEmail(email, `${first_name} ${last_name}`, true).catch(err => {
+                        console.error("Welcome email failed:", err);
+                    });
+                } catch (e) {
+                    console.error("Mailer setup error:", e);
+                }
+            }
+
+            return personnelId;
+        });
+
+        return transaction();
     }
 
     static async updatePersonnel(id, data) {
-        const { employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes } = data;
-        db.prepare(`
-            UPDATE personnel SET 
-                employee_id = ?, first_name = ?, last_name = ?, title = ?, email = ?, phone = ?, 
-                company_id = ?, department_id = ?, cost_center_id = ?, 
-                hire_date = ?, exit_date = ?, status = ?, notes = ?
-            WHERE id = ?
-        `).run(employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes, id);
+        const { employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes, has_account, role_id, custom_permissions } = data;
+        const transaction = db.transaction(() => {
+            db.prepare(`
+                UPDATE personnel SET 
+                    employee_id = ?, first_name = ?, last_name = ?, title = ?, email = ?, phone = ?, 
+                    company_id = ?, department_id = ?, cost_center_id = ?, 
+                    hire_date = ?, exit_date = ?, status = ?, notes = ?
+                WHERE id = ?
+            `).run(employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes, id);
+
+            const user = db.prepare("SELECT id FROM users WHERE personnel_id = ?").get(id);
+
+            if (has_account) {
+                if (!email) throw new Error("Sistem hesabı oluşturmak veya güncellemek için e-posta gereklidir.");
+                
+                let userId = null;
+                if (user) {
+                    db.prepare("UPDATE users SET email = ?, full_name = ?, role_id = ? WHERE id = ?").run(email, `${first_name} ${last_name}`, role_id || null, user.id);
+                    userId = user.id;
+                } else {
+                    const existingUser = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+                    if (existingUser) throw new Error("Bu e-posta ile zaten bir sistem hesabı mevcut.");
+                    
+                    const bcrypt = require('bcryptjs');
+                    const crypto = require('crypto');
+                    const randomPassword = crypto.randomBytes(32).toString('hex');
+                    const hashedPass = bcrypt.hashSync(randomPassword, 10);
+                    const username = email.split('@')[0];
+
+                    const userInfo = db.prepare(`
+                        INSERT INTO users (email, username, password, full_name, role_id, personnel_id)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    `).run(email, username, hashedPass, `${first_name} ${last_name}`, role_id || null, id);
+                    userId = userInfo.lastInsertRowid;
+
+                    try {
+                        const MailerService = require('../../services/MailerService');
+                        MailerService.sendPasswordResetEmail(email, `${first_name} ${last_name}`, true).catch(err => {
+                            console.error("Welcome email failed:", err);
+                        });
+                    } catch (e) {
+                        console.error("Mailer setup error:", e);
+                    }
+                }
+
+                if (custom_permissions && Array.isArray(custom_permissions)) {
+                    db.prepare("DELETE FROM user_permissions WHERE user_id = ?").run(userId);
+                    const insertPerm = db.prepare('INSERT INTO user_permissions (user_id, permission_id) VALUES (?, ?)');
+                    for (const pId of custom_permissions) insertPerm.run(userId, pId);
+                }
+            } else {
+                if (user) {
+                    db.prepare("DELETE FROM user_permissions WHERE user_id = ?").run(user.id);
+                    db.prepare("DELETE FROM users WHERE id = ?").run(user.id);
+                }
+            }
+        });
+        transaction();
     }
     static async deletePersonnel(id) {
         const transaction = db.transaction(() => {
@@ -238,6 +329,60 @@ class MasterDataService {
             for (const id of ids) stmt.run(...vals, id);
         });
         transaction(ids, values);
+    }
+
+    // --- PERSONNEL USER ACCOUNTS ---
+    static async getPersonnelUser(personnelId) {
+        return db.prepare(`
+            SELECT u.id, u.email, u.username, u.full_name, u.role_id, r.name as role_name 
+            FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id
+            WHERE u.personnel_id = ?
+        `).get(personnelId);
+    }
+
+    static async createPersonnelUser(personnelId) {
+        const personnel = db.prepare("SELECT * FROM personnel WHERE id = ?").get(personnelId);
+        if (!personnel) throw new Error("Personel bulunamadı.");
+        if (!personnel.email) throw new Error("Personelin e-posta adresi eksik. Sistem hesabı oluşturmak için e-posta gereklidir.");
+
+        // Kullanıcı var mı kontrol et
+        const existingUser = db.prepare("SELECT id FROM users WHERE email = ? OR personnel_id = ?").get(personnel.email, personnelId);
+        if (existingUser) throw new Error("Bu personel için veya bu e-posta ile zaten bir sistem hesabı mevcut.");
+
+        // Varsayılan rol: 'User' (id=2) veya bulamazsa ilk rol
+        let role = db.prepare("SELECT id FROM roles WHERE name = 'User'").get();
+        if (!role) {
+            role = db.prepare("SELECT id FROM roles ORDER BY id ASC LIMIT 1").get();
+        }
+
+        const bcrypt = require('bcryptjs');
+        const crypto = require('crypto');
+        
+        // Rastgele 32 karakterlik güvenli bir şifre oluştur (kullanıcı bunu bilemeyecek, şifremi unuttum ile kendi şifresini belirleyecek)
+        const randomPassword = crypto.randomBytes(32).toString('hex');
+        const hashedPass = bcrypt.hashSync(randomPassword, 10);
+        
+        // Kullanıcı adını e-postadan çıkar
+        const username = personnel.email.split('@')[0];
+
+        const info = db.prepare(`
+            INSERT INTO users (email, username, password, full_name, role_id, personnel_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `).run(personnel.email, username, hashedPass, `${personnel.first_name} ${personnel.last_name}`, role ? role.id : null, personnelId);
+        
+        // Hoşgeldin & Şifre belirleme mailini gönder
+        try {
+            const MailerService = require('../../services/MailerService');
+            // asenkron olarak gönder (bekletmeye gerek yok)
+            MailerService.sendPasswordResetEmail(personnel.email, `${personnel.first_name} ${personnel.last_name}`, true).catch(err => {
+                console.error("Welcome email failed:", err);
+            });
+        } catch (e) {
+            console.error("Mailer setup error:", e);
+        }
+        
+        return info.lastInsertRowid;
     }
 
     // --- VEHICLES ---
@@ -604,6 +749,265 @@ class MasterDataService {
             byServiceType,
             byCostCenter
         };
+    }
+
+    // --- REPORT QUERIES ---
+
+    static async getAvailablePeriods() {
+        return db.prepare(`
+            SELECT DISTINCT period 
+            FROM invoices 
+            ORDER BY period DESC
+        `).all().map(r => r.period);
+    }
+
+    static async getReportByPersonnel(filters = {}) {
+        let whereClauses = ['1=1'];
+        const params = [];
+
+        if (filters.period) {
+            whereClauses.push('i.period = ?');
+            params.push(filters.period);
+        }
+        if (filters.company_id) {
+            whereClauses.push('p.company_id = ?');
+            params.push(filters.company_id);
+        }
+        if (filters.operator) {
+            whereClauses.push('i.operator = ?');
+            params.push(filters.operator);
+        }
+        if (filters.cost_center_id) {
+            whereClauses.push('p.cost_center_id = ?');
+            params.push(filters.cost_center_id);
+        }
+
+        const whereSQL = whereClauses.join(' AND ');
+
+        // Personel bazlı rapor — masraf kalemi personelden gelir
+        const rows = db.prepare(`
+            SELECT 
+                p.id as personnel_id,
+                p.first_name || ' ' || p.last_name as personnel_name,
+                p.phone as personnel_phone,
+                COALESCE(c.name, 'Tanımsız Şirket') as company_name,
+                c.id as company_id,
+                COALESCE(cc.code || '-' || cc.name, 'Tanımsız') as cost_center_name,
+                cc.id as cost_center_id,
+                COALESCE(d.name, '') as department_name,
+                SUM(CASE WHEN i.invoice_type = 'gsm' THEN i.total_amount ELSE 0 END) as gsm_total,
+                SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as m365_total,
+                SUM(i.total_amount) as grand_total,
+                GROUP_CONCAT(DISTINCT i.operator) as operators,
+                COUNT(DISTINCT i.id) as invoice_count
+            FROM invoices i
+            LEFT JOIN personnel p ON i.personnel_id = p.id
+            LEFT JOIN companies c ON p.company_id = c.id
+            LEFT JOIN cost_centers cc ON p.cost_center_id = cc.id
+            LEFT JOIN departments d ON p.department_id = d.id
+            WHERE ${whereSQL}
+            GROUP BY i.personnel_id
+            ORDER BY grand_total DESC
+        `).all(...params);
+
+        // Toplamlar
+        const totals = db.prepare(`
+            SELECT 
+                COUNT(DISTINCT i.personnel_id) as total_personnel,
+                SUM(CASE WHEN i.invoice_type = 'gsm' THEN i.total_amount ELSE 0 END) as total_gsm,
+                SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as total_m365,
+                SUM(i.total_amount) as total_amount,
+                COUNT(DISTINCT i.id) as total_invoices
+            FROM invoices i
+            LEFT JOIN personnel p ON i.personnel_id = p.id
+            WHERE ${whereSQL}
+        `).get(...params);
+
+        return { rows, totals };
+    }
+
+    static async getReportByService(filters = {}) {
+        let whereClauses = ['1=1'];
+        const params = [];
+
+        if (filters.period) {
+            whereClauses.push('i.period = ?');
+            params.push(filters.period);
+        }
+        if (filters.company_id) {
+            whereClauses.push('p.company_id = ?');
+            params.push(filters.company_id);
+        }
+        if (filters.operator) {
+            whereClauses.push('i.operator = ?');
+            params.push(filters.operator);
+        }
+
+        const whereSQL = whereClauses.join(' AND ');
+
+        // Hizmet tipi (GSM/M365) ve operatör kırılımı
+        const byType = db.prepare(`
+            SELECT 
+                i.invoice_type,
+                i.operator,
+                SUM(i.total_amount) as total_amount,
+                SUM(i.amount) as net_amount,
+                SUM(i.tax_kdv) as total_kdv,
+                SUM(i.tax_oiv) as total_oiv,
+                COUNT(DISTINCT i.id) as invoice_count,
+                COUNT(DISTINCT i.personnel_id) as personnel_count
+            FROM invoices i
+            LEFT JOIN personnel p ON i.personnel_id = p.id
+            WHERE ${whereSQL}
+            GROUP BY i.invoice_type, i.operator
+            ORDER BY total_amount DESC
+        `).all(...params);
+
+        // Masraf merkezi kırılımı (personelden gelir)
+        const byCostCenter = db.prepare(`
+            SELECT 
+                COALESCE(cc.code || '-' || cc.name, 'Tanımsız') as cost_center_name,
+                cc.id as cost_center_id,
+                SUM(CASE WHEN i.invoice_type = 'gsm' THEN i.total_amount ELSE 0 END) as gsm_total,
+                SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as m365_total,
+                SUM(i.total_amount) as grand_total,
+                COUNT(DISTINCT i.personnel_id) as personnel_count
+            FROM invoices i
+            LEFT JOIN personnel p ON i.personnel_id = p.id
+            LEFT JOIN cost_centers cc ON p.cost_center_id = cc.id
+            WHERE ${whereSQL}
+            GROUP BY cc.id
+            ORDER BY grand_total DESC
+        `).all(...params);
+
+        // Dönem trendi
+        const monthlyTrend = db.prepare(`
+            SELECT 
+                i.period,
+                SUM(CASE WHEN i.invoice_type = 'gsm' THEN i.total_amount ELSE 0 END) as gsm,
+                SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as m365,
+                SUM(i.total_amount) as total
+            FROM invoices i
+            LEFT JOIN personnel p ON i.personnel_id = p.id
+            WHERE ${whereClauses.filter(c => !c.includes('i.period')).join(' AND ')}
+            GROUP BY i.period
+            ORDER BY i.period ASC
+        `).all(...params.filter((_, idx) => {
+            // period parametresini trend sorgusundan çıkar
+            const periodIdx = filters.period ? 0 : -1;
+            return idx !== periodIdx;
+        }));
+
+        // Toplamlar
+        const totals = db.prepare(`
+            SELECT 
+                SUM(i.total_amount) as total_amount,
+                SUM(i.amount) as net_amount,
+                SUM(i.tax_kdv) as total_kdv,
+                SUM(i.tax_oiv) as total_oiv,
+                COUNT(DISTINCT i.personnel_id) as total_personnel
+            FROM invoices i
+            LEFT JOIN personnel p ON i.personnel_id = p.id
+            WHERE ${whereSQL}
+        `).get(...params);
+
+        return { byType, byCostCenter, monthlyTrend, totals };
+    }
+
+    static async getReportByCompany(filters = {}) {
+        let whereClauses = ['1=1'];
+        const params = [];
+
+        if (filters.period) {
+            whereClauses.push('i.period = ?');
+            params.push(filters.period);
+        }
+        if (filters.company_id) {
+            whereClauses.push('p.company_id = ?');
+            params.push(filters.company_id);
+        }
+        if (filters.operator) {
+            whereClauses.push('i.operator = ?');
+            params.push(filters.operator);
+        }
+
+        const whereSQL = whereClauses.join(' AND ');
+
+        // Şirket bazlı toplam rapor
+        const byCompany = db.prepare(`
+            SELECT 
+                COALESCE(c.name, 'Tanımsız Şirket') as company_name,
+                c.id as company_id,
+                SUM(CASE WHEN i.invoice_type = 'gsm' THEN i.total_amount ELSE 0 END) as gsm_total,
+                SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as m365_total,
+                SUM(i.total_amount) as grand_total,
+                COUNT(DISTINCT i.personnel_id) as personnel_count,
+                COUNT(DISTINCT i.id) as invoice_count
+            FROM invoices i
+            LEFT JOIN personnel p ON i.personnel_id = p.id
+            LEFT JOIN companies c ON p.company_id = c.id
+            WHERE ${whereSQL}
+            GROUP BY p.company_id
+            ORDER BY grand_total DESC
+        `).all(...params);
+
+        // Seçili şirket detayı — masraf merkezi kırılımı
+        let costCenterDetail = [];
+        if (filters.company_id) {
+            costCenterDetail = db.prepare(`
+                SELECT 
+                    COALESCE(cc.code || '-' || cc.name, 'Tanımsız') as cost_center_name,
+                    cc.id as cost_center_id,
+                    SUM(CASE WHEN i.invoice_type = 'gsm' THEN i.total_amount ELSE 0 END) as gsm_total,
+                    SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as m365_total,
+                    SUM(i.total_amount) as grand_total,
+                    COUNT(DISTINCT i.personnel_id) as personnel_count
+                FROM invoices i
+                LEFT JOIN personnel p ON i.personnel_id = p.id
+                LEFT JOIN cost_centers cc ON p.cost_center_id = cc.id
+                WHERE ${whereSQL}
+                GROUP BY cc.id
+                ORDER BY grand_total DESC
+            `).all(...params);
+        }
+
+        // Dönem karşılaştırma — tüm dönemler, şirket bazlı
+        const trendParams = [];
+        let trendWhere = '1=1';
+        if (filters.company_id) {
+            trendWhere = 'p.company_id = ?';
+            trendParams.push(filters.company_id);
+        }
+        if (filters.operator) {
+            trendWhere += ' AND i.operator = ?';
+            trendParams.push(filters.operator);
+        }
+
+        const monthlyTrend = db.prepare(`
+            SELECT 
+                i.period,
+                SUM(CASE WHEN i.invoice_type = 'gsm' THEN i.total_amount ELSE 0 END) as gsm,
+                SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as m365,
+                SUM(i.total_amount) as total
+            FROM invoices i
+            LEFT JOIN personnel p ON i.personnel_id = p.id
+            WHERE ${trendWhere}
+            GROUP BY i.period
+            ORDER BY i.period ASC
+        `).all(...trendParams);
+
+        // Genel toplam
+        const totals = db.prepare(`
+            SELECT 
+                SUM(i.total_amount) as total_amount,
+                COUNT(DISTINCT p.company_id) as total_companies,
+                COUNT(DISTINCT i.personnel_id) as total_personnel
+            FROM invoices i
+            LEFT JOIN personnel p ON i.personnel_id = p.id
+            WHERE ${whereSQL}
+        `).get(...params);
+
+        return { byCompany, costCenterDetail, monthlyTrend, totals };
     }
 
     // --- HELPERS FOR MATCHING ---

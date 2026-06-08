@@ -22,7 +22,8 @@ const menuSections = [
       { name: 'Sunucu Envanteri', icon: 'fa-server', path: '/master-data/servers' },
       { name: 'SIM Kart Havuzu', icon: 'fa-sim-card', path: '/master-data/sim-cards' },
       { name: 'Operatör & Paketler', icon: 'fa-hand-holding-heart', path: '/master-data/services' },
-      { name: 'Yazılım Lisansları', icon: 'fa-key', path: '/master-data/licensing' }
+      { name: 'Yazılım Lisansları', icon: 'fa-key', path: '/master-data/licensing' },
+      { name: 'SMTP & Mail Ayarları', icon: 'fa-envelope', path: '/master-data/smtp-settings' }
     ]
   }
 ]

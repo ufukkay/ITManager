@@ -13,6 +13,15 @@ const db = new Database(dbPath);
 
 // Tabloları Oluştur
 const initDb = () => {
+  // Users table migrations
+  try {
+    const columns = db.prepare("PRAGMA table_info(users)").all();
+    if (columns.length > 0 && !columns.some(c => c.name === 'personnel_id')) {
+        console.log("Adding personnel_id to users table...");
+        db.prepare("ALTER TABLE users ADD COLUMN personnel_id INTEGER REFERENCES personnel(id)").run();
+    }
+  } catch (e) { console.log("users migration skipped:", e.message); }
+
   // Users table
   db.prepare(
     `
@@ -23,6 +32,7 @@ const initDb = () => {
             password TEXT NOT NULL,
             full_name TEXT,
             role_id INTEGER,
+            personnel_id INTEGER REFERENCES personnel(id),
             reset_token TEXT,
             reset_expires DATETIME,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -593,6 +603,99 @@ const initDb = () => {
     )
   `).run();
 
+  // --- ASSET MANAGEMENT TABLES ---
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS asset_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS asset_brands (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS asset_models (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        category_id INTEGER NOT NULL,
+        brand_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(name, category_id, brand_id),
+        FOREIGN KEY(category_id) REFERENCES asset_categories(id),
+        FOREIGN KEY(brand_id) REFERENCES asset_brands(id)
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS asset_statuses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
+  // assets table migrations
+  try {
+    const columns = db.prepare("PRAGMA table_info(assets)").all();
+    if (columns.length > 0) {
+      if (!columns.some(c => c.name === 'invoice_path')) {
+        console.log("Adding invoice_path to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN invoice_path TEXT").run();
+      }
+      if (!columns.some(c => c.name === 'warranty_path')) {
+        console.log("Adding warranty_path to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN warranty_path TEXT").run();
+      }
+    }
+  } catch (e) { console.log("assets migration skipped:", e.message); }
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS assets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        serial_no TEXT UNIQUE NOT NULL,
+        barcode TEXT UNIQUE,
+        model_id INTEGER NOT NULL,
+        status_id INTEGER NOT NULL,
+        company_id INTEGER NOT NULL,
+        location_id INTEGER,
+        personnel_id INTEGER,
+        purchase_price REAL DEFAULT 0,
+        purchase_date DATE,
+        lifetime_months INTEGER DEFAULT 60,
+        invoice_path TEXT,
+        warranty_path TEXT,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(model_id) REFERENCES asset_models(id),
+        FOREIGN KEY(status_id) REFERENCES asset_statuses(id),
+        FOREIGN KEY(company_id) REFERENCES companies(id),
+        FOREIGN KEY(location_id) REFERENCES locations(id),
+        FOREIGN KEY(personnel_id) REFERENCES personnel(id)
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS asset_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        asset_id INTEGER NOT NULL,
+        action TEXT NOT NULL, -- CHECKOUT, CHECKIN, STATUS_CHANGE, CREATE, UPDATE
+        target_type TEXT, -- PERSONNEL, LOCATION, NONE
+        target_id INTEGER,
+        notes TEXT,
+        created_by INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE
+    )
+  `).run();
+
   console.log("Veritabanı tabloları hazır.");
 
   // Başlangıç Verilerini Ekle (Seed)
@@ -600,11 +703,14 @@ const initDb = () => {
 };
 
 const seedInitialData = () => {
-    // Rolleri Ekle
+    // Rolleri Ekle (Migration)
+    db.prepare("UPDATE roles SET name = 'Personel' WHERE name = 'User'").run();
+    db.prepare("UPDATE roles SET name = 'Teknisyen' WHERE name = 'HR'").run();
+
     const roles = [
         { name: 'Admin', description: 'Tam yetkili sistem yöneticisi' },
-        { name: 'User', description: 'Standart kullanıcı' },
-        { name: 'HR', description: 'İnsan kaynakları personeli' }
+        { name: 'Teknisyen', description: 'Operasyonel yetkili (Envanter, Sunucu vb.)' },
+        { name: 'Personel', description: 'Standart kullanıcı (Sadece kendi zimmetleri/bilgileri)' }
     ];
 
     roles.forEach(role => {
@@ -634,12 +740,54 @@ const seedInitialData = () => {
         
         // M365 Lisans Yönetimi
         { key: 'm365:view', module: 'M365 Lisans Yönetimi', desc: 'M365 lisans, şirket ve dağıtım durumlarını görüntüleme' },
-        { key: 'm365:edit', module: 'M365 Lisans Yönetimi', desc: 'M365 dağıtım ve lisansları düzenleme / veri analiz etme' }
+        { key: 'm365:edit', module: 'M365 Lisans Yönetimi', desc: 'M365 dağıtım ve lisansları düzenleme / veri analiz etme' },
+
+        // Envanter Yönetimi
+        { key: 'asset:view', module: 'Envanter Takip', desc: 'Varlık listesini ve zimmet bilgilerini görüntüleme' },
+        { key: 'asset:edit', module: 'Envanter Takip', desc: 'Varlık ekleme, silme, düzenleme ve zimmet işlemlerini yapma' }
     ];
 
     permissions.forEach(p => {
         db.prepare('INSERT OR IGNORE INTO permissions (permission_key, module, description) VALUES (?, ?, ?)').run(p.key, p.module, p.desc);
     });
+
+    // Seed Asset Categories
+    const categories = ['Laptop', 'Desktop PC', 'Monitor', 'Mobile Phone', 'Tablet', 'Printer', 'Network Switch', 'Access Point', 'Other'];
+    categories.forEach(cat => {
+        db.prepare('INSERT OR IGNORE INTO asset_categories (name) VALUES (?)').run(cat);
+    });
+
+    // Seed Asset Brands
+    const brands = ['Apple', 'Dell', 'Lenovo', 'HP', 'Samsung', 'Cisco', 'Ubiquiti', 'Huawei', 'Other'];
+    brands.forEach(b => {
+        db.prepare('INSERT OR IGNORE INTO asset_brands (name) VALUES (?)').run(b);
+    });
+
+    // Seed Asset Statuses
+    const statuses = ['Depoda (Boşta)', 'Zimmetlendi (Kullanımda)', 'Arızalı', 'Hurda', 'Bakımda / Serviste'];
+    statuses.forEach(s => {
+        db.prepare('INSERT OR IGNORE INTO asset_statuses (name) VALUES (?)').run(s);
+    });
+
+    // Standart Rol İzinlerini Ata
+    const techRole = db.prepare("SELECT id FROM roles WHERE name = 'Teknisyen'").get();
+    const persRole = db.prepare("SELECT id FROM roles WHERE name = 'Personel'").get();
+    
+    if (techRole) {
+        const techPerms = ['sim:view', 'sim:edit', 'asset:view', 'asset:edit', 'monitoring:view', 'm365:view'];
+        techPerms.forEach(pkey => {
+            const p = db.prepare('SELECT id FROM permissions WHERE permission_key = ?').get(pkey);
+            if (p) db.prepare('INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)').run(techRole.id, p.id);
+        });
+    }
+
+    if (persRole) {
+        const persPerms = ['hr:view', 'asset:view'];
+        persPerms.forEach(pkey => {
+            const p = db.prepare('SELECT id FROM permissions WHERE permission_key = ?').get(pkey);
+            if (p) db.prepare('INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)').run(persRole.id, p.id);
+        });
+    }
 
     // Admin kullanıcısını ekle
     const bcrypt = require('bcryptjs');
@@ -659,4 +807,5 @@ module.exports = {
   db,
   initDb,
 };
+
 

@@ -21,6 +21,8 @@ router.post('/api/logout', (req, res) => {
         res.json({ success: true, message: 'Logged out successfully' });
     });
 });
+router.post('/api/forgot-password', authController.forgotPassword);
+router.post('/api/reset-password', authController.resetPassword);
 
 module.exports = router;
 
