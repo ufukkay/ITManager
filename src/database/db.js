@@ -696,6 +696,157 @@ const initDb = () => {
     )
   `).run();
 
+  // --- HELPDESK TABLES ---
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS helpdesk_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        type TEXT NOT NULL DEFAULT 'Genel',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS helpdesk_subcategories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category_id INTEGER REFERENCES helpdesk_categories(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(category_id, name)
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS helpdesk_tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_no TEXT UNIQUE NOT NULL,
+        user_id INTEGER REFERENCES users(id),
+        personnel_id INTEGER REFERENCES personnel(id),
+        category_id INTEGER REFERENCES helpdesk_categories(id),
+        subcategory_id INTEGER REFERENCES helpdesk_subcategories(id),
+        related_dep_id INTEGER REFERENCES departments(id),
+        ticket_type TEXT,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL,
+        priority TEXT DEFAULT 'Normal',
+        status TEXT DEFAULT 'Açık',
+        assigned_to INTEGER REFERENCES users(id),
+        sla_due_at DATETIME,
+        total_work_seconds INTEGER DEFAULT 0,
+        resolution_note TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        resolved_at DATETIME,
+        closed_at DATETIME
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS helpdesk_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER REFERENCES helpdesk_tickets(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        message TEXT NOT NULL,
+        is_internal INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS helpdesk_attachments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER REFERENCES helpdesk_tickets(id) ON DELETE CASCADE,
+        message_id INTEGER REFERENCES helpdesk_messages(id) ON DELETE CASCADE,
+        file_name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        file_type TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS imap_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        host TEXT,
+        port INTEGER,
+        user TEXT,
+        password TEXT,
+        tls INTEGER DEFAULT 1,
+        delete_after_read INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 0
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS helpdesk_work_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER REFERENCES helpdesk_tickets(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id),
+        started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        ended_at DATETIME,
+        duration_seconds INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS helpdesk_ticket_collaborators (
+        ticket_id INTEGER REFERENCES helpdesk_tickets(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (ticket_id, user_id)
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS helpdesk_tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER REFERENCES helpdesk_tickets(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        status TEXT DEFAULT 'Pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        completed_at DATETIME
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS helpdesk_checklist (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER REFERENCES helpdesk_tickets(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        is_checked INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
+  // Helpdesk Migrations
+  try {
+    const columns = db.prepare("PRAGMA table_info(helpdesk_tickets)").all();
+    if (columns.length > 0) {
+      if (!columns.some(c => c.name === 'sla_due_at')) {
+        console.log("Adding sla_due_at to helpdesk_tickets table...");
+        db.prepare("ALTER TABLE helpdesk_tickets ADD COLUMN sla_due_at DATETIME").run();
+      }
+      if (!columns.some(c => c.name === 'total_work_seconds')) {
+        console.log("Adding total_work_seconds to helpdesk_tickets table...");
+        db.prepare("ALTER TABLE helpdesk_tickets ADD COLUMN total_work_seconds INTEGER DEFAULT 0").run();
+      }
+      if (!columns.some(c => c.name === 'resolution_note')) {
+        console.log("Adding resolution_note to helpdesk_tickets table...");
+        db.prepare("ALTER TABLE helpdesk_tickets ADD COLUMN resolution_note TEXT").run();
+      }
+      if (!columns.some(c => c.name === 'related_dep_id')) {
+        console.log("Adding related_dep_id to helpdesk_tickets table...");
+        db.prepare("ALTER TABLE helpdesk_tickets ADD COLUMN related_dep_id INTEGER REFERENCES departments(id)").run();
+      }
+      if (!columns.some(c => c.name === 'ticket_type')) {
+        console.log("Adding ticket_type to helpdesk_tickets table...");
+        db.prepare("ALTER TABLE helpdesk_tickets ADD COLUMN ticket_type TEXT").run();
+      }
+    }
+  } catch (e) { console.log("helpdesk_tickets migration skipped:", e.message); }
+
   console.log("Veritabanı tabloları hazır.");
 
   // Başlangıç Verilerini Ekle (Seed)

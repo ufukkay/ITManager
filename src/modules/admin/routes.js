@@ -256,4 +256,42 @@ router.post('/api/settings/imap', (req, res) => {
     }
 });
 
+// POST /admin/api/settings/imap/test - IMAP ayarlarını test et
+router.post('/api/settings/imap/test', async (req, res) => {
+    const imaps = require('imap-simple');
+    try {
+        const { host, port, user, password, tls } = req.body;
+        
+        let passToUse = password;
+        if (!password || password.trim() === '') {
+            const old = db.prepare('SELECT password FROM imap_settings ORDER BY id DESC LIMIT 1').get();
+            if (old) {
+                passToUse = old.password;
+            } else {
+                return res.status(400).json({ success: false, message: 'Lütfen parola girin.' });
+            }
+        }
+
+        const config = {
+            imap: {
+                user,
+                password: passToUse,
+                host,
+                port: parseInt(port),
+                tls: tls === 1 || tls === true,
+                authTimeout: 5000,
+                tlsOptions: { rejectUnauthorized: false }
+            }
+        };
+
+        const connection = await imaps.connect(config);
+        connection.end();
+        
+        res.json({ success: true, message: 'IMAP bağlantısı başarılı!' });
+    } catch (err) {
+        console.error('Test IMAP settings error:', err);
+        res.status(500).json({ success: false, message: 'Bağlantı hatası: ' + err.message });
+    }
+});
+
 module.exports = router;

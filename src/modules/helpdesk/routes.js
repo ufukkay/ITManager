@@ -37,6 +37,29 @@ router.get('/pool', hasPermission('helpdesk:manage'), helpdeskController.getTick
 router.put('/tickets/:id/assign', hasPermission('helpdesk:manage'), helpdeskController.assignTicket);
 router.put('/tickets/:id/status', hasPermission('helpdesk:manage'), helpdeskController.updateStatus);
 
+// Zaman Takibi
+router.post('/tickets/:id/work/start', hasPermission('helpdesk:manage'), helpdeskController.startWork);
+router.post('/tickets/:id/work/stop', hasPermission('helpdesk:manage'), helpdeskController.stopWork);
+
+// Ortak Çalışanlar (Co-assignment)
+router.get('/tickets/:id/collaborators', hasPermission('helpdesk:manage'), helpdeskController.getCollaborators);
+router.post('/tickets/:id/collaborators', hasPermission('helpdesk:manage'), helpdeskController.addCollaborator);
+router.delete('/tickets/:id/collaborators/:userId', hasPermission('helpdesk:manage'), helpdeskController.removeCollaborator);
+
+// Alt Görevler (Sub-tasks)
+router.post('/tickets/:id/tasks', hasPermission('helpdesk:manage'), helpdeskController.addTask);
+router.put('/tasks/:taskId/toggle', hasPermission('helpdesk:manage'), helpdeskController.toggleTask);
+router.delete('/tasks/:taskId', hasPermission('helpdesk:manage'), helpdeskController.deleteTask);
+
+// Kontrol Listesi (Checklist)
+router.post('/tickets/:id/checklist', hasPermission('helpdesk:manage'), helpdeskController.addChecklistItem);
+router.put('/checklist/:itemId/toggle', hasPermission('helpdesk:manage'), helpdeskController.toggleChecklistItem);
+router.delete('/checklist/:itemId', hasPermission('helpdesk:manage'), helpdeskController.deleteChecklistItem);
+
+// Ek Dosya İşlemleri
+router.post('/tickets/:id/email-attachments', helpdeskController.emailAttachments);
+router.delete('/tickets/:id/attachments/:attachmentId', helpdeskController.deleteAttachment);
+
 // Ayarlar (Sistem Yöneticisi)
 router.post('/categories', hasPermission('system:settings'), helpdeskController.createCategory);
 router.put('/categories/:id', hasPermission('system:settings'), helpdeskController.updateCategory);

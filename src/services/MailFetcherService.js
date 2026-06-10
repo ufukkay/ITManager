@@ -89,25 +89,69 @@ class MailFetcherService {
                     const userId = user ? user.id : null;
                     const personnelId = user ? user.personnel_id : null;
 
-                    // Bilet No üret
-                    const dt = new Date();
-                    const year = dt.getFullYear().toString().substr(-2);
-                    const rand = Math.floor(1000 + Math.random() * 9000);
-                    const ticketNo = `TCK-${year}${rand}`;
+                    // Talep Numarası Kontrolü (Konuda TCK-XXXX formatını ara)
+                    const ticketNoMatch = subject.match(/(TCK-\d{6})/i);
+                    let ticketId = null;
+                    let isReply = false;
 
-                    // Bilet oluştur
-                    const result = db.prepare(`
-                        INSERT INTO helpdesk_tickets (ticket_no, user_id, personnel_id, category_id, subcategory_id, title, description, priority)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 'Normal')
-                    `).run(ticketNo, userId, personnelId, catRow.id, subRow.id, subject, textContent);
-                    
-                    const ticketId = result.lastInsertRowid;
+                    if (ticketNoMatch) {
+                        const matchedNo = ticketNoMatch[1].toUpperCase();
+                        const existingTicket = db.prepare('SELECT id FROM helpdesk_tickets WHERE ticket_no = ?').get(matchedNo);
+                        if (existingTicket) {
+                            ticketId = existingTicket.id;
+                            isReply = true;
+                        }
+                    }
+
+                    if (!isReply) {
+                        // Yeni bilet oluştur
+                        const dt = new Date();
+                        const year = dt.getFullYear().toString().substr(-2);
+                        const rand = Math.floor(100000 + Math.random() * 900000); // 6 basamaklı bilet no
+                        const ticketNo = `TCK-${year}${rand}`;
+
+                        // SLA Tarihi (Varsayılan Normal öncelik için +24 saat)
+                        const slaDue = new Date();
+                        slaDue.setHours(slaDue.getHours() + 24);
+
+                        const result = db.prepare(`
+                            INSERT INTO helpdesk_tickets (ticket_no, user_id, personnel_id, category_id, subcategory_id, title, description, priority, sla_due_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, 'Normal', ?)
+                        `).run(ticketNo, userId, personnelId, catRow.id, subRow.id, subject, textContent, slaDue.toISOString());
+                        
+                        ticketId = result.lastInsertRowid;
+                    } else {
+                        // Mevcut talebi güncelle
+                        db.prepare(`UPDATE helpdesk_tickets SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(ticketId);
+                    }
 
                     // Mesaj oluştur
-                    db.prepare(`
+                    const msgResult = db.prepare(`
                         INSERT INTO helpdesk_messages (ticket_id, user_id, message)
                         VALUES (?, ?, ?)
                     `).run(ticketId, userId, textContent);
+                    const messageId = msgResult.lastInsertRowid;
+
+                    // Mail eklerini kaydet
+                    if (mail.attachments && mail.attachments.length > 0) {
+                        const fs = require('fs');
+                        const dir = path.join(__dirname, '../../uploads/helpdesk');
+                        if (!fs.existsSync(dir)) {
+                            fs.mkdirSync(dir, { recursive: true });
+                        }
+                        const insertAtt = db.prepare('INSERT INTO helpdesk_attachments (ticket_id, message_id, file_name, file_path, file_type) VALUES (?, ?, ?, ?, ?)');
+                        for (let att of mail.attachments) {
+                            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+                            const fileName = att.filename || 'attachment';
+                            const fileExt = path.extname(fileName);
+                            const saveName = 'attachment-' + uniqueSuffix + fileExt;
+                            const savePath = path.join(dir, saveName);
+                            
+                            fs.writeFileSync(savePath, att.content);
+                            
+                            insertAtt.run(ticketId, messageId, fileName, '/uploads/helpdesk/' + saveName, att.contentType);
+                        }
+                    }
 
                     // Eğer mailleri sil ayarı açıksa maili sunucudan sil
                     if (settings.delete_after_read === 1) {
