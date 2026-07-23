@@ -84,4 +84,11 @@ router.delete('/form-templates/:id', hasPermission('asset:edit'), assetControlle
 router.get('/scan/:id', assetController.getAssetScanDetail);
 router.post('/:id/audit', assetController.submitAssetAudit);
 
+// Audit Session & Periodicity Compliance Routes
+router.get('/audit/summary', assetController.getAuditSummary);
+router.get('/audit/personnel-session/:personnelId', assetController.getPersonnelAuditSession);
+router.post('/audit/personnel-submit', assetController.submitPersonnelAuditSession);
+router.get('/audit/period-settings', assetController.getAuditPeriodSettings);
+router.put('/audit/period-settings', hasPermission('asset:edit'), assetController.updateAuditPeriodSettings);
+
 module.exports = router;

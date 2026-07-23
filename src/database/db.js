@@ -754,6 +754,10 @@ const initDb = () => {
         console.log("Adding specs_json to assets table...");
         db.prepare("ALTER TABLE assets ADD COLUMN specs_json TEXT").run();
       }
+      if (!columns.some(c => c.name === 'last_audit_date')) {
+        console.log("Adding last_audit_date to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN last_audit_date DATETIME").run();
+      }
     }
   } catch (e) { console.log("assets migration skipped:", e.message); }
 
@@ -774,6 +778,7 @@ const initDb = () => {
         warranty_path TEXT,
         notes TEXT,
         specs_json TEXT,
+        last_audit_date DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(model_id) REFERENCES asset_models(id),
@@ -783,6 +788,17 @@ const initDb = () => {
         FOREIGN KEY(personnel_id) REFERENCES personnel(id)
     )
   `).run();
+
+  // System Settings table
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS system_settings (
+        key TEXT UNIQUE NOT NULL,
+        value TEXT NOT NULL
+    )
+  `).run();
+
+  // Seed default audit_period_days if not exists
+  db.prepare(`INSERT OR IGNORE INTO system_settings (key, value) VALUES ('audit_period_days', '90')`).run();
 
   db.prepare(`
     CREATE TABLE IF NOT EXISTS asset_logs (

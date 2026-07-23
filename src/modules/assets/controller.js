@@ -639,6 +639,8 @@ exports.submitAssetAudit = (req, res) => {
         const auditorName = audited_by_name || (req.session?.user?.full_name) || 'Mobil Saha Personeli';
         const auditorId = req.session?.user?.id || null;
 
+        db.prepare('UPDATE assets SET last_audit_date = CURRENT_TIMESTAMP WHERE id = ?').run(id);
+
         db.prepare('INSERT INTO asset_audits (asset_id, audited_by, audited_by_name, notes) VALUES (?, ?, ?, ?)')
           .run(id, auditorId, auditorName, notes || 'Mobil QR Saha Sayımı Yapıldı - Zimmet Yerinde OK');
 
@@ -649,6 +651,125 @@ exports.submitAssetAudit = (req, res) => {
     } catch (err) {
         console.error('submitAssetAudit error:', err);
         res.status(500).json({ error: 'Saha sayımı işlenemedi.' });
+    }
+};
+
+// Get Audit Summary & Periodicity Compliance Metrics
+exports.getAuditSummary = (req, res) => {
+    try {
+        const setting = db.prepare("SELECT value FROM system_settings WHERE key = 'audit_period_days'").get();
+        const periodDays = setting ? Number(setting.value) : 90;
+
+        const totalAssigned = db.prepare("SELECT COUNT(*) as c FROM assets WHERE personnel_id IS NOT NULL OR location_id IS NOT NULL").get().c;
+
+        const auditedCount = db.prepare(`
+            SELECT COUNT(*) as c 
+            FROM assets 
+            WHERE (personnel_id IS NOT NULL OR location_id IS NOT NULL)
+              AND last_audit_date IS NOT NULL 
+              AND last_audit_date >= datetime('now', '-' || ? || ' days')
+        `).get(periodDays).c;
+
+        const overdueCount = totalAssigned - auditedCount;
+
+        // Personnel with overdue audits
+        const overduePersonnelList = db.prepare(`
+            SELECT DISTINCT p.id, p.first_name, p.last_name, p.title, c.name as company_name, d.name as department_name,
+                   MAX(a.last_audit_date) as max_last_audit_date,
+                   COUNT(a.id) as assigned_asset_count
+            FROM personnel p
+            JOIN assets a ON a.personnel_id = p.id
+            LEFT JOIN companies c ON p.company_id = c.id
+            LEFT JOIN departments d ON p.department_id = d.id
+            GROUP BY p.id
+            HAVING max_last_audit_date IS NULL OR max_last_audit_date < datetime('now', '-' || ? || ' days')
+        `).all(periodDays);
+
+        res.json({
+            periodDays,
+            totalAssigned,
+            auditedCount,
+            overdueCount,
+            overduePersonnelCount: overduePersonnelList.length,
+            overduePersonnelList
+        });
+    } catch (err) {
+        console.error('getAuditSummary error:', err);
+        res.status(500).json({ error: 'Denetim özeti alınamadı.' });
+    }
+};
+
+// Get Personnel Assets Audit Session
+exports.getPersonnelAuditSession = (req, res) => {
+    try {
+        const { personnelId } = req.params;
+        const person = db.prepare("SELECT p.*, c.name as company_name, d.name as department_name FROM personnel p LEFT JOIN companies c ON p.company_id = c.id LEFT JOIN departments d ON p.department_id = d.id WHERE p.id = ?").get(personnelId);
+        if (!person) return res.status(404).json({ error: 'Personel bulunamadı.' });
+
+        const assets = db.prepare(`
+            SELECT a.*, am.name as model_name, ab.name as brand_name, ac.name as category_name
+            FROM assets a
+            JOIN asset_models am ON a.model_id = am.id
+            JOIN asset_brands ab ON am.brand_id = ab.id
+            JOIN asset_categories ac ON am.category_id = ac.id
+            WHERE a.personnel_id = ?
+        `).all(personnelId);
+
+        res.json({ person, assets });
+    } catch (err) {
+        console.error('getPersonnelAuditSession error:', err);
+        res.status(500).json({ error: 'Personel sayım verileri alınamadı.' });
+    }
+};
+
+// Submit Personnel Batch Audit Session
+exports.submitPersonnelAuditSession = (req, res) => {
+    try {
+        const { personnel_id, audited_asset_ids, notes } = req.body;
+        if (!personnel_id || !Array.isArray(audited_asset_ids)) {
+            return res.status(400).json({ error: 'Geçersiz sayım verisi.' });
+        }
+
+        const auditorName = (req.session?.user?.full_name) || 'Mobil Saha Teknisyeni';
+        const auditorId = req.session?.user?.id || null;
+
+        const updateAssetStmt = db.prepare("UPDATE assets SET last_audit_date = CURRENT_TIMESTAMP WHERE id = ?");
+        const auditLogStmt = db.prepare("INSERT INTO asset_audits (asset_id, audited_by, audited_by_name, notes) VALUES (?, ?, ?, ?)");
+        const actionLogStmt = db.prepare("INSERT INTO asset_logs (asset_id, action, target_type, notes) VALUES (?, 'AUDIT', 'NONE', ?)");
+
+        audited_asset_ids.forEach(assetId => {
+            updateAssetStmt.run(assetId);
+            auditLogStmt.run(assetId, auditorId, auditorName, notes || 'Saha Personel Zimmet Sayımı Tamamlandı - Onaylandı');
+            actionLogStmt.run(assetId, `Saha Zimmet Kontrolü Onaylandı: ${auditorName}`);
+        });
+
+        res.json({ success: true, message: `${audited_asset_ids.length} cihaz için zimmet sayımı tescillendi.` });
+    } catch (err) {
+        console.error('submitPersonnelAuditSession error:', err);
+        res.status(500).json({ error: 'Saha zimmet sayımı kaydedilemedi.' });
+    }
+};
+
+// Get & Update Audit Period Settings
+exports.getAuditPeriodSettings = (req, res) => {
+    try {
+        const setting = db.prepare("SELECT value FROM system_settings WHERE key = 'audit_period_days'").get();
+        res.json({ audit_period_days: setting ? Number(setting.value) : 90 });
+    } catch (err) {
+        res.status(500).json({ error: 'Ayar yüklenemedi.' });
+    }
+};
+
+exports.updateAuditPeriodSettings = (req, res) => {
+    try {
+        const { audit_period_days } = req.body;
+        if (!audit_period_days || isNaN(audit_period_days)) {
+            return res.status(400).json({ error: 'Geçerli bir gün sayısı yazınız.' });
+        }
+        db.prepare("INSERT OR REPLACE INTO system_settings (key, value) VALUES ('audit_period_days', ?)").run(String(audit_period_days));
+        res.json({ success: true, audit_period_days: Number(audit_period_days) });
+    } catch (err) {
+        res.status(500).json({ error: 'Ayar güncellenemedi.' });
     }
 };
 

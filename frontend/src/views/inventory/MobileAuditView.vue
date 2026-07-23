@@ -83,6 +83,17 @@
             </div>
           </div>
 
+          <!-- Quick Link to Full Personnel Audit Session -->
+          <div v-if="asset.personnel_id" class="pt-1">
+            <RouterLink 
+              to="/inventory/personnel" 
+              class="w-full py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+            >
+              <i class="fas fa-clipboard-check text-amber-600"></i>
+              <span>{{ asset.personnel_name }} Personelinin Tüm Zimmetlerini Say</span>
+            </RouterLink>
+          </div>
+
           <!-- Audit Log History -->
           <div v-if="audits && audits.length > 0" class="pt-2">
             <div class="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1">

@@ -65,6 +65,55 @@
 
     <!-- MAIN CONTENT -->
     <main class="flex-1 overflow-y-auto bg-gray-50/40 p-6">
+      <!-- AUDIT COMPLIANCE & PERIODICITY METRICS BANNER -->
+      <div class="bg-white border border-gray-100 rounded-2xl p-4 mb-6 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-lg">
+            <i class="fas fa-clipboard-check"></i>
+          </div>
+          <div>
+            <div class="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">Periyodik Sayım Kuralı</div>
+            <div class="font-black text-gray-900 text-sm flex items-center gap-1.5">
+              <span>Her {{ auditSummary.periodDays || 90 }} Günde Bir</span>
+              <button @click="openAuditSettingsModal" class="text-blue-600 hover:text-blue-800 text-xs" title="Sayım Periyodunu Değiştir">
+                <i class="fas fa-cog"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 border-l border-gray-100 pl-4">
+          <div>
+            <div class="text-[11px] font-extrabold text-emerald-600 uppercase tracking-wider">✓ Sayımı Güncel Cihazlar</div>
+            <div class="font-black text-emerald-700 text-lg">{{ auditSummary.auditedCount || 0 }} / {{ auditSummary.totalAssigned || 0 }}</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 border-l border-gray-100 pl-4">
+          <div>
+            <div class="text-[11px] font-extrabold text-amber-600 uppercase tracking-wider">⚠️ Denetim Bekleyen Personel</div>
+            <div class="font-black text-amber-700 text-lg">{{ auditSummary.overduePersonnelCount || 0 }} Personel</div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end border-l border-gray-100 pl-4">
+          <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-xl w-full justify-center">
+            <button 
+              @click="auditTabFilter = 'ALL'"
+              :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-all', auditTabFilter === 'ALL' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+            >
+              Tümü
+            </button>
+            <button 
+              @click="auditTabFilter = 'OVERDUE'"
+              :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1', auditTabFilter === 'OVERDUE' ? 'bg-red-500 text-white shadow-sm' : 'text-red-600 hover:bg-red-50']"
+            >
+              <i class="fas fa-exclamation-triangle"></i> Gecikenler ({{ auditSummary.overduePersonnelCount || 0 }})
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div v-if="loading" class="flex items-center justify-center h-64 text-gray-300">
         <i class="fas fa-circle-notch fa-spin text-3xl"></i>
       </div>
@@ -91,7 +140,16 @@
             </div>
             <!-- Info -->
             <div class="flex-1 min-w-0">
-              <div class="font-bold text-gray-900 text-[13.5px]">{{ person.first_name }} {{ person.last_name }}</div>
+              <div class="font-bold text-gray-900 text-[13.5px] flex items-center gap-2">
+                <span>{{ person.first_name }} {{ person.last_name }}</span>
+                <!-- Audit Badge -->
+                <span v-if="getPersonAuditStatus(person.id).isOverdue" class="px-2 py-0.5 bg-red-50 text-red-700 border border-red-100 text-[10px] font-bold rounded-md flex items-center gap-1">
+                  <i class="fas fa-clock text-red-500"></i> Sayım Gecikti ({{ getPersonAuditStatus(person.id).label }})
+                </span>
+                <span v-else class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold rounded-md flex items-center gap-1">
+                  <i class="fas fa-check-circle text-emerald-500"></i> Sayım Güncel ({{ getPersonAuditStatus(person.id).label }})
+                </span>
+              </div>
               <div class="text-[11px] text-gray-400 flex items-center gap-2 mt-0.5">
                 <span v-if="person.title">{{ person.title }}</span>
                 <span v-if="person.title && person.company_name" class="text-gray-200">·</span>
@@ -117,6 +175,15 @@
                   >
                     {{ fmt(personnelAssets[person.id].totalValue) }}
                   </span>
+                  <button
+                    v-if="personnelAssets[person.id].active?.length > 0"
+                    @click.stop="openAuditSessionModal(person)"
+                    class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold rounded-lg flex items-center gap-1.5 transition-colors print:hidden shadow-sm"
+                    title="Bu personelin tüm zimmetleri için saha stok sayımı başlat"
+                  >
+                    <i class="fas fa-qrcode"></i>
+                    <span>Sayım Başlat</span>
+                  </button>
                   <button
                     v-if="personnelAssets[person.id].active?.length > 0"
                     @click.stop="openPrintModal(person)"
@@ -549,6 +616,114 @@
         </form>
       </div>
     </dialog>
+
+    <!-- AUDIT CHECKLIST SESSION DIALOG -->
+    <dialog ref="auditSessionDialog" class="modal">
+      <div class="modal-box w-11/12 max-w-2xl bg-white p-6 rounded-2xl relative shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b pb-3 border-gray-100">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-lg shadow-md">
+              <i class="fas fa-clipboard-check"></i>
+            </div>
+            <div>
+              <h3 class="font-extrabold text-[15px] text-gray-900">Saha Zimmet Stok Sayımı Kontrolü</h3>
+              <p class="text-xs text-gray-400 font-medium">
+                Personel: <strong>{{ activeAuditPerson?.first_name }} {{ activeAuditPerson?.last_name }}</strong> ({{ activeAuditPerson?.company_name }})
+              </p>
+            </div>
+          </div>
+          <button @click="auditSessionDialog?.close()" class="text-gray-400 hover:text-gray-600 font-bold text-sm">✕</button>
+        </div>
+
+        <!-- Asset Checklist -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between text-xs font-bold text-gray-600">
+            <span>Personelin Üzerindeki Cihazlar Listesi ({{ activeAuditAssets.length }} Cihaz):</span>
+            <span class="text-emerald-600 font-extrabold">{{ verifiedAssetIds.size }} / {{ activeAuditAssets.length }} Doğrulandı</span>
+          </div>
+
+          <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
+            <div 
+              v-for="item in activeAuditAssets" 
+              :key="item.id" 
+              :class="['p-3 rounded-xl border transition-all flex items-center justify-between', verifiedAssetIds.has(item.id) ? 'bg-emerald-50/70 border-emerald-200' : 'bg-gray-50 border-gray-100']"
+            >
+              <div class="space-y-0.5">
+                <div class="font-bold text-gray-900 text-xs flex items-center gap-2">
+                  <span>{{ item.brand_name }} {{ item.model_name }}</span>
+                  <span class="text-[10px] font-bold px-2 py-0.2 bg-white border rounded text-gray-600">{{ item.category_name }}</span>
+                </div>
+                <div class="text-[11px] text-gray-400 font-mono flex items-center gap-2">
+                  <span>SN: {{ item.serial_no }}</span>
+                  <span v-if="item.barcode">| ENV: {{ item.barcode }}</span>
+                  <span v-if="item.last_audit_date" class="text-blue-500">| Son Sayım: {{ fmtDate(item.last_audit_date) }}</span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button 
+                  v-if="!verifiedAssetIds.has(item.id)" 
+                  @click="toggleAssetVerified(item.id)" 
+                  class="px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-lg transition-colors flex items-center gap-1"
+                >
+                  <i class="fas fa-check"></i> Fiziksel Kontrol OK
+                </button>
+                <span v-else class="px-2.5 py-1 bg-emerald-600 text-white text-xs font-black rounded-lg flex items-center gap-1 shadow-sm">
+                  <i class="fas fa-check-double"></i> Doğrulandı ✓
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audit Note Input -->
+        <div>
+          <label class="form-label text-xs font-bold text-gray-700 block mb-1">Saha Kontrol Notu / Açıklama</label>
+          <input v-model="auditSessionNote" type="text" placeholder="Örn: Tüm cihazlar yerinde ve çalışır vaziyette görüldü." class="w-full p-2 bg-gray-50 border rounded-lg text-xs" />
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="modal-action pt-2 flex justify-between items-center border-t border-gray-100">
+          <div class="text-[11px] text-gray-400 font-medium">Sayımı bitirmek için cihazları doğrulayıp kaydedin.</div>
+          <div class="flex gap-2">
+            <button type="button" @click="auditSessionDialog?.close()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl">İptal</button>
+            <button 
+              type="button" 
+              @click="submitAuditSession" 
+              :disabled="verifiedAssetIds.size === 0" 
+              class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md disabled:opacity-50 flex items-center gap-1.5"
+            >
+              <i class="fas fa-save"></i> Sayımı Tescille & Kaydet
+            </button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- AUDIT PERIOD SETTINGS DIALOG -->
+    <dialog ref="auditSettingsDialog" class="modal">
+      <div class="modal-box w-11/12 max-w-sm bg-white p-6 rounded-2xl relative shadow-2xl">
+        <h3 class="font-bold text-[15px] text-gray-900 mb-2 flex items-center gap-2">
+          <i class="fas fa-cog text-blue-600"></i> Periyodik Sayım Kuralı Ayarı
+        </h3>
+        <p class="text-xs text-gray-400 mb-4">
+          Sistem admini olarak personele ait zimmetlerin kaç günde bir kontrol edilmesi gerektiğini belirleyin.
+        </p>
+
+        <form @submit.prevent="saveAuditSettings" class="space-y-4">
+          <div>
+            <label class="form-label font-bold text-gray-700 block mb-1">Denetim Periyodu (Gün) *</label>
+            <input v-model.number="editPeriodDays" type="number" min="7" max="365" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold" required />
+            <div class="text-[11px] text-gray-400 mt-1">Örnek: 90 Gün = 3 Ayda bir stok sayım zorunluluğu.</div>
+          </div>
+
+          <div class="modal-action flex justify-end gap-2">
+            <button type="button" @click="auditSettingsDialog?.close()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-lg">İptal</button>
+            <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm">Ayarı Kaydet</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
   </div>
 </template>
 
@@ -577,6 +752,111 @@ const quickAssignDialog = ref(null)
 const selectedPersonForAssign = ref(null)
 const selectedUnassignedAssetId = ref('')
 const assignNotes = ref('')
+
+// Audit Compliance State
+const auditSummary = ref({ periodDays: 90, totalAssigned: 0, auditedCount: 0, overdueCount: 0, overduePersonnelCount: 0, overduePersonnelList: [] })
+const auditTabFilter = ref('ALL') // 'ALL', 'OVERDUE'
+const auditSettingsDialog = ref(null)
+const editPeriodDays = ref(90)
+
+const auditSessionDialog = ref(null)
+const activeAuditPerson = ref(null)
+const activeAuditAssets = ref([])
+const verifiedAssetIds = ref(new Set())
+const auditSessionNote = ref('')
+
+const fetchAuditSummary = async () => {
+  try {
+    const res = await axios.get('/api/assets/audit/summary')
+    auditSummary.value = res.data
+    editPeriodDays.value = res.data.periodDays
+  } catch (err) {
+    console.error('fetchAuditSummary error:', err)
+  }
+}
+
+const getPersonAuditStatus = (personId) => {
+  const assets = personnelAssets.value[personId]?.active || []
+  if (assets.length === 0) return { isOverdue: false, label: 'Zimmetsiz' }
+
+  const periodDays = auditSummary.value.periodDays || 90
+  const now = new Date()
+  
+  let maxDate = null
+  assets.forEach(a => {
+    if (a.last_audit_date) {
+      const d = new Date(a.last_audit_date)
+      if (!maxDate || d > maxDate) maxDate = d
+    }
+  })
+
+  if (!maxDate) return { isOverdue: true, label: 'Hiç Sayılmadı' }
+
+  const diffDays = Math.floor((now - maxDate) / (1000 * 60 * 60 * 24))
+  if (diffDays > periodDays) {
+    return { isOverdue: true, label: `${diffDays} Gün Önce` }
+  }
+  return { isOverdue: false, label: `${diffDays} Gün Önce` }
+}
+
+const openAuditSettingsModal = () => {
+  editPeriodDays.value = auditSummary.value.periodDays || 90
+  auditSettingsDialog.value?.showModal()
+}
+
+const saveAuditSettings = async () => {
+  try {
+    await axios.put('/api/assets/audit/period-settings', { audit_period_days: editPeriodDays.value })
+    auditSettingsDialog.value?.close()
+    await fetchAuditSummary()
+  } catch (err) {
+    alert(err.response?.data?.error || 'Ayar kaydedilemedi.')
+  }
+}
+
+const openAuditSessionModal = async (person) => {
+  activeAuditPerson.value = person
+  auditSessionNote.value = ''
+  verifiedAssetIds.value = new Set()
+  try {
+    const res = await axios.get(`/api/assets/audit/personnel-session/${person.id}`)
+    activeAuditAssets.value = res.data.assets || []
+    // Pre-verify assets audited within last 24 hours if any
+    activeAuditAssets.value.forEach(a => {
+      if (a.last_audit_date) {
+        const diffHours = (new Date() - new Date(a.last_audit_date)) / (1000 * 60 * 60)
+        if (diffHours <= 24) verifiedAssetIds.value.add(a.id)
+      }
+    })
+    auditSessionDialog.value?.showModal()
+  } catch (err) {
+    alert('Personel zimmet verileri alınamadı.')
+  }
+}
+
+const toggleAssetVerified = (assetId) => {
+  if (verifiedAssetIds.value.has(assetId)) {
+    verifiedAssetIds.value.delete(assetId)
+  } else {
+    verifiedAssetIds.value.add(assetId)
+  }
+}
+
+const submitAuditSession = async () => {
+  if (!activeAuditPerson.value || verifiedAssetIds.value.size === 0) return
+  try {
+    await axios.post('/api/assets/audit/personnel-submit', {
+      personnel_id: activeAuditPerson.value.id,
+      audited_asset_ids: Array.from(verifiedAssetIds.value),
+      notes: auditSessionNote.value
+    })
+    auditSessionDialog.value?.close()
+    await fetchAuditSummary()
+    await loadData()
+  } catch (err) {
+    alert(err.response?.data?.error || 'Sayım kaydedilemedi.')
+  }
+}
 
 const unassignedAssetsList = computed(() => {
   return assetStore.assets.filter(a => !a.personnel_id && !a.location_id)
@@ -801,30 +1081,37 @@ const triggerPrint = () => {
   }, 400)
 }
 
-const personnelWithAssetsCount = computed(() => {
-  return masterData.personnel.filter(p => personnelAssets.value[p.id]?.active?.length > 0).length
+const filteredPersonnel = computed(() => {
+  let list = masterData.personnel
+
+  if (selectedCompanyId.value) {
+    list = list.filter(p => p.company_id === Number(selectedCompanyId.value))
+  }
+
+  if (onlyAssignedFilter.value) {
+    list = list.filter(p => (personnelAssets.value[p.id]?.active?.length || 0) > 0)
+  }
+
+  if (auditTabFilter.value === 'OVERDUE') {
+    list = list.filter(p => getPersonAuditStatus(p.id).isOverdue && (personnelAssets.value[p.id]?.active?.length || 0) > 0)
+  }
+
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase()
+    list = list.filter(p => {
+      const name = `${p.first_name} ${p.last_name}`.toLowerCase()
+      const title = (p.title || '').toLowerCase()
+      const dept = (p.department_name || '').toLowerCase()
+      const comp = (p.company_name || '').toLowerCase()
+      return name.includes(q) || title.includes(q) || dept.includes(q) || comp.includes(q)
+    })
+  }
+
+  return list
 })
 
-const filteredPersonnel = computed(() => {
-  return masterData.personnel
-    .map(p => ({
-      ...p,
-      company_name: masterData.companies.find(c => c.id === p.company_id)?.name || '',
-      department_name: masterData.departments?.find(d => d.id === p.department_id)?.name || ''
-    }))
-    .filter(p => {
-      if (onlyAssignedFilter.value) {
-        const pa = personnelAssets.value[p.id]
-        if (!pa || !pa.active || pa.active.length === 0) return false
-      }
-      if (selectedCompanyId.value && p.company_id !== Number(selectedCompanyId.value)) return false
-      if (searchQuery.value) {
-        const q = searchQuery.value.toLowerCase()
-        const name = `${p.first_name} ${p.last_name}`.toLowerCase()
-        if (!name.includes(q) && !(p.company_name || '').toLowerCase().includes(q)) return false
-      }
-      return true
-    })
+const personnelWithAssetsCount = computed(() => {
+  return masterData.personnel.filter(p => personnelAssets.value[p.id]?.active?.length > 0).length
 })
 
 const totalAssignedCount = computed(() => {
@@ -883,9 +1170,12 @@ onMounted(async () => {
       masterData.fetchCompanies(),
       masterData.fetchDepartments(),
       assetStore.fetchAssets(),
-      fetchFormTemplates()
+      fetchFormTemplates(),
+      fetchAuditSummary()
     ])
     await preloadBadges()
+  } catch (err) {
+    console.error('onMounted load error:', err)
   } finally {
     loading.value = false
   }
