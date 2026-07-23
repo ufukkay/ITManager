@@ -19,9 +19,35 @@
       </div>
 
       <!-- ── AŞAMA 1: İzin İsteme ───────────────────────── -->
-      <div v-if="stage === 'permission'" class="px-5 py-8 flex flex-col items-center gap-4 text-center">
-        <div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center">
-          <i class="fas fa-camera text-blue-600 text-3xl"></i>
+      <div v-if="stage === 'permission'" class="px-5 py-6 flex flex-col items-center gap-4 text-center">
+
+        <!-- ⚠️ HTTP Uyarısı (iOS Safari kamerayı açmaz) -->
+        <div v-if="isInsecureContext" class="w-full bg-amber-50 border border-amber-200 rounded-2xl p-4 text-left">
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+              <i class="fas fa-exclamation-triangle text-amber-600 text-sm"></i>
+            </div>
+            <div>
+              <div class="font-bold text-amber-900 text-sm mb-1">iOS Safari Kamera Uyarısı</div>
+              <p class="text-xs text-amber-800 leading-relaxed">
+                Bu sayfa <strong>HTTP</strong> üzerinden açılmış. iOS Safari, güvenlik nedeniyle <strong>sadece HTTPS</strong> bağlantılarda kameraya erişim izni veriyor.
+              </p>
+              <div class="mt-2 bg-white/70 rounded-xl p-2.5 text-[11px] text-amber-900 space-y-1.5 font-medium">
+                <div class="flex items-start gap-2">
+                  <i class="fas fa-check-circle text-emerald-500 mt-0.5 shrink-0"></i>
+                  <span>Yetkili tarafından <strong>ngrok HTTPS tüneli</strong> açıldıktan sonra kamera çalışacak</span>
+                </div>
+                <div class="flex items-start gap-2">
+                  <i class="fas fa-info-circle text-blue-500 mt-0.5 shrink-0"></i>
+                  <span>Şimdilik aşağıdaki <strong>Manuel Giriş</strong>'i kullanabilirsiniz</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center">
+          <i class="fas fa-camera text-blue-600 text-2xl"></i>
         </div>
         <div>
           <div class="font-bold text-gray-900 text-base mb-1">Kamera İzni Gerekli</div>
@@ -30,13 +56,35 @@
             <span class="text-blue-600 font-semibold">Önce arka kamera açılacaktır.</span>
           </p>
         </div>
-        <div class="flex flex-col gap-2 w-full pt-2">
+        <div class="flex flex-col gap-2 w-full pt-1">
           <button
             @click="requestAndStart('environment')"
             class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-sm rounded-2xl transition-colors shadow-sm flex items-center justify-center gap-2"
           >
             <i class="fas fa-camera"></i> Arka Kamerayı Aç
           </button>
+
+          <!-- Manuel giriş de permission aşamasında göster -->
+          <div class="relative">
+            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
+            <div class="relative flex justify-center"><span class="bg-white px-3 text-xs text-gray-400 font-medium">veya</span></div>
+          </div>
+          <div class="flex gap-2">
+            <input
+              v-model="manualCode"
+              type="text"
+              placeholder="Barkod / seri no manuel gir..."
+              class="flex-1 h-10 px-3 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500 bg-gray-50 focus:bg-white"
+              @keyup.enter="handleManualSubmit"
+            />
+            <button
+              @click="handleManualSubmit"
+              class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white font-bold text-xs rounded-xl transition-colors"
+            >
+              Ara
+            </button>
+          </div>
+
           <button
             @click="closeModal"
             class="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-2xl transition-colors"
@@ -240,7 +288,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
 import { Html5Qrcode } from 'html5-qrcode'
 
 const props = defineProps({ show: Boolean })
@@ -252,6 +300,9 @@ const currentFacing = ref('environment')
 const manualCode = ref('')
 const errorMessage = ref('')
 const errorType = ref('') // 'permission-denied' | 'other'
+
+// Detects if page is loaded over HTTP (non-localhost) — iOS Safari blocks camera in this case
+const isInsecureContext = computed(() => !window.isSecureContext)
 
 let html5QrCode = null
 
