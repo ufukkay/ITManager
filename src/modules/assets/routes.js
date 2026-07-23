@@ -57,19 +57,12 @@ router.post('/', hasPermission('asset:edit'), upload.fields([
     { name: 'warranty', maxCount: 1 }
 ]), assetController.addAsset);
 
-router.put('/:id', hasPermission('asset:edit'), upload.fields([
-    { name: 'invoice', maxCount: 1 },
-    { name: 'warranty', maxCount: 1 }
-]), assetController.updateAsset);
-
-router.delete('/:id', hasPermission('asset:edit'), assetController.deleteAsset);
-
-// Log history for a single asset
-router.get('/:id/logs', hasPermission('asset:view'), assetController.getAssetLogs);
-
-// Checkout & Checkin
-router.post('/:id/checkout', hasPermission('asset:edit'), assetController.checkoutAsset);
-router.post('/:id/checkin', hasPermission('asset:edit'), assetController.checkinAsset);
+// Audit Session & Periodicity Compliance Routes
+router.get('/audit/summary', assetController.getAuditSummary);
+router.get('/audit/personnel-session/:personnelId', assetController.getPersonnelAuditSession);
+router.post('/audit/personnel-submit', assetController.submitPersonnelAuditSession);
+router.get('/audit/period-settings', assetController.getAuditPeriodSettings);
+router.put('/audit/period-settings', hasPermission('asset:edit'), assetController.updateAuditPeriodSettings);
 
 // Thermal Label Templates & Mobile QR Audit Routes
 router.get('/label-templates', assetController.getLabelTemplates);
@@ -84,11 +77,19 @@ router.delete('/form-templates/:id', hasPermission('asset:edit'), assetControlle
 router.get('/scan/:id', assetController.getAssetScanDetail);
 router.post('/:id/audit', assetController.submitAssetAudit);
 
-// Audit Session & Periodicity Compliance Routes
-router.get('/audit/summary', assetController.getAuditSummary);
-router.get('/audit/personnel-session/:personnelId', assetController.getPersonnelAuditSession);
-router.post('/audit/personnel-submit', assetController.submitPersonnelAuditSession);
-router.get('/audit/period-settings', assetController.getAuditPeriodSettings);
-router.put('/audit/period-settings', hasPermission('asset:edit'), assetController.updateAuditPeriodSettings);
+// Parametric ID routes
+router.put('/:id', hasPermission('asset:edit'), upload.fields([
+    { name: 'invoice', maxCount: 1 },
+    { name: 'warranty', maxCount: 1 }
+]), assetController.updateAsset);
+
+router.delete('/:id', hasPermission('asset:edit'), assetController.deleteAsset);
+
+// Log history for a single asset
+router.get('/:id/logs', hasPermission('asset:view'), assetController.getAssetLogs);
+
+// Checkout & Checkin
+router.post('/:id/checkout', hasPermission('asset:edit'), assetController.checkoutAsset);
+router.post('/:id/checkin', hasPermission('asset:edit'), assetController.checkinAsset);
 
 module.exports = router;
