@@ -24,6 +24,11 @@
           <i class="fas fa-plus"></i> Yeni / Sıfırla
         </button>
 
+        <select v-model.number="pageCount" @change="onPageCountChange" class="h-8 px-3 bg-gray-50 border border-gray-200 rounded text-xs font-bold text-gray-700 outline-none focus:border-purple-500 cursor-pointer">
+          <option :value="1">1 Sayfa (A4)</option>
+          <option :value="2">2 Sayfa (A4)</option>
+        </select>
+
         <select v-model="selectedTemplateId" @change="loadSelectedTemplate" class="h-8 px-3 bg-gray-50 border border-gray-200 rounded text-xs font-bold text-gray-700 outline-none focus:border-purple-500 cursor-pointer">
           <option value="">-- Kayıtlı A4 Şablon Seçin --</option>
           <option v-for="t in savedTemplates" :key="t.id" :value="t.id">
@@ -132,12 +137,22 @@
 
       <!-- CENTER WORKSPACE: INTERACTIVE A4 CANVAS -->
       <main class="flex-1 bg-gray-200/70 overflow-auto p-8 flex justify-center items-start">
-        <!-- Scaled A4 Paper Container (210mm x 297mm -> 700px x 990px) -->
+        <!-- Scaled A4 Paper Container (210mm x 297mm -> 700px x 990px / 1980px) -->
         <div 
           class="a4-paper bg-white shadow-2xl relative border border-gray-300 rounded-sm select-none transition-all"
-          style="width: 700px; height: 990px;"
+          :style="{ width: '700px', height: pageCount === 2 ? '1980px' : '990px' }"
           @click.self="selectedElementId = null"
         >
+          <!-- Page Break Line (Only when pageCount is 2) -->
+          <div 
+            v-if="pageCount === 2" 
+            class="absolute left-0 right-0 border-b-2 border-dashed border-red-400 z-20 flex items-center justify-center pointer-events-none"
+            style="top: 50%; height: 0;"
+          >
+            <span class="bg-red-50 text-red-600 text-[10px] font-black px-2 py-0.5 rounded shadow-sm border border-red-200 uppercase tracking-widest -mt-3.5">
+              --- 2. SAYFA BAŞLANGICI (SAYFA SINIRI) ---
+            </span>
+          </div>
           <!-- Grid Background Pattern -->
           <div class="absolute inset-0 pointer-events-none opacity-5 bg-grid"></div>
 
@@ -251,10 +266,17 @@
 
             <!-- 7. COMPANY LOGO -->
             <div v-else-if="el.type === 'company_logo'" class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded bg-blue-600 text-white flex items-center justify-center font-black text-sm">T</div>
+              <img v-if="el.logo_url" :src="el.logo_url" class="h-8 object-contain shrink-0" style="max-width: 120px;" />
+              <div v-else class="w-7 h-7 rounded bg-blue-600 text-white flex items-center justify-center font-black text-sm uppercase">
+                {{ (el.company_name || 'T')[0] }}
+              </div>
               <div>
-                <div class="font-black tracking-wider uppercase text-gray-900 text-xs">TALAY LOJİSTİK A.Ş.</div>
-                <div class="text-[9px] font-bold text-gray-400">IT BİLİŞİM YÖNETİMİ</div>
+                <div class="font-black tracking-wider uppercase text-gray-900 text-xs">
+                  {{ el.company_name || 'TALAY LOJİSTİK A.Ş.' }}
+                </div>
+                <div class="text-[9px] font-bold text-gray-400">
+                  {{ el.sub_title || 'IT BİLİŞİM YÖNETİMİ' }}
+                </div>
               </div>
             </div>
 
@@ -308,6 +330,26 @@
           <div v-if="selectedElement.type === 'commitment_text' || selectedElement.type === 'custom_text'">
             <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Metin İçeriği</label>
             <textarea v-model="selectedElement.text" rows="5" class="w-full p-2 bg-gray-50 border rounded text-xs font-medium text-gray-800"></textarea>
+          </div>
+
+          <!-- Company Logo Specific Controls -->
+          <div v-if="selectedElement.type === 'company_logo'" class="space-y-3 pt-3 border-t">
+            <div>
+              <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Şirket Adı</label>
+              <input v-model="selectedElement.company_name" type="text" placeholder="TALAY LOJİSTİK A.Ş." class="h-8 w-full px-2 bg-gray-50 border rounded text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Alt Başlık</label>
+              <input v-model="selectedElement.sub_title" type="text" placeholder="IT BİLİŞİM YÖNETİMİ" class="h-8 w-full px-2 bg-gray-50 border rounded text-xs font-semibold" />
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Logo Görseli Yükle</label>
+              <input type="file" accept="image/*" @change="uploadLogoImage" class="text-xs file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer w-full" />
+              <div v-if="selectedElement.logo_url" class="mt-2 flex items-center gap-2 bg-gray-50 p-2 rounded border">
+                <img :src="selectedElement.logo_url" class="h-6 object-contain" />
+                <button @click="selectedElement.logo_url = ''" class="text-[10px] font-bold text-red-500 hover:text-red-700 ml-auto">Kaldır</button>
+              </div>
+            </div>
           </div>
 
           <!-- Font Size & Weight -->
@@ -403,7 +445,12 @@ const { showToast } = useToast()
 
 const selectedTemplateId = ref('')
 const savedTemplates = ref([])
+const pageCount = ref(1)
 const selectedElementId = ref(null)
+
+const onPageCountChange = () => {
+  showToast(`Sayfa sayısı ${pageCount.value} olarak güncellendi.`, 'info')
+}
 const saveModal = ref(null)
 
 const templateForm = ref({
@@ -416,7 +463,7 @@ const defaultCommitmentText = `Yukarıda detayları ve seri numaraları belirtil
 
 // Default Form Elements Arrangement
 const elements = ref([
-  { id: 'el_logo', type: 'company_logo', name: 'Şirket Logosu', x: 5, y: 3, w: 90, fontSize: 12 },
+  { id: 'el_logo', type: 'company_logo', name: 'Şirket Logosu', x: 5, y: 3, w: 90, fontSize: 12, company_name: 'TALAY LOJİSTİK A.Ş.', sub_title: 'IT BİLİŞİM YÖNETİMİ', logo_url: '' },
   { id: 'el_title', type: 'header_title', name: 'Tutanak Başlığı', x: 5, y: 8, w: 90, fontSize: 16, fontWeight: 'black' },
   { id: 'el_pinfo', type: 'personnel_info', name: 'Personel Bilgileri', x: 5, y: 17, w: 90, fontSize: 11 },
   { id: 'el_assets', type: 'assets_table', name: 'Donanım Listesi Tablosu', x: 5, y: 30, w: 90, fontSize: 11 },
@@ -456,7 +503,10 @@ const addElement = (type) => {
     fontSize: 12,
     fontWeight: 'normal',
     color: '#111827',
-    text: type === 'custom_text' ? 'Özel Metin Yazısı' : (type === 'commitment_text' ? defaultCommitmentText : '')
+    text: type === 'custom_text' ? 'Özel Metin Yazısı' : (type === 'commitment_text' ? defaultCommitmentText : ''),
+    company_name: type === 'company_logo' ? 'TALAY LOJİSTİK A.Ş.' : '',
+    sub_title: type === 'company_logo' ? 'IT BİLİŞİM YÖNETİMİ' : '',
+    logo_url: ''
   }
 
   elements.value.push(newEl)
@@ -468,6 +518,25 @@ const deleteElement = (id) => {
   elements.value = elements.value.filter(e => e.id !== id)
   if (selectedElementId.value === id) selectedElementId.value = null
   showToast('Bileşen kanvastan kaldırıldı', 'warning')
+}
+
+const uploadLogoImage = (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('Logo boyutu 2MB\'tan küçük olmalıdır.', 'error')
+    return
+  }
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    if (selectedElement.value) {
+      selectedElement.value.logo_url = e.target.result
+      showToast('Logo başarıyla yüklendi.', 'success')
+    }
+  }
+  reader.readAsDataURL(file)
 }
 
 // Dragging Logic
@@ -496,7 +565,7 @@ const onDrag = (event) => {
   const dy = ((event.clientY - dragStartPos.y) / rect.height) * 100
 
   activeDragEl.x = Math.max(0, Math.min(95, Math.round(activeDragEl.x + dx)))
-  activeDragEl.y = Math.max(0, Math.min(95, Math.round(activeDragEl.y + dy)))
+  activeDragEl.y = Math.max(0, Math.min(pageCount.value === 2 ? 195 : 95, Math.round(activeDragEl.y + dy)))
 
   dragStartPos = { x: event.clientX, y: event.clientY }
 }
@@ -516,7 +585,15 @@ const fetchTemplates = async () => {
     const def = res.data.find(t => t.is_default)
     if (def) {
       selectedTemplateId.value = def.id
-      elements.value = def.elements || elements.value
+      if (def.elements) {
+        if (Array.isArray(def.elements)) {
+          elements.value = def.elements
+          pageCount.value = def.elements.some(e => e.y >= 100) ? 2 : 1
+        } else {
+          elements.value = def.elements.elements || []
+          pageCount.value = def.elements.pageCount || 1
+        }
+      }
     }
   } catch (err) {
     console.error('fetchTemplates error:', err)
@@ -526,7 +603,13 @@ const fetchTemplates = async () => {
 const loadSelectedTemplate = () => {
   const t = savedTemplates.value.find(tmpl => tmpl.id === Number(selectedTemplateId.value))
   if (t && t.elements) {
-    elements.value = t.elements
+    if (Array.isArray(t.elements)) {
+      elements.value = t.elements
+      pageCount.value = t.elements.some(e => e.y >= 100) ? 2 : 1
+    } else {
+      elements.value = t.elements.elements || []
+      pageCount.value = t.elements.pageCount || 1
+    }
     templateForm.value.id = t.id
     templateForm.value.name = t.name
     templateForm.value.is_default = !!t.is_default
@@ -536,13 +619,14 @@ const loadSelectedTemplate = () => {
 
 const createNewTemplate = () => {
   selectedTemplateId.value = ''
+  pageCount.value = 1
   templateForm.value = {
     id: null,
     name: '',
     is_default: false
   }
   elements.value = [
-    { id: 'el_logo', type: 'company_logo', name: 'Şirket Logosu', x: 5, y: 3, w: 90, fontSize: 12 },
+    { id: 'el_logo', type: 'company_logo', name: 'Şirket Logosu', x: 5, y: 3, w: 90, fontSize: 12, company_name: 'TALAY LOJİSTİK A.Ş.', sub_title: 'IT BİLİŞİM YÖNETİMİ', logo_url: '' },
     { id: 'el_title', type: 'header_title', name: 'Tutanak Başlığı', x: 5, y: 8, w: 90, fontSize: 16, fontWeight: 'black' },
     { id: 'el_pinfo', type: 'personnel_info', name: 'Personel Bilgileri', x: 5, y: 17, w: 90, fontSize: 11 },
     { id: 'el_assets', type: 'assets_table', name: 'Donanım Listesi Tablosu', x: 5, y: 30, w: 90, fontSize: 11 },
@@ -601,7 +685,10 @@ const submitSaveTemplate = async () => {
     const payload = {
       id: templateForm.value.id,
       name: templateForm.value.name,
-      elements: elements.value,
+      elements: {
+        pageCount: pageCount.value,
+        elements: elements.value
+      },
       is_default: templateForm.value.is_default
     }
 

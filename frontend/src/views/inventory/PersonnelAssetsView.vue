@@ -223,134 +223,274 @@
           </div>
         </div>
 
-        <!-- PRINTABLE DOCUMENT AREA (A4 Container) -->
-        <div id="zimmet-print-area" class="a4-paper bg-white relative border border-gray-300 mx-auto" style="width: 700px; height: 990px; font-family: sans-serif; box-sizing: border-box; overflow: hidden; background: #ffffff; color: #111827;">
-          <div 
-            v-for="el in printElements" 
-            :key="el.id"
-            class="absolute"
-            :style="{
-              left: `${el.x}%`,
-              top: `${el.y}%`,
-              width: el.w ? `${el.w}%` : 'auto',
-              fontSize: el.fontSize ? `${el.fontSize}px` : '12px',
-              fontWeight: el.fontWeight || 'normal',
-              color: el.color || '#111827',
-              backgroundColor: el.bg || 'transparent'
-            }"
-          >
-            <!-- Company Logo -->
-            <div v-if="el.type === 'company_logo'" class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center font-extrabold text-sm uppercase">
-                {{ (selectedPrintPerson.company_name || 'T')[0] }}
-              </div>
-              <div>
-                <div class="font-extrabold tracking-wider uppercase text-[12px] text-gray-900">
-                  {{ selectedPrintPerson.company_name || 'TALAY LOJİSTİK A.Ş.' }}
+        <!-- PRINTABLE DOCUMENT AREA (A4 Containers) -->
+        <div id="zimmet-print-area" class="w-full flex flex-col gap-4 items-center print:gap-0 print:block">
+          <!-- SAYFA 1 -->
+          <div class="a4-paper bg-white relative border border-gray-300 mx-auto" style="width: 700px; height: 990px; font-family: sans-serif; box-sizing: border-box; overflow: hidden; background: #ffffff; color: #111827;">
+            <div 
+              v-for="el in page1Elements" 
+              :key="el.id"
+              class="absolute"
+              :style="{
+                left: `${el.x}%`,
+                top: `${el.y}%`,
+                width: el.w ? `${el.w}%` : 'auto',
+                fontSize: el.fontSize ? `${el.fontSize}px` : '12px',
+                fontWeight: el.fontWeight || 'normal',
+                color: el.color || '#111827',
+                backgroundColor: el.bg || 'transparent'
+              }"
+            >
+              <!-- Company Logo -->
+              <div v-if="el.type === 'company_logo'" class="flex items-center gap-2">
+                <img v-if="el.logo_url" :src="el.logo_url" class="h-8 object-contain shrink-0" style="max-width: 120px;" />
+                <div v-else class="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center font-extrabold text-sm uppercase">
+                  {{ (el.company_name || selectedPrintPerson.company_name || 'T')[0] }}
                 </div>
-                <div class="text-[9px] font-bold text-gray-400">IT BİLİŞİM YÖNETİMİ</div>
+                <div>
+                  <div class="font-extrabold tracking-wider uppercase text-[12px] text-gray-900">
+                    {{ el.company_name || selectedPrintPerson.company_name || 'TALAY LOJİSTİK A.Ş.' }}
+                  </div>
+                  <div class="text-[9px] font-bold text-gray-400">
+                    {{ el.sub_title || 'IT BİLİŞİM YÖNETİMİ' }}
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <!-- Header Title -->
-            <div v-else-if="el.type === 'header_title'" class="text-center py-1 border-b-2 border-gray-900 w-full">
-              <h1 class="text-base font-black tracking-wider uppercase">ZİMMET TESLİM VE TESELLÜM TUTANAĞI</h1>
-              <p class="text-[9px] font-semibold text-gray-500 mt-0.5">
-                {{ selectedPrintPerson.company_name || 'KURUM İÇİ IT BİLİŞİM ENVALERİ' }}
-              </p>
-            </div>
+              <!-- Header Title -->
+              <div v-else-if="el.type === 'header_title'" class="text-center py-1 border-b-2 border-gray-900 w-full">
+                <h1 class="text-base font-black tracking-wider uppercase">ZİMMET TESLİM VE TESELLÜM TUTANAĞI</h1>
+                <p class="text-[9px] font-semibold text-gray-500 mt-0.5">
+                  {{ el.company_name || selectedPrintPerson.company_name || 'KURUM İÇİ IT BİLİŞİM ENVALERİ' }}
+                </p>
+              </div>
 
-            <!-- Personnel Info Table -->
-            <div v-else-if="el.type === 'personnel_info'" class="border border-gray-300 rounded-lg p-3 bg-gray-50/80 w-full" style="box-sizing: border-box;">
-              <table class="w-full text-left text-[11px] border-none" style="margin: 0; border: none;">
-                <tr class="border-none" style="border: none;">
-                  <td class="py-1 border-none" style="width: 50%; border: none;">
-                    <span class="text-gray-400 font-bold block text-[9px] uppercase">PERSONEL ADI SOYADI:</span>
-                    <span class="font-black text-gray-900 text-xs">{{ selectedPrintPerson.first_name }} {{ selectedPrintPerson.last_name }}</span>
-                  </td>
-                  <td class="py-1 border-none" style="width: 50%; border: none;">
-                    <span class="text-gray-400 font-bold block text-[9px] uppercase">UNVAN:</span>
-                    <span class="font-bold text-gray-800 text-xs">{{ selectedPrintPerson.title || '—' }}</span>
-                  </td>
-                </tr>
-                <tr class="border-none" style="border: none;">
-                  <td class="py-1 border-none" style="border: none;">
-                    <span class="text-gray-400 font-bold block text-[9px] uppercase">ŞİRKET / DEPARTMAN:</span>
-                    <span class="font-bold text-gray-800 text-xs">{{ selectedPrintPerson.company_name }} / {{ selectedPrintPerson.department_name || '—' }}</span>
-                  </td>
-                  <td class="py-1 border-none" style="border: none;">
-                    <span class="text-gray-400 font-bold block text-[9px] uppercase">DÜZENLEME TARİHİ:</span>
-                    <span class="font-black text-gray-900 text-xs">{{ new Date().toLocaleDateString('tr-TR') }}</span>
-                  </td>
-                </tr>
-              </table>
-            </div>
-
-            <!-- Assets Table -->
-            <div v-else-if="el.type === 'assets_table'" class="w-full">
-              <div class="text-[10px] font-black uppercase text-gray-700 mb-1 tracking-wider">Teslim Edilen Donanım ve Cihaz Listesi:</div>
-              <table class="w-full border-collapse border border-gray-400 text-[11px]" style="margin: 0;">
-                <thead>
-                  <tr class="bg-gray-100 border-b border-gray-400 text-[9px] uppercase font-bold text-gray-700">
-                    <th class="border border-gray-400 px-2 py-1.5 text-center" style="width: 8%;">S.No</th>
-                    <th class="border border-gray-400 px-2 py-1.5" style="width: 20%;">Kategori</th>
-                    <th class="border border-gray-400 px-2 py-1.5" style="width: 32%;">Marka & Model</th>
-                    <th class="border border-gray-400 px-2 py-1.5 font-mono" style="width: 22%;">Seri Numarası</th>
-                    <th class="border border-gray-400 px-2 py-1.5 font-mono" style="width: 18%;">Envanter No</th>
+              <!-- Personnel Info Table -->
+              <div v-else-if="el.type === 'personnel_info'" class="border border-gray-300 rounded-lg p-3 bg-gray-50/80 w-full" style="box-sizing: border-box;">
+                <table class="w-full text-left text-[11px] border-none" style="margin: 0; border: none;">
+                  <tr class="border-none" style="border: none;">
+                    <td class="py-1 border-none" style="width: 50%; border: none;">
+                      <span class="text-gray-400 font-bold block text-[9px] uppercase">PERSONEL ADI SOYADI:</span>
+                      <span class="font-black text-gray-900 text-xs">{{ selectedPrintPerson.first_name }} {{ selectedPrintPerson.last_name }}</span>
+                    </td>
+                    <td class="py-1 border-none" style="width: 50%; border: none;">
+                      <span class="text-gray-400 font-bold block text-[9px] uppercase">UNVAN:</span>
+                      <span class="font-bold text-gray-800 text-xs">{{ selectedPrintPerson.title || '—' }}</span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(asset, idx) in (personnelAssets[selectedPrintPerson.id]?.active || [])" :key="asset.id" class="border-b border-gray-300">
-                    <td class="border border-gray-300 px-2 py-1.5 text-center font-bold">{{ idx + 1 }}</td>
-                    <td class="border border-gray-300 px-2 py-1.5">{{ asset.category_name }}</td>
-                    <td class="border border-gray-300 px-2 py-1.5 font-bold">{{ asset.brand_name }} {{ asset.model_name }}</td>
-                    <td class="border border-gray-300 px-2 py-1.5 font-mono font-bold">{{ asset.serial_no }}</td>
-                    <td class="border border-gray-300 px-2 py-1.5 font-mono">{{ asset.barcode || '—' }}</td>
+                  <tr class="border-none" style="border: none;">
+                    <td class="py-1 border-none" style="border: none;">
+                      <span class="text-gray-400 font-bold block text-[9px] uppercase">ŞİRKET / DEPARTMAN:</span>
+                      <span class="font-bold text-gray-800 text-xs">{{ selectedPrintPerson.company_name }} / {{ selectedPrintPerson.department_name || '—' }}</span>
+                    </td>
+                    <td class="py-1 border-none" style="border: none;">
+                      <span class="text-gray-400 font-bold block text-[9px] uppercase">DÜZENLEME TARİHİ:</span>
+                      <span class="font-black text-gray-900 text-xs">{{ new Date().toLocaleDateString('tr-TR') }}</span>
+                    </td>
                   </tr>
-                  <tr v-if="(personnelAssets[selectedPrintPerson.id]?.active || []).length === 0">
-                    <td colspan="5" class="border border-gray-300 px-2 py-3 text-center text-gray-400 italic">Aktif zimmetli cihaz bulunmuyor.</td>
+                </table>
+              </div>
+
+              <!-- Assets Table -->
+              <div v-else-if="el.type === 'assets_table'" class="w-full">
+                <div class="text-[10px] font-black uppercase text-gray-700 mb-1 tracking-wider">Teslim Edilen Donanım ve Cihaz Listesi:</div>
+                <table class="w-full border-collapse border border-gray-400 text-[11px]" style="margin: 0;">
+                  <thead>
+                    <tr class="bg-gray-100 border-b border-gray-400 text-[9px] uppercase font-bold text-gray-700">
+                      <th class="border border-gray-400 px-2 py-1.5 text-center" style="width: 8%;">S.No</th>
+                      <th class="border border-gray-400 px-2 py-1.5" style="width: 20%;">Kategori</th>
+                      <th class="border border-gray-400 px-2 py-1.5" style="width: 32%;">Marka & Model</th>
+                      <th class="border border-gray-400 px-2 py-1.5 font-mono" style="width: 22%;">Seri Numarası</th>
+                      <th class="border border-gray-400 px-2 py-1.5 font-mono" style="width: 18%;">Envanter No</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(asset, idx) in (personnelAssets[selectedPrintPerson.id]?.active || [])" :key="asset.id" class="border-b border-gray-300">
+                      <td class="border border-gray-300 px-2 py-1.5 text-center font-bold">{{ idx + 1 }}</td>
+                      <td class="border border-gray-300 px-2 py-1.5">{{ asset.category_name }}</td>
+                      <td class="border border-gray-300 px-2 py-1.5 font-bold">{{ asset.brand_name }} {{ asset.model_name }}</td>
+                      <td class="border border-gray-300 px-2 py-1.5 font-mono font-bold">{{ asset.serial_no }}</td>
+                      <td class="border border-gray-300 px-2 py-1.5 font-mono">{{ asset.barcode || '—' }}</td>
+                    </tr>
+                    <tr v-if="(personnelAssets[selectedPrintPerson.id]?.active || []).length === 0">
+                      <td colspan="5" class="border border-gray-300 px-2 py-3 text-center text-gray-400 italic">Aktif zimmetli cihaz bulunmuyor.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Commitment Text -->
+              <div v-else-if="el.type === 'commitment_text'" class="border border-gray-300 rounded-lg p-3 bg-gray-50/60 text-[10.5px] leading-relaxed text-gray-700 w-full" style="box-sizing: border-box;">
+                <div class="font-bold uppercase text-gray-900 mb-0.5">Taahhütname & Yasal Şartlar:</div>
+                <p>{{ el.text || defaultCommitmentText }}</p>
+              </div>
+
+              <!-- QR Code Doküman Doğrulama -->
+              <div v-else-if="el.type === 'qr_verify'" class="flex items-center gap-3 border border-gray-200 p-2 rounded-lg bg-white w-full" style="box-sizing: border-box;">
+                <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(getAuditLink(selectedPrintPerson))" class="w-12 h-12 shrink-0" />
+                <div>
+                  <div class="font-bold text-[11px] text-gray-900">Mobil Saha Doğrulama</div>
+                  <div class="text-[9.5px] text-gray-400">QR kod kamerasından zimmeti onaylamak için taratın</div>
+                </div>
+              </div>
+
+              <!-- Signatures -->
+              <div v-else-if="el.type === 'signatures'" class="grid grid-cols-2 gap-8 text-center pt-2 w-full">
+                <div class="border-t-2 border-gray-800 pt-2">
+                  <div class="font-bold uppercase text-[10px] text-gray-900">TESLİM EDEN (IT DEPARTMANI)</div>
+                  <div class="text-[9px] text-gray-400 mt-0.5">İmza & Tarih</div>
+                  <div class="h-12"></div>
+                </div>
+                <div class="border-t-2 border-gray-800 pt-2">
+                  <div class="font-bold uppercase text-[10px] text-gray-900">TESLİM ALAN (PERSONEL)</div>
+                  <div class="font-bold text-[11px] text-gray-800 mt-0.5">{{ selectedPrintPerson.first_name }} {{ selectedPrintPerson.last_name }}</div>
+                  <div class="text-[9px] text-gray-400">İmza & Tarih</div>
+                  <div class="h-12"></div>
+                </div>
+              </div>
+
+              <!-- Custom Text -->
+              <div v-else-if="el.type === 'custom_text'" class="font-medium w-full">
+                {{ el.text }}
+              </div>
+
+              <!-- Divider -->
+              <div v-else-if="el.type === 'divider'" class="w-full border-b border-gray-300 my-1"></div>
+            </div>
+          </div>
+
+          <!-- SAYFA 2 (Sadece pageCount === 2 ise) -->
+          <div v-if="printElements.pageCount === 2" class="a4-paper bg-white relative border border-gray-300 mx-auto mt-4 print:mt-0 print:border-none animate-fade-in" style="width: 700px; height: 990px; font-family: sans-serif; box-sizing: border-box; overflow: hidden; background: #ffffff; color: #111827;">
+            <div 
+              v-for="el in page2Elements" 
+              :key="el.id"
+              class="absolute"
+              :style="{
+                left: `${el.x}%`,
+                top: `${el.y - 100}%`,
+                width: el.w ? `${el.w}%` : 'auto',
+                fontSize: el.fontSize ? `${el.fontSize}px` : '12px',
+                fontWeight: el.fontWeight || 'normal',
+                color: el.color || '#111827',
+                backgroundColor: el.bg || 'transparent'
+              }"
+            >
+              <!-- Company Logo -->
+              <div v-if="el.type === 'company_logo'" class="flex items-center gap-2">
+                <img v-if="el.logo_url" :src="el.logo_url" class="h-8 object-contain shrink-0" style="max-width: 120px;" />
+                <div v-else class="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center font-extrabold text-sm uppercase">
+                  {{ (el.company_name || selectedPrintPerson.company_name || 'T')[0] }}
+                </div>
+                <div>
+                  <div class="font-extrabold tracking-wider uppercase text-[12px] text-gray-900">
+                    {{ el.company_name || selectedPrintPerson.company_name || 'TALAY LOJİSTİK A.Ş.' }}
+                  </div>
+                  <div class="text-[9px] font-bold text-gray-400">
+                    {{ el.sub_title || 'IT BİLİŞİM YÖNETİMİ' }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Header Title -->
+              <div v-else-if="el.type === 'header_title'" class="text-center py-1 border-b-2 border-gray-900 w-full">
+                <h1 class="text-base font-black tracking-wider uppercase">ZİMMET TESLİM VE TESELLÜM TUTANAĞI</h1>
+                <p class="text-[9px] font-semibold text-gray-500 mt-0.5">
+                  {{ el.company_name || selectedPrintPerson.company_name || 'KURUM İÇİ IT BİLİŞİM ENVALERİ' }}
+                </p>
+              </div>
+
+              <!-- Personnel Info Table -->
+              <div v-else-if="el.type === 'personnel_info'" class="border border-gray-300 rounded-lg p-3 bg-gray-50/80 w-full" style="box-sizing: border-box;">
+                <table class="w-full text-left text-[11px] border-none" style="margin: 0; border: none;">
+                  <tr class="border-none" style="border: none;">
+                    <td class="py-1 border-none" style="width: 50%; border: none;">
+                      <span class="text-gray-400 font-bold block text-[9px] uppercase">PERSONEL ADI SOYADI:</span>
+                      <span class="font-black text-gray-900 text-xs">{{ selectedPrintPerson.first_name }} {{ selectedPrintPerson.last_name }}</span>
+                    </td>
+                    <td class="py-1 border-none" style="width: 50%; border: none;">
+                      <span class="text-gray-400 font-bold block text-[9px] uppercase">UNVAN:</span>
+                      <span class="font-bold text-gray-800 text-xs">{{ selectedPrintPerson.title || '—' }}</span>
+                    </td>
                   </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Commitment Text -->
-            <div v-else-if="el.type === 'commitment_text'" class="border border-gray-300 rounded-lg p-3 bg-gray-50/60 text-[10.5px] leading-relaxed text-gray-700 w-full" style="box-sizing: border-box;">
-              <div class="font-bold uppercase text-gray-900 mb-0.5">Taahhütname & Yasal Şartlar:</div>
-              <p>{{ el.text || defaultCommitmentText }}</p>
-            </div>
-
-            <!-- QR Code Doküman Doğrulama -->
-            <div v-else-if="el.type === 'qr_verify'" class="flex items-center gap-3 border border-gray-200 p-2 rounded-lg bg-white w-full" style="box-sizing: border-box;">
-              <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(getAuditLink(selectedPrintPerson))" class="w-12 h-12 shrink-0" />
-              <div>
-                <div class="font-bold text-[11px] text-gray-900">Mobil Saha Doğrulama</div>
-                <div class="text-[9.5px] text-gray-400">QR kod kamerasından zimmeti onaylamak için taratın</div>
+                  <tr class="border-none" style="border: none;">
+                    <td class="py-1 border-none" style="border: none;">
+                      <span class="text-gray-400 font-bold block text-[9px] uppercase">ŞİRKET / DEPARTMAN:</span>
+                      <span class="font-bold text-gray-800 text-xs">{{ selectedPrintPerson.company_name }} / {{ selectedPrintPerson.department_name || '—' }}</span>
+                    </td>
+                    <td class="py-1 border-none" style="border: none;">
+                      <span class="text-gray-400 font-bold block text-[9px] uppercase">DÜZENLEME TARİHİ:</span>
+                      <span class="font-black text-gray-900 text-xs">{{ new Date().toLocaleDateString('tr-TR') }}</span>
+                    </td>
+                  </tr>
+                </table>
               </div>
-            </div>
 
-            <!-- Signatures -->
-            <div v-else-if="el.type === 'signatures'" class="grid grid-cols-2 gap-8 text-center pt-2 w-full">
-              <div class="border-t-2 border-gray-800 pt-2">
-                <div class="font-bold uppercase text-[10px] text-gray-900">TESLİM EDEN (IT DEPARTMANI)</div>
-                <div class="text-[9px] text-gray-400 mt-0.5">İmza & Tarih</div>
-                <div class="h-12"></div>
+              <!-- Assets Table -->
+              <div v-else-if="el.type === 'assets_table'" class="w-full">
+                <div class="text-[10px] font-black uppercase text-gray-700 mb-1 tracking-wider">Teslim Edilen Donanım ve Cihaz Listesi:</div>
+                <table class="w-full border-collapse border border-gray-400 text-[11px]" style="margin: 0;">
+                  <thead>
+                    <tr class="bg-gray-100 border-b border-gray-400 text-[9px] uppercase font-bold text-gray-700">
+                      <th class="border border-gray-400 px-2 py-1.5 text-center" style="width: 8%;">S.No</th>
+                      <th class="border border-gray-400 px-2 py-1.5" style="width: 20%;">Kategori</th>
+                      <th class="border border-gray-400 px-2 py-1.5" style="width: 32%;">Marka & Model</th>
+                      <th class="border border-gray-400 px-2 py-1.5 font-mono" style="width: 22%;">Seri Numarası</th>
+                      <th class="border border-gray-400 px-2 py-1.5 font-mono" style="width: 18%;">Envanter No</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(asset, idx) in (personnelAssets[selectedPrintPerson.id]?.active || [])" :key="asset.id" class="border-b border-gray-300">
+                      <td class="border border-gray-300 px-2 py-1.5 text-center font-bold">{{ idx + 1 }}</td>
+                      <td class="border border-gray-300 px-2 py-1.5">{{ asset.category_name }}</td>
+                      <td class="border border-gray-300 px-2 py-1.5 font-bold">{{ asset.brand_name }} {{ asset.model_name }}</td>
+                      <td class="border border-gray-300 px-2 py-1.5 font-mono font-bold">{{ asset.serial_no }}</td>
+                      <td class="border border-gray-300 px-2 py-1.5 font-mono">{{ asset.barcode || '—' }}</td>
+                    </tr>
+                    <tr v-if="(personnelAssets[selectedPrintPerson.id]?.active || []).length === 0">
+                      <td colspan="5" class="border border-gray-300 px-2 py-3 text-center text-gray-400 italic">Aktif zimmetli cihaz bulunmuyor.</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <div class="border-t-2 border-gray-800 pt-2">
-                <div class="font-bold uppercase text-[10px] text-gray-900">TESLİM ALAN (PERSONEL)</div>
-                <div class="font-bold text-[11px] text-gray-800 mt-0.5">{{ selectedPrintPerson.first_name }} {{ selectedPrintPerson.last_name }}</div>
-                <div class="text-[9px] text-gray-400">İmza & Tarih</div>
-                <div class="h-12"></div>
+
+              <!-- Commitment Text -->
+              <div v-else-if="el.type === 'commitment_text'" class="border border-gray-300 rounded-lg p-3 bg-gray-50/60 text-[10.5px] leading-relaxed text-gray-700 w-full" style="box-sizing: border-box;">
+                <div class="font-bold uppercase text-gray-900 mb-0.5">Taahhütname & Yasal Şartlar:</div>
+                <p>{{ el.text || defaultCommitmentText }}</p>
               </div>
-            </div>
 
-            <!-- Custom Text -->
-            <div v-else-if="el.type === 'custom_text'" class="font-medium w-full">
-              {{ el.text }}
-            </div>
+              <!-- QR Code Doküman Doğrulama -->
+              <div v-else-if="el.type === 'qr_verify'" class="flex items-center gap-3 border border-gray-200 p-2 rounded-lg bg-white w-full" style="box-sizing: border-box;">
+                <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(getAuditLink(selectedPrintPerson))" class="w-12 h-12 shrink-0" />
+                <div>
+                  <div class="font-bold text-[11px] text-gray-900">Mobil Saha Doğrulama</div>
+                  <div class="text-[9.5px] text-gray-400">QR kod kamerasından zimmeti onaylamak için taratın</div>
+                </div>
+              </div>
 
-            <!-- Divider -->
-            <div v-else-if="el.type === 'divider'" class="w-full border-b border-gray-300 my-1"></div>
+              <!-- Signatures -->
+              <div v-else-if="el.type === 'signatures'" class="grid grid-cols-2 gap-8 text-center pt-2 w-full">
+                <div class="border-t-2 border-gray-800 pt-2">
+                  <div class="font-bold uppercase text-[10px] text-gray-900">TESLİM EDEN (IT DEPARTMANI)</div>
+                  <div class="text-[9px] text-gray-400 mt-0.5">İmza & Tarih</div>
+                  <div class="h-12"></div>
+                </div>
+                <div class="border-t-2 border-gray-800 pt-2">
+                  <div class="font-bold uppercase text-[10px] text-gray-900">TESLİM ALAN (PERSONEL)</div>
+                  <div class="font-bold text-[11px] text-gray-800 mt-0.5">{{ selectedPrintPerson.first_name }} {{ selectedPrintPerson.last_name }}</div>
+                  <div class="text-[9px] text-gray-400">İmza & Tarih</div>
+                  <div class="h-12"></div>
+                </div>
+              </div>
+
+              <!-- Custom Text -->
+              <div v-else-if="el.type === 'custom_text'" class="font-medium w-full">
+                {{ el.text }}
+              </div>
+
+              <!-- Divider -->
+              <div v-else-if="el.type === 'divider'" class="w-full border-b border-gray-300 my-1"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -382,18 +522,40 @@ const activeFormTemplate = ref(null)
 const defaultCommitmentText = `Yukarıda detayları ve seri numaraları belirtilen şirket malı cihaz ve teçhizatı eksiksiz, sağlam ve çalışır vaziyette teslim aldım. Bu cihazları şirket iş süreçleri haricinde kullanmayacağımı, özenle koruyacağımı, işten ayrılma veya zimmet iptali durumunda IT departmanına eksiksiz iade edeceğimi beyan ve taahhüt ederim.`
 
 const printElements = computed(() => {
-  if (activeFormTemplate.value && activeFormTemplate.value.elements && activeFormTemplate.value.elements.length > 0) {
-    return activeFormTemplate.value.elements
+  if (activeFormTemplate.value && activeFormTemplate.value.elements) {
+    const raw = activeFormTemplate.value.elements
+    if (Array.isArray(raw)) {
+      return {
+        pageCount: raw.some(e => e.y >= 100) ? 2 : 1,
+        elements: raw
+      }
+    } else {
+      return {
+        pageCount: raw.pageCount || 1,
+        elements: raw.elements || []
+      }
+    }
   }
-  return [
-    { id: 'el_logo', type: 'company_logo', name: 'Şirket Logosu', x: 5, y: 3, w: 90, fontSize: 12 },
-    { id: 'el_title', type: 'header_title', name: 'Tutanak Başlığı', x: 5, y: 8, w: 90, fontSize: 16, fontWeight: 'black' },
-    { id: 'el_pinfo', type: 'personnel_info', name: 'Personel Bilgileri', x: 5, y: 17, w: 90, fontSize: 11 },
-    { id: 'el_assets', type: 'assets_table', name: 'Donanım Listesi Tablosu', x: 5, y: 30, w: 90, fontSize: 11 },
-    { id: 'el_commit', type: 'commitment_text', name: 'Yasal Taahhüt Metni', x: 5, y: 58, w: 90, text: defaultCommitmentText, fontSize: 10.5 },
-    { id: 'el_qr', type: 'qr_verify', name: 'QR Doküman Doğrulama', x: 5, y: 72, w: 90, fontSize: 11 },
-    { id: 'el_sigs', type: 'signatures', name: 'İmza & Tarih Bloğu', x: 5, y: 82, w: 90, fontSize: 11 }
-  ]
+  return {
+    pageCount: 1,
+    elements: [
+      { id: 'el_logo', type: 'company_logo', name: 'Şirket Logosu', x: 5, y: 3, w: 90, fontSize: 12, company_name: 'TALAY LOJİSTİK A.Ş.', sub_title: 'IT BİLİŞİM YÖNETİMİ', logo_url: '' },
+      { id: 'el_title', type: 'header_title', name: 'Tutanak Başlığı', x: 5, y: 8, w: 90, fontSize: 16, fontWeight: 'black' },
+      { id: 'el_pinfo', type: 'personnel_info', name: 'Personel Bilgileri', x: 5, y: 17, w: 90, fontSize: 11 },
+      { id: 'el_assets', type: 'assets_table', name: 'Donanım Listesi Tablosu', x: 5, y: 30, w: 90, fontSize: 11 },
+      { id: 'el_commit', type: 'commitment_text', name: 'Yasal Taahhüt Metni', x: 5, y: 58, w: 90, text: defaultCommitmentText, fontSize: 10.5 },
+      { id: 'el_qr', type: 'qr_verify', name: 'QR Doküman Doğrulama', x: 5, y: 72, w: 90, fontSize: 11 },
+      { id: 'el_sigs', type: 'signatures', name: 'İmza & Tarih Bloğu', x: 5, y: 82, w: 90, fontSize: 11 }
+    ]
+  }
+})
+
+const page1Elements = computed(() => {
+  return (printElements.value.elements || []).filter(e => e.y < 100)
+})
+
+const page2Elements = computed(() => {
+  return (printElements.value.elements || []).filter(e => e.y >= 100)
 })
 
 const getAuditLink = (person) => {
@@ -464,6 +626,7 @@ const triggerPrint = () => {
           padding: 0 !important;
           box-shadow: none !important;
           overflow: hidden !important;
+          page-break-after: always !important;
         }
         .absolute { position: absolute; }
         .text-center { text-align: center; }
