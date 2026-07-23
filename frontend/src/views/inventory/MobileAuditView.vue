@@ -67,6 +67,22 @@
             <div class="font-bold text-gray-800">{{ asset.company_name }}</div>
           </div>
 
+          <!-- Technical & Dynamic Specs (Mobile) -->
+          <div v-if="asset.cpu_model || asset.ram_gb || asset.disk_gb || parseCustomSpecs(asset.specs_json).length > 0" class="bg-blue-50/40 p-3 rounded-xl border border-blue-100 text-xs space-y-1.5">
+            <div class="text-[10.5px] font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1">
+              <i class="fas fa-microchip"></i> Donanım & Teknik Detaylar
+            </div>
+            <div v-if="asset.cpu_model" class="flex justify-between text-[11px]"><span class="text-gray-500">CPU:</span> <span class="font-bold text-gray-900">{{ asset.cpu_model }}</span></div>
+            <div v-if="asset.ram_gb" class="flex justify-between text-[11px]"><span class="text-gray-500">RAM:</span> <span class="font-bold text-gray-900">{{ asset.ram_gb }} GB</span></div>
+            <div v-if="asset.disk_gb" class="flex justify-between text-[11px]"><span class="text-gray-500">Disk:</span> <span class="font-bold text-gray-900">{{ asset.disk_gb }} GB</span></div>
+            <div v-if="asset.os_version" class="flex justify-between text-[11px]"><span class="text-gray-500">OS:</span> <span class="font-bold text-gray-900">{{ asset.os_version }}</span></div>
+            
+            <div v-for="spec in parseCustomSpecs(asset.specs_json)" :key="spec.key" class="flex justify-between text-[11px]">
+              <span class="text-gray-500">{{ spec.key }}:</span>
+              <span class="font-bold text-gray-900">{{ spec.value }}</span>
+            </div>
+          </div>
+
           <!-- Audit Log History -->
           <div v-if="audits && audits.length > 0" class="pt-2">
             <div class="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1">
@@ -117,6 +133,27 @@ const auditDone = ref(false)
 const error = ref('')
 const asset = ref(null)
 const audits = ref([])
+
+const parseCustomSpecs = (jsonStr) => {
+  if (!jsonStr) return []
+  try {
+    const parsed = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr
+    const list = []
+    for (const [k, v] of Object.entries(parsed)) {
+      if (v !== null && v !== undefined && v !== '') {
+        let label = k
+        if (k === 'imei') label = 'IMEI 1'
+        else if (k === 'imei2') label = 'IMEI 2'
+        else if (k === 'storage_gb') label = 'Depolama'
+        else if (k === 'color') label = 'Renk'
+        list.push({ key: label, value: String(v) })
+      }
+    }
+    return list
+  } catch (e) {
+    return []
+  }
+}
 
 const getStatusClass = (statusName) => {
   if (!statusName) return 'bg-gray-100 text-gray-700'

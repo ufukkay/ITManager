@@ -126,6 +126,14 @@
                     <i class="fas fa-print text-gray-500"></i>
                     <span>Zimmet Formu</span>
                   </button>
+                  <button
+                    @click.stop="openQuickAssignModal(person)"
+                    class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg flex items-center gap-1.5 transition-colors print:hidden shadow-sm"
+                    title="Bu personele yeni cihaz zimmetle"
+                  >
+                    <i class="fas fa-plus"></i>
+                    <span>Zimmetle</span>
+                  </button>
                 </div>
                 <div v-else class="text-gray-300 text-[11px] italic">Yükleniyor...</div>
 
@@ -168,13 +176,22 @@
                   <td class="px-5 py-3 font-semibold text-gray-900">{{ fmt(asset.purchase_price) }}</td>
                   <td class="px-5 py-3 text-gray-500">{{ fmtDate(asset.purchase_date) }}</td>
                   <td class="px-5 py-3 text-right">
-                    <RouterLink
-                      to="/inventory/assets"
-                      class="text-blue-600 hover:text-blue-800 text-[11px] font-bold transition-colors"
-                      title="Envanterde Görüntüle"
-                    >
-                      <i class="fas fa-external-link-alt"></i>
-                    </RouterLink>
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        @click="handleQuickReturn(asset)"
+                        class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 text-[11px] font-bold rounded flex items-center gap-1 transition-colors border border-amber-200"
+                        title="Bu cihazı depoya iade et"
+                      >
+                        <i class="fas fa-undo"></i> İade Et
+                      </button>
+                      <RouterLink
+                        to="/inventory/assets"
+                        class="text-blue-600 hover:text-blue-800 text-[11px] font-bold transition-colors p-1"
+                        title="Envanterde Görüntüle"
+                      >
+                        <i class="fas fa-external-link-alt"></i>
+                      </RouterLink>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -495,6 +512,43 @@
         </div>
       </div>
     </div>
+
+    <!-- QUICK ASSIGNMENT DIALOG -->
+    <dialog ref="quickAssignDialog" class="modal">
+      <div class="modal-box w-11/12 max-w-md bg-white p-6 rounded-2xl relative shadow-2xl">
+        <h3 class="font-bold text-[16px] text-gray-900 mb-1 flex items-center gap-2">
+          <i class="fas fa-user-plus text-blue-600"></i> Hızlı Zimmet Atama
+        </h3>
+        <p class="text-xs text-gray-400 mb-4">
+          <strong>{{ selectedPersonForAssign?.first_name }} {{ selectedPersonForAssign?.last_name }}</strong> personeline depodan cihaz zimmetleyin.
+        </p>
+
+        <form @submit.prevent="submitQuickAssign" class="space-y-4">
+          <div>
+            <label class="form-label font-bold text-gray-700 block mb-1">Depodaki / Boştaki Cihaz Seçin *</label>
+            <select v-model="selectedUnassignedAssetId" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold" required>
+              <option value="">-- Cihaz Seçiniz --</option>
+              <option v-for="a in unassignedAssetsList" :key="a.id" :value="a.id">
+                [{{ a.category_name }}] {{ a.brand_name }} {{ a.model_name }} (SN: {{ a.serial_no }})
+              </option>
+            </select>
+            <div v-if="unassignedAssetsList.length === 0" class="text-[11px] text-amber-600 font-bold mt-1">
+              ⚠️ Depoda boşta zimmetlenebilir cihaz bulunmuyor.
+            </div>
+          </div>
+
+          <div>
+            <label class="form-label font-bold text-gray-700 block mb-1">Zimmet Açıklaması / Not</label>
+            <textarea v-model="assignNotes" class="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs" rows="2" placeholder="Örn: Yeni başlangıç bilgisayarı teslimi"></textarea>
+          </div>
+
+          <div class="modal-action mt-6 flex justify-end gap-2">
+            <button type="button" @click="quickAssignDialog?.close()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-lg">İptal</button>
+            <button type="submit" :disabled="!selectedUnassignedAssetId" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm disabled:opacity-50">Zimmeti Tamamla</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
   </div>
 </template>
 
@@ -518,6 +572,49 @@ const showPrintModal = ref(false)
 const selectedPrintPerson = ref(null)
 const formTemplates = ref([])
 const activeFormTemplate = ref(null)
+
+const quickAssignDialog = ref(null)
+const selectedPersonForAssign = ref(null)
+const selectedUnassignedAssetId = ref('')
+const assignNotes = ref('')
+
+const unassignedAssetsList = computed(() => {
+  return assetStore.assets.filter(a => !a.personnel_id && !a.location_id)
+})
+
+const openQuickAssignModal = (person) => {
+  selectedPersonForAssign.value = person
+  selectedUnassignedAssetId.value = ''
+  assignNotes.value = ''
+  quickAssignDialog.value?.showModal()
+}
+
+const submitQuickAssign = async () => {
+  if (!selectedUnassignedAssetId.value || !selectedPersonForAssign.value) return
+  try {
+    await assetStore.checkoutAsset(selectedUnassignedAssetId.value, {
+      target_type: 'PERSONNEL',
+      target_id: selectedPersonForAssign.value.id,
+      notes: assignNotes.value
+    })
+    quickAssignDialog.value?.close()
+    await loadData()
+  } catch (err) {
+    alert(err)
+  }
+}
+
+const handleQuickReturn = async (asset) => {
+  const notes = prompt(`"${asset.brand_name} ${asset.model_name}" cihazını depoya iade etmek istediğinize emin misiniz?\nİade Notu (Opsiyonel):`)
+  if (notes !== null) {
+    try {
+      await assetStore.checkinAsset(asset.id, { notes })
+      await loadData()
+    } catch (err) {
+      alert(err)
+    }
+  }
+}
 
 const defaultCommitmentText = `Yukarıda detayları ve seri numaraları belirtilen şirket malı cihaz ve teçhizatı eksiksiz, sağlam ve çalışır vaziyette teslim aldım. Bu cihazları şirket iş süreçleri haricinde kullanmayacağımı, özenle koruyacağımı, işten ayrılma veya zimmet iptali durumunda IT departmanına eksiksiz iade edeceğimi beyan ve taahhüt ederim.`
 

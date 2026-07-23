@@ -36,7 +36,7 @@ exports.getAssets = (req, res) => {
 // Add a new asset
 exports.addAsset = (req, res) => {
     try {
-        const { serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version } = req.body;
+        const { serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version, specs_json } = req.body;
         
         if (!serial_no || !model_id || !status_id || !company_id) {
             return res.status(400).json({ error: 'Lütfen zorunlu alanları (Seri No, Model, Durum, Şirket) doldurun.' });
@@ -44,13 +44,14 @@ exports.addAsset = (req, res) => {
 
         const invoice_path = req.files && req.files.invoice ? '/uploads/assets/' + req.files.invoice[0].filename : null;
         const warranty_path = req.files && req.files.warranty ? '/uploads/assets/' + req.files.warranty[0].filename : null;
+        const formattedSpecs = typeof specs_json === 'object' ? JSON.stringify(specs_json) : (specs_json || null);
 
         const info = db.prepare(`
-            INSERT INTO assets (serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, invoice_path, warranty_path, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO assets (serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, invoice_path, warranty_path, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version, specs_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             serial_no, barcode || null, model_id, status_id, company_id, purchase_price || 0, purchase_date || null, lifetime_months || 60, invoice_path, warranty_path, notes || null,
-            mac_address || null, ip_address || null, cpu_model || null, ram_gb ? Number(ram_gb) : null, disk_gb ? Number(disk_gb) : null, os_version || null
+            mac_address || null, ip_address || null, cpu_model || null, ram_gb ? Number(ram_gb) : null, disk_gb ? Number(disk_gb) : null, os_version || null, formattedSpecs
         );
 
         db.prepare(`
@@ -69,7 +70,7 @@ exports.addAsset = (req, res) => {
 exports.updateAsset = (req, res) => {
     try {
         const { id } = req.params;
-        const { serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version } = req.body;
+        const { serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version, specs_json } = req.body;
 
         const currentAsset = db.prepare('SELECT invoice_path, warranty_path FROM assets WHERE id = ?').get(id);
         if (!currentAsset) {
@@ -78,14 +79,15 @@ exports.updateAsset = (req, res) => {
 
         const invoice_path = req.files && req.files.invoice ? '/uploads/assets/' + req.files.invoice[0].filename : currentAsset.invoice_path;
         const warranty_path = req.files && req.files.warranty ? '/uploads/assets/' + req.files.warranty[0].filename : currentAsset.warranty_path;
+        const formattedSpecs = typeof specs_json === 'object' ? JSON.stringify(specs_json) : (specs_json || null);
 
         db.prepare(`
             UPDATE assets
-            SET serial_no = ?, barcode = ?, model_id = ?, status_id = ?, company_id = ?, purchase_price = ?, purchase_date = ?, lifetime_months = ?, invoice_path = ?, warranty_path = ?, notes = ?, mac_address = ?, ip_address = ?, cpu_model = ?, ram_gb = ?, disk_gb = ?, os_version = ?
+            SET serial_no = ?, barcode = ?, model_id = ?, status_id = ?, company_id = ?, purchase_price = ?, purchase_date = ?, lifetime_months = ?, invoice_path = ?, warranty_path = ?, notes = ?, mac_address = ?, ip_address = ?, cpu_model = ?, ram_gb = ?, disk_gb = ?, os_version = ?, specs_json = ?
             WHERE id = ?
         `).run(
             serial_no, barcode || null, model_id, status_id, company_id, purchase_price || 0, purchase_date || null, lifetime_months || 60, invoice_path, warranty_path, notes || null,
-            mac_address || null, ip_address || null, cpu_model || null, ram_gb ? Number(ram_gb) : null, disk_gb ? Number(disk_gb) : null, os_version || null,
+            mac_address || null, ip_address || null, cpu_model || null, ram_gb ? Number(ram_gb) : null, disk_gb ? Number(disk_gb) : null, os_version || null, formattedSpecs,
             id
         );
 

@@ -229,8 +229,11 @@
                   />
                 </td>
                 <td class="px-5 py-3">
-                  <div class="font-bold text-gray-900">{{ asset.serial_no }}</div>
-                  <div class="text-[10.5px] text-gray-400 flex items-center gap-1.5 mt-0.5" v-if="asset.barcode">
+                  <div @click="toggleExpand(asset.id)" class="flex items-center gap-1.5 cursor-pointer group hover:text-blue-600">
+                    <i :class="['fas fa-chevron-right text-[10px] transition-transform text-gray-400 group-hover:text-blue-500', expandedAssetId === asset.id ? 'rotate-90 text-blue-500' : '']"></i>
+                    <div class="font-bold text-gray-900">{{ asset.serial_no }}</div>
+                  </div>
+                  <div class="text-[10.5px] text-gray-400 flex items-center gap-1.5 mt-0.5 pl-4" v-if="asset.barcode">
                     <i class="fas fa-barcode"></i> {{ asset.barcode }}
                   </div>
                 </td>
@@ -322,6 +325,49 @@
                   </div>
                 </td>
               </tr>
+
+              <!-- EXPANDED SPECIFICATIONS DRAWER ROW -->
+              <tr v-if="expandedAssetId === asset.id" class="bg-blue-50/20 border-b border-blue-100 animate-fade-in">
+                <td colspan="8" class="px-8 py-4">
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-gray-700 bg-white p-4 rounded-xl border border-blue-100 shadow-sm">
+                    <!-- Column 1: Hardware Specs -->
+                    <div class="space-y-2 border-r border-gray-100 pr-4">
+                      <div class="font-black text-gray-900 uppercase tracking-wider text-[10px] flex items-center gap-1.5 text-blue-600">
+                        <i class="fas fa-microchip"></i> Donanım Özellikleri
+                      </div>
+                      <div class="flex justify-between py-0.5 border-b border-gray-50"><span class="text-gray-400">İşlemci (CPU):</span> <span class="font-bold text-gray-900">{{ asset.cpu_model || '—' }}</span></div>
+                      <div class="flex justify-between py-0.5 border-b border-gray-50"><span class="text-gray-400">RAM:</span> <span class="font-bold text-gray-900">{{ asset.ram_gb ? asset.ram_gb + ' GB' : '—' }}</span></div>
+                      <div class="flex justify-between py-0.5 border-b border-gray-50"><span class="text-gray-400">Disk Depolama:</span> <span class="font-bold text-gray-900">{{ asset.disk_gb ? asset.disk_gb + ' GB' : '—' }}</span></div>
+                      <div class="flex justify-between py-0.5"><span class="text-gray-400">İşletim Sistemi:</span> <span class="font-bold text-gray-900">{{ asset.os_version || '—' }}</span></div>
+                    </div>
+
+                    <!-- Column 2: Network Specs -->
+                    <div class="space-y-2 border-r border-gray-100 pr-4">
+                      <div class="font-black text-gray-900 uppercase tracking-wider text-[10px] flex items-center gap-1.5 text-purple-600">
+                        <i class="fas fa-network-wired"></i> Ağ & Bağlantı Bilgileri
+                      </div>
+                      <div class="flex justify-between py-0.5 border-b border-gray-50"><span class="text-gray-400">IP Adresi:</span> <span class="font-mono font-bold text-gray-900">{{ asset.ip_address || '—' }}</span></div>
+                      <div class="flex justify-between py-0.5"><span class="text-gray-400">MAC Adresi:</span> <span class="font-mono font-bold text-gray-900">{{ asset.mac_address || '—' }}</span></div>
+                    </div>
+
+                    <!-- Column 3: Dynamic Category Specs (IMEI, Custom Attributes) -->
+                    <div class="space-y-2">
+                      <div class="font-black text-gray-900 uppercase tracking-wider text-[10px] flex items-center gap-1.5 text-amber-600">
+                        <i class="fas fa-sliders-h"></i> Dinamik & Kategori Özellikleri
+                      </div>
+                      <div v-if="parseCustomSpecs(asset.specs_json).length === 0" class="text-gray-400 italic text-[11px] py-2">
+                        Özel tanımlanmış detay bulunmuyor.
+                      </div>
+                      <div v-else class="space-y-1">
+                        <div v-for="spec in parseCustomSpecs(asset.specs_json)" :key="spec.key" class="flex justify-between py-0.5 border-b border-gray-50">
+                          <span class="text-gray-400">{{ spec.key }}:</span>
+                          <span class="font-bold text-gray-900">{{ spec.value || '—' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -397,23 +443,39 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-4">
+          <!-- Cascading Selection: Category -> Brand -> Model -->
+          <div class="grid grid-cols-3 gap-3">
             <div>
-              <label class="form-label">Model Seçin *</label>
+              <label class="form-label">1. Kategori Seçin</label>
+              <select v-model="selectedCategoryId" class="form-select">
+                <option value="">Tüm Kategoriler</option>
+                <option v-for="c in assetStore.metadata.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">2. Marka Seçin</label>
+              <select v-model="selectedBrandId" class="form-select">
+                <option value="">Tüm Markalar</option>
+                <option v-for="b in availableBrandsForSelect" :key="b.id" :value="b.id">{{ b.name }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">3. Model Seçin *</label>
               <select v-model="assetForm.model_id" class="form-select" required>
                 <option value="">Model Seçiniz</option>
-                <option v-for="m in assetStore.metadata.models" :key="m.id" :value="m.id">
-                  [{{ m.category_name }}] {{ m.brand_name }} - {{ m.name }}
+                <option v-for="m in availableModelsForSelect" :key="m.id" :value="m.id">
+                  {{ m.brand_name }} - {{ m.name }} ({{ m.category_name }})
                 </option>
               </select>
             </div>
-            <div>
-              <label class="form-label">Şirket *</label>
-              <select v-model="assetForm.company_id" class="form-select" required>
-                <option value="">Şirket Seçiniz</option>
-                <option v-for="c in assetStore.metadata.companies" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
-            </div>
+          </div>
+
+          <div>
+            <label class="form-label">Şirket / Sahip Kurum *</label>
+            <select v-model="assetForm.company_id" class="form-select" required>
+              <option value="">Şirket Seçiniz</option>
+              <option v-for="c in assetStore.metadata.companies" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
           </div>
 
           <div class="grid grid-cols-3 gap-4">
@@ -444,12 +506,17 @@
             </div>
           </div>
 
-          <!-- Technical Specs Section -->
+          <!-- Technical & Dynamic Specs Section -->
           <div class="border-t border-b border-gray-100 py-3 my-2 space-y-3">
-            <h4 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-              <i class="fas fa-microchip text-blue-500"></i> Teknik Özellikler (Donanım)
+            <h4 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center justify-between">
+              <span class="flex items-center gap-1.5"><i class="fas fa-microchip text-blue-500"></i> Kategoriye Özel & Teknik Özellikler</span>
+              <button type="button" @click="addCustomSpecRow" class="text-[10px] text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1">
+                <i class="fas fa-plus"></i> Özel Özellik Ekle
+              </button>
             </h4>
-            <div class="grid grid-cols-4 gap-3">
+
+            <!-- Computer / Server Specs -->
+            <div v-if="isComputerCategory" class="grid grid-cols-4 gap-3">
               <div>
                 <label class="form-label">İşlemci (CPU)</label>
                 <input v-model="assetForm.cpu_model" type="text" placeholder="Intel i7-12700" class="form-input" />
@@ -465,6 +532,50 @@
               <div>
                 <label class="form-label">İşletim Sistemi</label>
                 <input v-model="assetForm.os_version" type="text" placeholder="Win 11 Pro" class="form-input" />
+              </div>
+            </div>
+
+            <!-- Network Info (For PC/Server/Network) -->
+            <div v-if="isComputerCategory" class="grid grid-cols-2 gap-3 pt-2">
+              <div>
+                <label class="form-label">IP Adresi</label>
+                <input v-model="assetForm.ip_address" type="text" placeholder="192.168.1.100" class="form-input font-mono" />
+              </div>
+              <div>
+                <label class="form-label">MAC Adresi</label>
+                <input v-model="assetForm.mac_address" type="text" placeholder="00:1A:2B:3C:4D:5E" class="form-input font-mono" />
+              </div>
+            </div>
+
+            <!-- Phone / Tablet Specs -->
+            <div v-if="isPhoneCategory" class="grid grid-cols-4 gap-3 bg-amber-50/50 p-3 rounded-lg border border-amber-100">
+              <div>
+                <label class="form-label text-amber-900">IMEI 1 *</label>
+                <input v-model="phoneSpecs.imei" type="text" placeholder="358291829..." class="form-input font-mono" />
+              </div>
+              <div>
+                <label class="form-label text-amber-900">IMEI 2 (Opsiyonel)</label>
+                <input v-model="phoneSpecs.imei2" type="text" placeholder="358291829..." class="form-input font-mono" />
+              </div>
+              <div>
+                <label class="form-label text-amber-900">Depolama (GB)</label>
+                <input v-model="phoneSpecs.storage_gb" type="text" placeholder="128 GB" class="form-input" />
+              </div>
+              <div>
+                <label class="form-label text-amber-900">Renk</label>
+                <input v-model="phoneSpecs.color" type="text" placeholder="Uzay Grisi" class="form-input" />
+              </div>
+            </div>
+
+            <!-- Dynamic Custom Specs Rows -->
+            <div v-if="customSpecsList.length > 0" class="space-y-2 pt-2 border-t border-gray-100">
+              <div class="text-[10px] font-bold text-gray-400 uppercase">Özel Özellik Listesi:</div>
+              <div v-for="(spec, idx) in customSpecsList" :key="idx" class="flex items-center gap-2">
+                <input v-model="spec.key" type="text" placeholder="Özellik Adı (Örn: Ekran Boyutu)" class="form-input flex-1" />
+                <input v-model="spec.value" type="text" placeholder="Değer (Örn: 27 İnç)" class="form-input flex-1" />
+                <button type="button" @click="removeCustomSpecRow(idx)" class="text-red-500 hover:text-red-700 text-xs px-2 font-bold" title="Sil">
+                  <i class="fas fa-times"></i>
+                </button>
               </div>
             </div>
           </div>
@@ -837,10 +948,89 @@ const closeConfigModal = () => {
   newModelData.value = { name: '', category_id: '', brand_id: '' }
 }
 
+// State for cascading dropdowns and dynamic specs
+const expandedAssetId = ref(null)
+const selectedCategoryId = ref('')
+const selectedBrandId = ref('')
+const customSpecsList = ref([])
+const phoneSpecs = ref({ imei: '', imei2: '', storage_gb: '', color: '' })
+
+const toggleExpand = (id) => {
+  expandedAssetId.value = expandedAssetId.value === id ? null : id
+}
+
+const addCustomSpecRow = () => {
+  customSpecsList.value.push({ key: '', value: '' })
+}
+
+const removeCustomSpecRow = (idx) => {
+  customSpecsList.value.splice(idx, 1)
+}
+
+const parseCustomSpecs = (jsonStr) => {
+  if (!jsonStr) return []
+  try {
+    const parsed = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr
+    const list = []
+    for (const [k, v] of Object.entries(parsed)) {
+      if (v !== null && v !== undefined && v !== '') {
+        let label = k
+        if (k === 'imei') label = 'IMEI 1'
+        else if (k === 'imei2') label = 'IMEI 2'
+        else if (k === 'storage_gb') label = 'Depolama'
+        else if (k === 'color') label = 'Renk'
+        list.push({ key: label, value: String(v) })
+      }
+    }
+    return list
+  } catch (e) {
+    return []
+  }
+}
+
+const availableBrandsForSelect = computed(() => {
+  if (!selectedCategoryId.value) return assetStore.metadata.brands
+  const modelsInCat = assetStore.metadata.models.filter(m => m.category_id === Number(selectedCategoryId.value))
+  const brandIdsInCat = new Set(modelsInCat.map(m => m.brand_id))
+  return assetStore.metadata.brands.filter(b => brandIdsInCat.has(b.id))
+})
+
+const availableModelsForSelect = computed(() => {
+  return assetStore.metadata.models.filter(m => {
+    if (selectedCategoryId.value && m.category_id !== Number(selectedCategoryId.value)) return false
+    if (selectedBrandId.value && m.brand_id !== Number(selectedBrandId.value)) return false
+    return true
+  })
+})
+
+const selectedCategoryName = computed(() => {
+  let catId = selectedCategoryId.value
+  if (!catId && assetForm.value.model_id) {
+    const m = assetStore.metadata.models.find(mod => mod.id === Number(assetForm.value.model_id))
+    if (m) catId = m.category_id
+  }
+  const cat = assetStore.metadata.categories.find(c => c.id === Number(catId))
+  return cat ? cat.name.toLowerCase() : ''
+})
+
+const isPhoneCategory = computed(() => {
+  const name = selectedCategoryName.value
+  return name.includes('telefon') || name.includes('phone') || name.includes('mobil') || name.includes('gsm') || name.includes('tablet')
+})
+
+const isComputerCategory = computed(() => {
+  const name = selectedCategoryName.value
+  return name.includes('bilgisayar') || name.includes('pc') || name.includes('laptop') || name.includes('notebook') || name.includes('sunucu') || name.includes('server') || !name
+})
+
 const openAddModal = () => {
   isEditMode.value = false
   invoiceFile.value = null
   warrantyFile.value = null
+  selectedCategoryId.value = ''
+  selectedBrandId.value = ''
+  customSpecsList.value = []
+  phoneSpecs.value = { imei: '', imei2: '', storage_gb: '', color: '' }
   assetForm.value = {
     id: null,
     serial_no: '',
@@ -869,69 +1059,41 @@ const openEditModal = (asset) => {
   invoiceFile.value = null
   warrantyFile.value = null
   assetForm.value = { ...asset }
+
+  // Select matching category and brand
+  const currentModel = assetStore.metadata.models.find(m => m.id === Number(asset.model_id))
+  if (currentModel) {
+    selectedCategoryId.value = currentModel.category_id
+    selectedBrandId.value = currentModel.brand_id
+  } else {
+    selectedCategoryId.value = ''
+    selectedBrandId.value = ''
+  }
+
+  phoneSpecs.value = { imei: '', imei2: '', storage_gb: '', color: '' }
+  customSpecsList.value = []
+
+  if (asset.specs_json) {
+    try {
+      const parsed = typeof asset.specs_json === 'string' ? JSON.parse(asset.specs_json) : asset.specs_json
+      if (parsed.imei) phoneSpecs.value.imei = parsed.imei
+      if (parsed.imei2) phoneSpecs.value.imei2 = parsed.imei2
+      if (parsed.storage_gb) phoneSpecs.value.storage_gb = parsed.storage_gb
+      if (parsed.color) phoneSpecs.value.color = parsed.color
+
+      for (const [k, v] of Object.entries(parsed)) {
+        if (!['imei', 'imei2', 'storage_gb', 'color'].includes(k)) {
+          customSpecsList.value.push({ key: k, value: String(v) })
+        }
+      }
+    } catch (e) {}
+  }
+
   assetDialog.value.showModal()
-}
-
-const closeAssetModal = () => assetDialog.value.close()
-
-const openCheckoutModal = (asset) => {
-  selectedAsset.value = asset
-  checkoutForm.value = {
-    target_type: 'PERSONNEL',
-    target_id: '',
-    notes: ''
-  }
-  checkoutDialog.value.showModal()
-}
-
-const closeCheckoutModal = () => checkoutDialog.value.close()
-
-const showLogs = async (asset) => {
-  selectedAsset.value = asset
-  assetLogs.value = await assetStore.getAssetLogs(asset.id)
-  logsDialog.value.showModal()
-}
-
-const closeLogsModal = () => logsDialog.value.close()
-
-// Submissions
-const submitCategory = async () => {
-  if (!newCategory.value) return
-  try {
-    await assetStore.addCategory(newCategory.value)
-    newCategory.value = ''
-  } catch (err) {
-    alert(err)
-  }
-}
-
-const submitBrand = async () => {
-  if (!newBrand.value) return
-  try {
-    await assetStore.addBrand(newBrand.value)
-    newBrand.value = ''
-  } catch (err) {
-    alert(err)
-  }
-}
-
-const submitModel = async () => {
-  const { name, category_id, brand_id } = newModelData.value
-  if (!name || !category_id || !brand_id) {
-    alert('Lütfen tüm alanları doldurun.')
-    return
-  }
-  try {
-    await assetStore.addModel(newModelData.value)
-    newModelData.value = { name: '', category_id: '', brand_id: '' }
-  } catch (err) {
-    alert(err)
-  }
 }
 
 const saveAsset = async () => {
   try {
-    // Generate FormData for file uploading compatibility
     const formData = new FormData()
     formData.append('serial_no', assetForm.value.serial_no)
     formData.append('barcode', assetForm.value.barcode || '')
@@ -948,7 +1110,22 @@ const saveAsset = async () => {
     formData.append('ram_gb', assetForm.value.ram_gb || '')
     formData.append('disk_gb', assetForm.value.disk_gb || '')
     formData.append('os_version', assetForm.value.os_version || '')
-    
+
+    // Dynamic Specs Object
+    const specsObj = {}
+    if (phoneSpecs.value.imei) specsObj.imei = phoneSpecs.value.imei
+    if (phoneSpecs.value.imei2) specsObj.imei2 = phoneSpecs.value.imei2
+    if (phoneSpecs.value.storage_gb) specsObj.storage_gb = phoneSpecs.value.storage_gb
+    if (phoneSpecs.value.color) specsObj.color = phoneSpecs.value.color
+
+    customSpecsList.value.forEach(item => {
+      if (item.key && item.key.trim()) {
+        specsObj[item.key.trim()] = item.value || ''
+      }
+    })
+
+    formData.append('specs_json', JSON.stringify(specsObj))
+
     if (invoiceFile.value) {
       formData.append('invoice', invoiceFile.value)
     }

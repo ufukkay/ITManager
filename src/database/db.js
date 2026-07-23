@@ -750,6 +750,10 @@ const initDb = () => {
         console.log("Adding os_version to assets table...");
         db.prepare("ALTER TABLE assets ADD COLUMN os_version TEXT").run();
       }
+      if (!columns.some(c => c.name === 'specs_json')) {
+        console.log("Adding specs_json to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN specs_json TEXT").run();
+      }
     }
   } catch (e) { console.log("assets migration skipped:", e.message); }
 
@@ -769,6 +773,7 @@ const initDb = () => {
         invoice_path TEXT,
         warranty_path TEXT,
         notes TEXT,
+        specs_json TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(model_id) REFERENCES asset_models(id),
