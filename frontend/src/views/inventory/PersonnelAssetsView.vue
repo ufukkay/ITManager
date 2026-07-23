@@ -65,53 +65,24 @@
 
     <!-- MAIN CONTENT -->
     <main class="flex-1 overflow-y-auto bg-gray-50/40 p-6">
-      <!-- AUDIT COMPLIANCE & PERIODICITY METRICS BANNER -->
-      <div class="bg-white border border-gray-100 rounded-2xl p-4 mb-6 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+      <!-- SAHA ZİMMET STOK SAYIMI YÖNLENDİRME BANNERI -->
+      <div class="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-4 mb-6 shadow-sm flex items-center justify-between flex-wrap gap-4">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-lg">
+          <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-lg shadow-sm">
             <i class="fas fa-clipboard-check"></i>
           </div>
           <div>
-            <div class="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider">Periyodik Sayım Kuralı</div>
-            <div class="font-black text-gray-900 text-sm flex items-center gap-1.5">
-              <span>Her {{ auditSummary.periodDays || 90 }} Günde Bir</span>
-              <button @click="openAuditSettingsModal" class="text-blue-600 hover:text-blue-800 text-xs" title="Sayım Periyodunu Değiştir">
-                <i class="fas fa-cog"></i>
-              </button>
-            </div>
+            <div class="font-bold text-gray-900 text-sm">Saha Zimmet Stok Sayımı Modülü</div>
+            <div class="text-xs text-gray-500 mt-0.5">3 Aylık periyodik stok denetimleri, mobil telefon kamera QR okuma ve personel doğrulamaları</div>
           </div>
         </div>
 
-        <div class="flex items-center gap-3 border-l border-gray-100 pl-4">
-          <div>
-            <div class="text-[11px] font-extrabold text-emerald-600 uppercase tracking-wider">✓ Sayımı Güncel Cihazlar</div>
-            <div class="font-black text-emerald-700 text-lg">{{ auditSummary.auditedCount || 0 }} / {{ auditSummary.totalAssigned || 0 }}</div>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-3 border-l border-gray-100 pl-4">
-          <div>
-            <div class="text-[11px] font-extrabold text-amber-600 uppercase tracking-wider">⚠️ Denetim Bekleyen Personel</div>
-            <div class="font-black text-amber-700 text-lg">{{ auditSummary.overduePersonnelCount || 0 }} Personel</div>
-          </div>
-        </div>
-
-        <div class="flex items-center justify-end border-l border-gray-100 pl-4">
-          <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-xl w-full justify-center">
-            <button 
-              @click="auditTabFilter = 'ALL'"
-              :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-all', auditTabFilter === 'ALL' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
-            >
-              Tümü
-            </button>
-            <button 
-              @click="auditTabFilter = 'OVERDUE'"
-              :class="['px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1', auditTabFilter === 'OVERDUE' ? 'bg-red-500 text-white shadow-sm' : 'text-red-600 hover:bg-red-50']"
-            >
-              <i class="fas fa-exclamation-triangle"></i> Gecikenler ({{ auditSummary.overduePersonnelCount || 0 }})
-            </button>
-          </div>
-        </div>
+        <RouterLink 
+          to="/inventory/audit" 
+          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+        >
+          <i class="fas fa-arrow-right"></i> Zimmet Stok Sayımı Ekranına Git
+        </RouterLink>
       </div>
 
       <div v-if="loading" class="flex items-center justify-center h-64 text-gray-300">

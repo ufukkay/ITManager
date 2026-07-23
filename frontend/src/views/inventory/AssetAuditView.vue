@@ -8,11 +8,20 @@
         </div>
         <div>
           <h1 class="text-[14px] font-bold text-gray-900 leading-tight">Saha Zimmet Stok Sayımı & Denetim Takibi</h1>
-          <p class="text-[10.5px] text-gray-400 font-medium">Periyodik saha denetimleri ve personel stok doğrulamaları</p>
+          <p class="text-[10.5px] text-gray-400 font-medium">Periyodik saha denetimleri, mobil telefon kamera QR taramaları ve zimmet sayım doğrulaması</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2 shrink-0">
+        <!-- Telefon Kamera QR Tarama Butonu -->
+        <button 
+          @click="showScannerModal = true" 
+          class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11.5px] rounded-lg transition-colors shadow-sm flex items-center gap-1.5 animate-pulse"
+          title="Telefon veya bilgisayar kamerası ile QR / Barkod okutun"
+        >
+          <i class="fas fa-camera text-xs"></i> Telefon Kamerasıyla QR Tara
+        </button>
+
         <button 
           @click="openSettingsModal" 
           class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-lg transition-colors flex items-center gap-1.5"
@@ -161,7 +170,7 @@
                   <button 
                     @click="showQR(p)" 
                     class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11px] rounded-lg transition-colors"
-                    title="Mobil QR Bağlantısı"
+                    title="Mobil Telefon QR Bağlantısı Panoya Kopyala"
                   >
                     <i class="fas fa-qrcode"></i>
                   </button>
@@ -176,17 +185,27 @@
     <!-- SAHA STOK SAYIMI CHECKLIST MODAL -->
     <dialog ref="sessionModal" class="modal">
       <div class="modal-box w-11/12 max-w-2xl bg-white p-6 rounded-2xl relative shadow-2xl flex flex-col max-h-[85vh]">
-        <h3 class="font-bold text-[16px] text-gray-900 mb-1 flex items-center gap-2">
-          <i class="fas fa-clipboard-check text-indigo-600"></i> Saha Zimmet Stok Sayımı
-        </h3>
-        <p class="text-xs text-gray-400 mb-4">
-          Personel: <strong class="text-gray-800">{{ activeSessionPerson?.first_name }} {{ activeSessionPerson?.last_name }}</strong> · 
-          {{ activeSessionPerson?.title }} ({{ activeSessionPerson?.department_name }})
-        </p>
+        <div class="flex items-center justify-between border-b pb-3 mb-3">
+          <div>
+            <h3 class="font-bold text-[16px] text-gray-900 flex items-center gap-2">
+              <i class="fas fa-clipboard-check text-indigo-600"></i> Saha Zimmet Stok Sayımı
+            </h3>
+            <p class="text-xs text-gray-400 mt-0.5">
+              Personel: <strong class="text-gray-800">{{ activeSessionPerson?.first_name }} {{ activeSessionPerson?.last_name }}</strong> · 
+              {{ activeSessionPerson?.title }} ({{ activeSessionPerson?.department_name }})
+            </p>
+          </div>
+          <button 
+            @click="showScannerModal = true"
+            class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5"
+          >
+            <i class="fas fa-camera"></i> Kamera ile Tara
+          </button>
+        </div>
 
         <div class="flex-1 overflow-y-auto space-y-3 pr-1">
-          <div class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">
-            Fiziksel Olarak Kontrol Edilen Cihazları İşaretleyin ({{ selectedAuditAssetIds.length }} / {{ sessionAssets.length }} Seçildi)
+          <div class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2 flex justify-between items-center">
+            <span>Fiziksel Olarak Kontrol Edilen Cihazları İşaretleyin ({{ selectedAuditAssetIds.length }} / {{ sessionAssets.length }} Seçildi)</span>
           </div>
 
           <div 
@@ -217,7 +236,7 @@
             </div>
 
             <div class="text-right shrink-0">
-              <span :class="['px-2 py-0.5 rounded-full text-[10px] font-bold uppercase', selectedAuditAssetIds.includes(asset.id) ? 'bg-emerald-200 text-emerald-800' : 'bg-gray-200 text-gray-600']">
+              <span :class="['px-2.5 py-1 rounded-full text-[10.5px] font-bold uppercase', selectedAuditAssetIds.includes(asset.id) ? 'bg-emerald-200 text-emerald-900' : 'bg-gray-200 text-gray-600']">
                 {{ selectedAuditAssetIds.includes(asset.id) ? '✓ OK Sayıldı' : 'Bekliyor' }}
               </span>
               <div class="text-[10px] text-gray-400 mt-1">
@@ -284,6 +303,13 @@
         </div>
       </div>
     </dialog>
+
+    <!-- TELEFON KAMERA QR / BARKOD TARAYICI MODAL -->
+    <AssetScannerModal 
+      :show="showScannerModal"
+      @close="showScannerModal = false"
+      @scan-result="handleScanResult"
+    />
   </div>
 </template>
 
@@ -291,11 +317,13 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '../../api'
 import { useToast } from '../../composables/useToast'
+import AssetScannerModal from '../../components/AssetScannerModal.vue'
 
 const { showToast } = useToast()
 
 const activeTab = ref('ALL')
 const searchQuery = ref('')
+const showScannerModal = ref(false)
 
 const auditPeriodDays = ref(90)
 const tempPeriodDays = ref(90)
@@ -381,6 +409,34 @@ const openPersonnelSession = async (person) => {
   }
 }
 
+// Camera scan result handler (Mobile Phone QR integration)
+const handleScanResult = (scannedCode) => {
+  if (!scannedCode) return
+  const q = scannedCode.trim().toLowerCase()
+
+  // If a checklist session modal is currently active
+  if (activeSessionPerson.value && sessionAssets.value.length > 0) {
+    const matchedAsset = sessionAssets.value.find(a => 
+      (a.serial_no || '').toLowerCase() === q || 
+      (a.barcode || '').toLowerCase() === q || 
+      String(a.id) === q
+    )
+
+    if (matchedAsset) {
+      if (!selectedAuditAssetIds.value.includes(matchedAsset.id)) {
+        selectedAuditAssetIds.value.push(matchedAsset.id)
+      }
+      showToast(`✓ Taranan Cihaz Tescillendi: ${matchedAsset.brand_name} ${matchedAsset.model_name} (${matchedAsset.serial_no})`, 'success')
+    } else {
+      showToast(`⚠️ Taranan kod (${scannedCode}) bu personelin zimmetinde bulunamadı!`, 'warning')
+    }
+  } else {
+    // Search personnel who owns this scanned asset
+    searchQuery.value = scannedCode
+    showToast(`Kamera ile taranan kod arandı: ${scannedCode}`, 'info')
+  }
+}
+
 const toggleAuditAssetSelect = (id) => {
   if (selectedAuditAssetIds.value.includes(id)) {
     selectedAuditAssetIds.value = selectedAuditAssetIds.value.filter(i => i !== id)
@@ -395,6 +451,7 @@ const selectAllAuditAssets = () => {
 
 const closeSessionModal = () => {
   sessionModal.value?.close()
+  activeSessionPerson.value = null
 }
 
 const submitSession = async () => {
