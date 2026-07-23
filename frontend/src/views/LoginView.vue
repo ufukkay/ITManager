@@ -1,9 +1,10 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
 const router      = useRouter()
+const route       = useRoute()
 const authStore   = useAuthStore()
 const email       = ref('')
 const password    = ref('')
@@ -16,7 +17,12 @@ const handleLogin = async () => {
   if (!email.value || !password.value) { showError('Lütfen e-posta ve şifrenizi girin.'); return }
   isLoading.value = true
   const ok = await authStore.login(email.value, password.value)
-  if (ok) { router.push('/') } else { showError(authStore.error || 'E-posta veya şifre hatalı.') }
+  if (ok) { 
+    const target = route.query.redirect || '/'
+    router.push(target) 
+  } else { 
+    showError(authStore.error || 'E-posta veya şifre hatalı.') 
+  }
   isLoading.value = false
 }
 

@@ -63,7 +63,42 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
       </div>
       <span class="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight">ITManager <span class="text-brand font-black ml-0.5">.</span></span>
     </router-link>
-    <!-- Navigation Removed as per user request -->
+    <!-- Top Navigation Links -->
+    <nav class="hidden md:flex items-center gap-1.5 ml-4">
+      <router-link 
+        to="/" 
+        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+        :class="$route.path === '/' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+      >
+        <i class="fas fa-home text-[11px]"></i> Ana Sayfa
+      </router-link>
+
+      <router-link 
+        to="/inventory/assets" 
+        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+        :class="$route.path.startsWith('/inventory') ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+      >
+        <i class="fas fa-boxes text-[11px]"></i> Envanter & Zimmet
+      </router-link>
+
+      <router-link 
+        v-if="authStore.isAdmin"
+        to="/master-data/dashboard" 
+        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+        :class="$route.path.startsWith('/master-data') ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+      >
+        <i class="fas fa-database text-[11px]"></i> Master Data
+      </router-link>
+
+      <router-link 
+        to="/helpdesk" 
+        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+        :class="$route.path.startsWith('/helpdesk') ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+      >
+        <i class="fas fa-headset text-[11px]"></i> IT Destek
+      </router-link>
+    </nav>
+
     <div class="flex-1"></div>
 
     <!-- Actions -->

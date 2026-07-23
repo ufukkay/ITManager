@@ -144,7 +144,7 @@ const routes = [
     children: [
       {
         path: '',
-        redirect: '/inventory/matrix'
+        redirect: '/inventory/assets'
       },
       {
         path: 'matrix',
@@ -316,9 +316,7 @@ router.beforeEach(async (to, from) => {
 
   // Auth korumalı rotalar ve kullanıcı giriş yapmamışsa
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    // Giriş yapmamış ama giriş yapmak isteyen kullanıcıları tutmak için 
-    // dönüş yolunu saklayabiliriz (query.redirect) - şu anlık düz /login'e atalım
-    return { name: 'login' }
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
 
   // Admin korumalı rotalar
