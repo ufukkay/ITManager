@@ -16,12 +16,29 @@
 
       <!-- Action Buttons -->
       <div class="flex items-center gap-2">
+        <button 
+          @click="createNewTemplate" 
+          class="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors border border-gray-200"
+          title="Tasarımı Sıfırla / Yeni Şablon"
+        >
+          <i class="fas fa-plus"></i> Yeni / Sıfırla
+        </button>
+
         <select v-model="selectedTemplateId" @change="loadSelectedTemplate" class="h-8 px-3 bg-gray-50 border border-gray-200 rounded text-xs font-bold text-gray-700 outline-none focus:border-purple-500 cursor-pointer">
           <option value="">-- Kayıtlı A4 Şablon Seçin --</option>
           <option v-for="t in savedTemplates" :key="t.id" :value="t.id">
             {{ t.name }} {{ t.is_default ? '★ Varsayılan' : '' }}
           </option>
         </select>
+
+        <button 
+          v-if="selectedTemplateId"
+          @click="deleteSelectedTemplate"
+          class="h-8 px-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors border border-red-200"
+          title="Seçili Şablonu Sil"
+        >
+          <i class="fas fa-trash"></i> Sil
+        </button>
 
         <button @click="openSaveModal" class="h-8 px-4 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors shadow-sm">
           <i class="fas fa-save"></i> Form Şablonunu Kaydet
@@ -333,7 +350,8 @@
     <dialog ref="saveModal" class="modal">
       <div class="modal-box bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
         <h3 class="font-bold text-base text-gray-900 mb-4 flex items-center gap-2">
-          <i class="fas fa-file-export text-purple-600"></i> A4 Zimmet Form Şablonunu Kaydet
+          <i class="fas fa-file-export text-purple-600"></i>
+          {{ templateForm.id ? 'A4 Şablonunu Güncelle / Farklı Kaydet' : 'Yeni A4 Şablonu Kaydet' }}
         </h3>
         
         <div class="space-y-4">
@@ -358,7 +376,17 @@
 
         <div class="modal-action mt-6 flex items-center justify-end gap-2">
           <button @click="closeSaveModal" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-lg">İptal</button>
-          <button @click="submitSaveTemplate" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg shadow-sm">Kaydet</button>
+          <button 
+            v-if="templateForm.id" 
+            @click="submitSaveNewTemplate" 
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm"
+            title="Mevcut şablonu bozmadan yeni şablon olarak kaydeder"
+          >
+            Yeni Olarak Kaydet
+          </button>
+          <button @click="submitSaveTemplate" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg shadow-sm">
+            {{ templateForm.id ? 'Güncellemeyi Kaydet' : 'Şablonu Kaydet' }}
+          </button>
         </div>
       </div>
     </dialog>
@@ -506,6 +534,46 @@ const loadSelectedTemplate = () => {
   }
 }
 
+const createNewTemplate = () => {
+  selectedTemplateId.value = ''
+  templateForm.value = {
+    id: null,
+    name: '',
+    is_default: false
+  }
+  elements.value = [
+    { id: 'el_logo', type: 'company_logo', name: 'Şirket Logosu', x: 5, y: 3, w: 90, fontSize: 12 },
+    { id: 'el_title', type: 'header_title', name: 'Tutanak Başlığı', x: 5, y: 8, w: 90, fontSize: 16, fontWeight: 'black' },
+    { id: 'el_pinfo', type: 'personnel_info', name: 'Personel Bilgileri', x: 5, y: 17, w: 90, fontSize: 11 },
+    { id: 'el_assets', type: 'assets_table', name: 'Donanım Listesi Tablosu', x: 5, y: 30, w: 90, fontSize: 11 },
+    { id: 'el_commit', type: 'commitment_text', name: 'Yasal Taahhüt Metni', x: 5, y: 58, w: 90, text: defaultCommitmentText, fontSize: 10.5 },
+    { id: 'el_qr', type: 'qr_verify', name: 'QR Doküman Doğrulama', x: 5, y: 72, w: 90, fontSize: 11 },
+    { id: 'el_sigs', type: 'signatures', name: 'İmza & Tarih Bloğu', x: 5, y: 82, w: 90, fontSize: 11 }
+  ]
+  showToast('Kanvas varsayılan yerleşime sıfırlandı.', 'info')
+}
+
+const deleteSelectedTemplate = async () => {
+  if (!selectedTemplateId.value) return
+  const t = savedTemplates.value.find(tmpl => tmpl.id === Number(selectedTemplateId.value))
+  if (!t) return
+
+  if (!confirm(`"${t.name}" şablonunu silmek istediğinize emin misiniz?`)) {
+    return
+  }
+
+  try {
+    await axios.delete(`/api/assets/form-templates/${t.id}`)
+    showToast('Şablon başarıyla silindi', 'success')
+    selectedTemplateId.value = ''
+    createNewTemplate()
+    await fetchTemplates()
+  } catch (err) {
+    console.error('deleteSelectedTemplate error:', err)
+    showToast('Şablon silinemedi', 'error')
+  }
+}
+
 const openSaveModal = () => {
   if (!templateForm.value.name) {
     templateForm.value.name = 'Kurumsal A4 Zimmet Formu ' + new Date().toLocaleDateString('tr-TR')
@@ -515,6 +583,12 @@ const openSaveModal = () => {
 
 const closeSaveModal = () => {
   saveModal.value?.close()
+}
+
+const submitSaveNewTemplate = () => {
+  templateForm.value.id = null
+  selectedTemplateId.value = ''
+  submitSaveTemplate()
 }
 
 const submitSaveTemplate = async () => {
