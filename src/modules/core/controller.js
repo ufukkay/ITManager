@@ -599,9 +599,24 @@ class MasterDataController {
     // Audit Logs
     static async getAuditLogs(req, res) {
         try {
-            const { limit } = req.query;
-            const data = await AuditService.getRecentActivities(limit ? parseInt(limit) : 20);
-            res.json(data);
+            const { limit, page, search, module: mod, action } = req.query;
+            if (page || search || mod || action) {
+                const limitVal = limit ? parseInt(limit) : 20;
+                const pageVal = page ? parseInt(page) : 1;
+                const offset = (pageVal - 1) * limitVal;
+                
+                const data = await AuditService.getFilteredAuditLogs({
+                    limit: limitVal,
+                    offset,
+                    search,
+                    module: mod,
+                    action
+                });
+                res.json(data);
+            } else {
+                const data = await AuditService.getRecentActivities(limit ? parseInt(limit) : 20);
+                res.json(data);
+            }
         } catch (e) {
             res.status(500).json({ error: e.message });
         }

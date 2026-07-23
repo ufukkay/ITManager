@@ -158,7 +158,7 @@ class MasterDataService {
     }
 
     static async createPersonnel(data) {
-        let { first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes, has_account, role_id, custom_permissions } = data;
+        let { first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes, has_account, role_id, custom_permissions, entra_id, source } = data;
         
         // --- Mükerrer Kayıt Kontrolü ---
         // 1. Email varsa kontrol et
@@ -181,9 +181,9 @@ class MasterDataService {
 
         const transaction = db.transaction(() => {
             const info = db.prepare(`
-                INSERT INTO personnel (employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status || 'active', notes);
+                INSERT INTO personnel (employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes, entra_id, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status || 'active', notes, entra_id || null, source || 'manual');
             const personnelId = info.lastInsertRowid;
 
             if (has_account) {
@@ -227,15 +227,16 @@ class MasterDataService {
     }
 
     static async updatePersonnel(id, data) {
-        const { employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes, has_account, role_id, custom_permissions } = data;
+        const { employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes, has_account, role_id, custom_permissions, entra_id, source } = data;
         const transaction = db.transaction(() => {
             db.prepare(`
                 UPDATE personnel SET 
                     employee_id = ?, first_name = ?, last_name = ?, title = ?, email = ?, phone = ?, 
                     company_id = ?, department_id = ?, cost_center_id = ?, 
-                    hire_date = ?, exit_date = ?, status = ?, notes = ?
+                    hire_date = ?, exit_date = ?, status = ?, notes = ?,
+                    entra_id = ?, source = ?
                 WHERE id = ?
-            `).run(employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes, id);
+            `).run(employee_id, first_name, last_name, title, email, phone, company_id, department_id, cost_center_id, hire_date, exit_date, status, notes, entra_id || null, source || 'manual', id);
 
             const user = db.prepare("SELECT id FROM users WHERE personnel_id = ?").get(id);
 
@@ -288,6 +289,9 @@ class MasterDataService {
     }
     static async deletePersonnel(id) {
         const transaction = db.transaction(() => {
+            db.prepare("UPDATE users SET personnel_id = NULL WHERE personnel_id = ?").run(id);
+            db.prepare("UPDATE assets SET personnel_id = NULL WHERE personnel_id = ?").run(id);
+            db.prepare("UPDATE helpdesk_tickets SET personnel_id = NULL WHERE personnel_id = ?").run(id);
             db.prepare("UPDATE sim_m2m SET personnel_id = NULL WHERE personnel_id = ?").run(id);
             db.prepare("UPDATE sim_voice SET personnel_id = NULL WHERE personnel_id = ?").run(id);
             db.prepare("UPDATE invoices SET personnel_id = NULL WHERE personnel_id = ?").run(id);
@@ -300,12 +304,18 @@ class MasterDataService {
     static async bulkDeletePersonnel(ids) {
         if (!Array.isArray(ids) || ids.length === 0) return;
         const transaction = db.transaction((ids) => {
-            const nullStmtM2M    = db.prepare("UPDATE sim_m2m SET personnel_id = NULL WHERE personnel_id = ?");
-            const nullStmtVoice  = db.prepare("UPDATE sim_voice SET personnel_id = NULL WHERE personnel_id = ?");
-            const nullStmtInv    = db.prepare("UPDATE invoices SET personnel_id = NULL WHERE personnel_id = ?");
-            const delStmtM365    = db.prepare("DELETE FROM m365_allocation_users WHERE personnel_id = ?");
-            const delStmt        = db.prepare("DELETE FROM personnel WHERE id = ?");
+            const nullStmtUsers   = db.prepare("UPDATE users SET personnel_id = NULL WHERE personnel_id = ?");
+            const nullStmtAssets  = db.prepare("UPDATE assets SET personnel_id = NULL WHERE personnel_id = ?");
+            const nullStmtTickets = db.prepare("UPDATE helpdesk_tickets SET personnel_id = NULL WHERE personnel_id = ?");
+            const nullStmtM2M     = db.prepare("UPDATE sim_m2m SET personnel_id = NULL WHERE personnel_id = ?");
+            const nullStmtVoice   = db.prepare("UPDATE sim_voice SET personnel_id = NULL WHERE personnel_id = ?");
+            const nullStmtInv     = db.prepare("UPDATE invoices SET personnel_id = NULL WHERE personnel_id = ?");
+            const delStmtM365     = db.prepare("DELETE FROM m365_allocation_users WHERE personnel_id = ?");
+            const delStmt         = db.prepare("DELETE FROM personnel WHERE id = ?");
             for (const id of ids) {
+                nullStmtUsers.run(id);
+                nullStmtAssets.run(id);
+                nullStmtTickets.run(id);
                 nullStmtM2M.run(id);
                 nullStmtVoice.run(id);
                 nullStmtInv.run(id);

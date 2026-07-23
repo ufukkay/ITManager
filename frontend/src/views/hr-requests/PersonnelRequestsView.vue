@@ -68,9 +68,16 @@ const fetchData = async () => {
 /* ── Status Update ── */
 const updateStatus = async (id, newStatus) => {
   try {
+    startLoading()
     await api.put(`/api/hr-requests/${id}`, { status: newStatus })
+    showToast(newStatus === 'COMPLETED' ? 'Talep tamamlandı ve Personel kartı güncellendi.' : 'Talep durumu güncellendi.', 'success')
     fetchData()
-  } catch (err) { console.error(err) }
+  } catch (err) { 
+    console.error(err) 
+    showToast('Hata: ' + (err.response?.data?.error || err.message), 'error')
+  } finally {
+    stopLoading()
+  }
 }
 
 /* ── Delete ── */

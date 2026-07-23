@@ -248,11 +248,19 @@
               <div class="flex-1 bg-white border border-[#dadce0] rounded p-1.5 focus-within:border-[#1a73e8] transition-all flex flex-col">
                 <textarea v-model="newMessage" rows="2" class="w-full bg-transparent resize-none outline-none text-xs px-1 placeholder-[#9aa0a6] text-[#202124]" placeholder="Mesajınızı yazın..." @keydown.enter.exact.prevent="sendMessage"></textarea>
                 <div class="flex items-center justify-between mt-1 pt-1.5 border-t border-[#f1f3f4]">
-                  <div v-if="isAdminOrTech" class="flex items-center gap-1.5">
-                    <label class="flex items-center gap-1 cursor-pointer">
-                      <input type="checkbox" v-model="isInternal" class="w-3.5 h-3.5 border border-[#dadce0] rounded text-[#1a73e8] outline-none">
-                      <span class="text-[10px] font-medium text-[#5f6368] select-none">Gizli Not</span>
-                    </label>
+                  <div v-if="isAdminOrTech" class="flex items-center justify-between w-full">
+                    <div class="flex items-center gap-1.5">
+                      <label class="flex items-center gap-1 cursor-pointer">
+                        <input type="checkbox" v-model="isInternal" class="w-3.5 h-3.5 border border-[#dadce0] rounded text-[#1a73e8] outline-none">
+                        <span class="text-[10px] font-medium text-[#5f6368] select-none">Gizli Not</span>
+                      </label>
+                    </div>
+                    <div>
+                      <select @change="applyCannedResponse" class="h-6 px-1.5 bg-gray-50 border border-[#dadce0] rounded text-[10px] font-medium outline-none focus:border-[#1a73e8] cursor-pointer max-w-[150px] text-gray-700">
+                        <option value="">Hazır Şablon Seç...</option>
+                        <option v-for="(cr, idx) in cannedResponses" :key="idx" :value="cr.text">{{ cr.title }}</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -663,6 +671,33 @@ const newMessage = ref('')
 const files = ref([])
 const isInternal = ref(false)
 const statusSelect = ref('')
+
+const cannedResponses = [
+  {
+    title: 'Şifre Sıfırlama Talimatı',
+    text: 'Merhaba,\n\nTalep ettiğiniz şifre sıfırlama işlemi gerçekleştirilmiştir. Yeni geçici şifreniz: ITTemp123!\nİlk girişinizde şifrenizi değiştirmeniz istenecektir.\n\nİyi çalışmalar.'
+  },
+  {
+    title: 'VPN Kurulum Kılavuzu',
+    text: 'Merhaba,\n\nŞirket dışından ağımıza erişebilmeniz için VPN kurulum adımları aşağıdadır:\n1. https://vpn.talay.com adresinden istemciyi indirin.\n2. Kullanıcı adı ve şifrenizle giriş yapın.\n3. İki faktörlü doğrulama (2FA) kodunu girerek bağlantıyı tamamlayın.\n\nSorun yaşamanız durumunda bu bilet üzerinden bize ulaşabilirsiniz.'
+  },
+  {
+    title: 'Donanım Teslim Formu',
+    text: 'Merhaba,\n\nTarafınıza tahsis edilen donanım (Bilgisayar/Telefon) hazırlanmıştır. Donanımınızı teslim alabilmek ve zimmet formunu imzalamak için IT departmanına uğramanızı rica ederiz.\n\nİyi çalışmalar.'
+  },
+  {
+    title: 'Bilgi Talep Etme',
+    text: 'Merhaba,\n\nTalebinizle ilgili inceleme yapabilmemiz için aşağıdaki detayları paylaşabilir misiniz?\n- Hatanın ekran görüntüsü veya hata kodu\n- Hatayı aldığınız işlem adımları\n\nDestekleriniz için teşekkürler.'
+  }
+]
+
+const applyCannedResponse = (event) => {
+  const text = event.target.value
+  if (text) {
+    newMessage.value = text
+  }
+  event.target.value = ""
+}
 
 // Sekme Yönetimi Refs
 const activeTab = ref('details')

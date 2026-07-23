@@ -123,7 +123,9 @@ const openEditModal = async (p = null) => {
       notes: '',
       has_account: false,
       role_id: roles.value.find(r => r.name === 'Personel')?.id || null,
-      custom_permissions: []
+      custom_permissions: [],
+      entra_id: null,
+      source: 'manual'
     }
   }
   showModal.value = true
@@ -515,6 +517,11 @@ onMounted(fetchData)
                       <input v-model="editingPersonnel.email" type="email" placeholder="isim.soyisim@sirket.com"
                         class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500">
                     </div>
+                    <div>
+                      <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Telefon</label>
+                      <input v-model="editingPersonnel.phone" type="text" placeholder="Örn: 0555 123 4567"
+                        class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500">
+                    </div>
                   </div>
                </div>
                <div class="space-y-4">
@@ -541,6 +548,23 @@ onMounted(fetchData)
                         <option value="active">Aktif</option>
                         <option value="passive">Pasif</option>
                       </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Kayıt Kaynağı</label>
+                        <input :value="editingPersonnel.source === 'azure' ? 'Microsoft Azure AD' : 'Manuel Kayıt'" type="text" readonly
+                          class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none bg-gray-50 font-semibold text-gray-600 cursor-not-allowed">
+                      </div>
+                      <div>
+                        <div class="flex justify-between items-center mb-1.5">
+                          <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Entra ID (Azure GUID)</label>
+                          <span v-if="editingPersonnel.source === 'azure'" class="px-2 py-0.5 rounded text-[9px] font-bold bg-green-100 text-green-700 border border-green-200">Eşleşti</span>
+                        </div>
+                        <input v-model="editingPersonnel.entra_id" type="text" placeholder="xxxxxxxx-xxxx-xxxx..."
+                          :readonly="editingPersonnel.source === 'azure'"
+                          :class="editingPersonnel.source === 'azure' ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''"
+                          class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 font-mono">
+                      </div>
                     </div>
                   </div>
                </div>

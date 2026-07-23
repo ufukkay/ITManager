@@ -1,66 +1,149 @@
 <template>
   <div class="h-full flex flex-col bg-white overflow-hidden">
     <!-- HEADER -->
-    <header class="h-14 border-b border-gray-100 flex items-center px-6 gap-4 bg-white shrink-0">
-      <div class="flex items-center gap-2 shrink-0">
-        <i class="fas fa-boxes text-gray-400"></i>
-        <h1 class="text-[15px] font-bold text-gray-900">Envanter Takibi</h1>
+    <header class="h-14 border-b border-gray-100 flex items-center px-6 justify-between bg-white shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
+          <i class="fas fa-boxes"></i>
+        </div>
+        <div>
+          <h1 class="text-[14px] font-bold text-gray-900 leading-tight">Envanter Takibi</h1>
+          <p class="text-[10.5px] text-gray-400 font-medium">Tüm donanım, zimmet ve depo varlıklarınızı akıllı filtrelerle süzün</p>
+        </div>
       </div>
 
-      <!-- SEARCH & FILTERS -->
-      <div class="flex items-center gap-2 ml-4 flex-1">
+      <!-- ACTIONS (SHRINK-0) -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button 
+          v-if="selectedAssetIds.length > 0"
+          @click="openBatchStickerModal"
+          class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11.5px] rounded-lg transition-colors whitespace-nowrap shadow-sm flex items-center gap-1.5 animate-pulse"
+        >
+          <i class="fas fa-barcode"></i> Toplu Etiket Yazdır ({{ selectedAssetIds.length }})
+        </button>
         <input 
-          v-model="searchQuery" 
-          type="text" 
-          placeholder="Seri No, Barkod veya Notlarda ara..." 
-          class="search-input w-64"
+          type="file" 
+          ref="excelInput" 
+          class="hidden" 
+          accept=".xlsx, .xls" 
+          @change="handleExcelImport" 
         />
-        <select v-model="filters.category_id" class="filter-select">
-          <option value="">Tüm Kategoriler</option>
-          <option v-for="c in assetStore.metadata.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
-        </select>
-        <select v-model="filters.brand_id" class="filter-select">
-          <option value="">Tüm Markalar</option>
-          <option v-for="b in assetStore.metadata.brands" :key="b.id" :value="b.id">{{ b.name }}</option>
-        </select>
-        <select v-model="filters.status_id" class="filter-select">
-          <option value="">Tüm Durumlar</option>
-          <option v-for="s in assetStore.metadata.statuses" :key="s.id" :value="s.id">{{ s.name }}</option>
-        </select>
+        <button @click="downloadTemplate" class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-lg transition-colors whitespace-nowrap" v-if="authStore.hasPermission('asset:edit')" title="Excel Şablonu İndir">
+          <i class="fas fa-file-download mr-1"></i>Şablon
+        </button>
+        <button @click="$refs.excelInput.click()" class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-lg transition-colors whitespace-nowrap" v-if="authStore.hasPermission('asset:edit')" title="Excel ile Yükle">
+          <i class="fas fa-file-import mr-1"></i>Excel Yükle
+        </button>
+        <button @click="openConfigModal" class="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-[11.5px] rounded-lg transition-colors whitespace-nowrap" title="Kategori, Marka & Model Tanımlamaları">
+          <i class="fas fa-cog mr-1"></i>Tanımlamalar
+        </button>
+        <button @click="openAddModal" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11.5px] rounded-lg transition-colors whitespace-nowrap shadow-sm" v-if="authStore.hasPermission('asset:edit')">
+          <i class="fas fa-plus mr-1"></i>Yeni Varlık
+        </button>
+      </div>
+    </header>
 
-        <!-- Dynamic Status Filters (All, Assigned, Unassigned) -->
-        <div class="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5 ml-2">
+    <!-- SMART FILTER BAR (AKILLI FİLTRE & ÇOKLU SÜZME ÇUBUĞU) -->
+    <div class="bg-gray-50/90 border-b border-gray-200 px-6 py-2 flex items-center justify-between gap-3 shrink-0 flex-wrap">
+      <div class="flex items-center gap-2 flex-1 flex-wrap min-w-0">
+        <!-- 1. SMART SEARCH INPUT -->
+        <div class="relative flex items-center shrink-0 w-64 xl:w-72">
+          <i class="fas fa-search absolute left-3 text-gray-400 text-xs"></i>
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="Marka, Model, Personel, Seri No, Envanter No..." 
+            class="h-8 pl-8 pr-8 w-full bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-800 outline-none focus:border-blue-500 shadow-sm"
+          />
+          <button 
+            v-if="searchQuery" 
+            @click="searchQuery = ''" 
+            class="absolute right-7 text-gray-400 hover:text-gray-600 text-xs"
+          >
+            &times;
+          </button>
+          <button 
+            @click="showScannerModal = true" 
+            class="absolute right-2.5 text-gray-400 hover:text-blue-600 transition-colors"
+            title="Kamera ile QR / Barkod Tara"
+          >
+            <i class="fas fa-camera text-xs"></i>
+          </button>
+        </div>
+
+        <!-- 2. ASSIGNMENT TABS -->
+        <div class="flex items-center gap-0.5 bg-gray-200/70 rounded-lg p-0.5 shrink-0">
           <button 
             @click="assignmentFilter = 'ALL'" 
-            :class="['px-2.5 py-1 rounded text-[11px] font-bold transition-all', assignmentFilter === 'ALL' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+            :class="['px-2.5 py-1 rounded text-[11px] font-bold transition-all', assignmentFilter === 'ALL' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900']"
           >
             Hepsi
           </button>
           <button 
             @click="assignmentFilter = 'ASSIGNED'" 
-            :class="['px-2.5 py-1 rounded text-[11px] font-bold transition-all', assignmentFilter === 'ASSIGNED' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+            :class="['px-2.5 py-1 rounded text-[11px] font-bold transition-all', assignmentFilter === 'ASSIGNED' ? 'bg-white text-emerald-800 shadow-sm' : 'text-gray-600 hover:text-gray-900']"
           >
-            Zimmetli (Atanmış)
+            Zimmetli
           </button>
           <button 
             @click="assignmentFilter = 'UNASSIGNED'" 
-            :class="['px-2.5 py-1 rounded text-[11px] font-bold transition-all', assignmentFilter === 'UNASSIGNED' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+            :class="['px-2.5 py-1 rounded text-[11px] font-bold transition-all', assignmentFilter === 'UNASSIGNED' ? 'bg-white text-blue-800 shadow-sm' : 'text-gray-600 hover:text-gray-900']"
           >
-            Depoda (Atanabilir)
+            Depoda
           </button>
         </div>
+
+        <!-- 3. CATEGORY SELECT -->
+        <select v-model="filters.category_id" class="h-8 px-2.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 outline-none focus:border-blue-500 shadow-sm cursor-pointer shrink-0">
+          <option value="">📂 Tüm Kategoriler</option>
+          <option v-for="cat in assetStore.metadata.categories" :key="cat.id" :value="cat.id">
+            {{ cat.name }}
+          </option>
+        </select>
+
+        <!-- 4. BRAND SELECT -->
+        <select v-model="filters.brand_id" class="h-8 px-2.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 outline-none focus:border-blue-500 shadow-sm cursor-pointer shrink-0">
+          <option value="">🏷️ Tüm Markalar</option>
+          <option v-for="b in assetStore.metadata.brands" :key="b.id" :value="b.id">
+            {{ b.name }}
+          </option>
+        </select>
+
+        <!-- 5. COMPANY SELECT -->
+        <select v-model="filters.company_id" class="h-8 px-2.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 outline-none focus:border-blue-500 shadow-sm cursor-pointer shrink-0">
+          <option value="">🏢 Tüm Şirketler</option>
+          <option v-for="comp in assetStore.metadata.companies" :key="comp.id" :value="comp.id">
+            {{ comp.name }}
+          </option>
+        </select>
+
+        <!-- 6. STATUS SELECT -->
+        <select v-model="filters.status_id" class="h-8 px-2.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 outline-none focus:border-blue-500 shadow-sm cursor-pointer shrink-0">
+          <option value="">🚩 Tüm Durumlar</option>
+          <option v-for="st in assetStore.metadata.statuses" :key="st.id" :value="st.id">
+            {{ st.name }}
+          </option>
+        </select>
+
+        <!-- 7. CLEAR FILTERS BUTTON -->
+        <button 
+          v-if="hasActiveFilters" 
+          @click="resetFilters" 
+          class="h-8 px-3 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shrink-0"
+          title="Tüm filtreleri sıfırla"
+        >
+          <i class="fas fa-times text-[10px]"></i> Temizle
+        </button>
       </div>
 
-      <!-- ACTIONS -->
-      <div class="ml-auto flex items-center gap-2">
-        <button @click="openConfigModal" class="btn-secondary">
-          <i class="fas fa-cog mr-1.5"></i>Tanımlamalar
-        </button>
-        <button @click="openAddModal" class="btn-primary" v-if="authStore.hasPermission('asset:edit')">
-          <i class="fas fa-plus mr-1.5"></i>Yeni Varlık Ekle
-        </button>
+      <!-- RESULTS COUNT COUNTER -->
+      <div class="text-xs font-bold text-gray-500 whitespace-nowrap flex items-center gap-1.5">
+        <span>Gösterilen:</span>
+        <span class="text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full font-mono font-black border border-blue-100">
+          {{ filteredAssets.length }} / {{ assetStore.assets.length }}
+        </span>
       </div>
-    </header>
+    </div>
 
     <!-- KPI / FINANCIAL SUMMARY BAR -->
     <div class="grid grid-cols-4 gap-px bg-gray-100 border-b border-gray-100 shrink-0">
@@ -114,9 +197,17 @@
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="border-b border-gray-100 bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                <th class="px-5 py-3">Varlık Bilgileri</th>
-                <th class="px-5 py-3">Kategori & Marka / Model</th>
+              <tr class="bg-gray-50 border-b border-gray-100 text-gray-400 font-bold uppercase text-[10px] tracking-wider">
+                <th class="w-10 px-3 py-3 text-center">
+                  <input 
+                    type="checkbox" 
+                    :checked="isAllSelected" 
+                    @change="toggleSelectAll" 
+                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                </th>
+                <th class="px-5 py-3">Seri No / Envanter No</th>
+                <th class="px-5 py-3">Cihaz / Model</th>
                 <th class="px-5 py-3">Durum</th>
                 <th class="px-5 py-3">Şirket & Konum / Kullanıcı</th>
                 <th class="px-5 py-3">Belgeler</th>
@@ -126,9 +217,17 @@
             </thead>
             <tbody class="divide-y divide-gray-50">
               <tr v-if="filteredAssets.length === 0" class="text-center">
-                <td colspan="7" class="py-12 text-gray-400 text-sm">Hiçbir varlık bulunamadı.</td>
+                <td colspan="8" class="py-12 text-gray-400 text-sm">Hiçbir varlık bulunamadı.</td>
               </tr>
-              <tr v-for="asset in filteredAssets" :key="asset.id" class="hover:bg-gray-50/50 transition-colors text-[12.5px]">
+              <tr v-for="asset in filteredAssets" :key="asset.id" :class="['hover:bg-gray-50/50 transition-colors text-[12.5px]', isSelected(asset.id) ? 'bg-blue-50/30' : '']">
+                <td class="w-10 px-3 py-3 text-center">
+                  <input 
+                    type="checkbox" 
+                    :value="asset.id" 
+                    v-model="selectedAssetIds" 
+                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                </td>
                 <td class="px-5 py-3">
                   <div class="font-bold text-gray-900">{{ asset.serial_no }}</div>
                   <div class="text-[10.5px] text-gray-400 flex items-center gap-1.5 mt-0.5" v-if="asset.barcode">
@@ -175,6 +274,12 @@
                 </td>
                 <td class="px-5 py-3 text-right">
                   <div class="flex items-center justify-end gap-1.5">
+                    <button @click="openStickerModal(asset)" class="btn-actions" title="QR & Barkod Etiketi Yazdır">
+                      <i class="fas fa-qrcode text-blue-600"></i>
+                    </button>
+                    <RouterLink v-if="asset.personnel_id" to="/inventory/personnel" class="btn-actions" title="Zimmet Formu / Tutanağı Yazdır">
+                      <i class="fas fa-file-contract text-purple-600"></i>
+                    </RouterLink>
                     <button @click="showLogs(asset)" class="btn-actions" title="İşlem Geçmişi">
                       <i class="fas fa-history text-gray-500"></i>
                     </button>
@@ -287,7 +392,7 @@
               <input v-model="assetForm.serial_no" type="text" class="form-input" required />
             </div>
             <div>
-              <label class="form-label">Barkod / Asset Tag</label>
+              <label class="form-label">Envanter No (Demirbaş Etiketi)</label>
               <input v-model="assetForm.barcode" type="text" class="form-input" />
             </div>
           </div>
@@ -336,6 +441,31 @@
               <label class="form-label">Garanti Belgesi (PDF/Görsel)</label>
               <input type="file" @change="handleFileChange($event, 'warranty')" class="file-input-custom" accept=".pdf,image/*" />
               <div v-if="assetForm.warranty_path" class="text-[10px] text-green-600 mt-1">✓ Garanti Belgesi yüklü</div>
+            </div>
+          </div>
+
+          <!-- Technical Specs Section -->
+          <div class="border-t border-b border-gray-100 py-3 my-2 space-y-3">
+            <h4 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fas fa-microchip text-blue-500"></i> Teknik Özellikler (Donanım)
+            </h4>
+            <div class="grid grid-cols-4 gap-3">
+              <div>
+                <label class="form-label">İşlemci (CPU)</label>
+                <input v-model="assetForm.cpu_model" type="text" placeholder="Intel i7-12700" class="form-input" />
+              </div>
+              <div>
+                <label class="form-label">RAM (GB)</label>
+                <input v-model.number="assetForm.ram_gb" type="number" placeholder="16" class="form-input" />
+              </div>
+              <div>
+                <label class="form-label">Disk (GB)</label>
+                <input v-model.number="assetForm.disk_gb" type="number" placeholder="512" class="form-input" />
+              </div>
+              <div>
+                <label class="form-label">İşletim Sistemi</label>
+                <input v-model="assetForm.os_version" type="text" placeholder="Win 11 Pro" class="form-input" />
+              </div>
             </div>
           </div>
 
@@ -448,16 +578,59 @@
         </div>
       </div>
     </dialog>
+
+    <!-- QR & BARCODE STICKER MODAL -->
+    <AssetStickerModal 
+      :show="showStickerModal"
+      :asset="selectedStickerAsset"
+      :assets="batchStickerAssets"
+      @close="showStickerModal = false"
+    />
+
+    <!-- CAMERA SCANNER MODAL -->
+    <AssetScannerModal 
+      :show="showScannerModal"
+      @close="showScannerModal = false"
+      @scan-result="handleScanResult"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAssetStore } from '../../stores/assetStore'
 import { useAuthStore } from '../../stores/auth'
+import * as XLSX from 'xlsx'
+import { useMasterDataStore } from '../../stores/masterData'
+import { useToast } from '../../composables/useToast'
+import AssetStickerModal from '../../components/AssetStickerModal.vue'
+import AssetScannerModal from '../../components/AssetScannerModal.vue'
 
+const router = useRouter()
 const assetStore = useAssetStore()
 const authStore = useAuthStore()
+const masterData = useMasterDataStore()
+const { showToast } = useToast()
+
+// Multi Selection States
+const selectedAssetIds = ref([])
+const batchStickerAssets = ref([])
+
+const isSelected = (id) => selectedAssetIds.value.includes(id)
+
+const isAllSelected = computed(() => {
+  if (!filteredAssets.value || filteredAssets.value.length === 0) return false
+  return filteredAssets.value.every(a => selectedAssetIds.value.includes(a.id))
+})
+
+const toggleSelectAll = () => {
+  if (isAllSelected.value) {
+    selectedAssetIds.value = []
+  } else {
+    selectedAssetIds.value = filteredAssets.value.map(a => a.id)
+  }
+}
 
 // Filter states
 const searchQuery = ref('')
@@ -465,14 +638,57 @@ const assignmentFilter = ref('ALL') // ALL, ASSIGNED, UNASSIGNED
 const filters = ref({
   category_id: '',
   brand_id: '',
+  company_id: '',
   status_id: ''
 })
 
-// Dialog references
+const hasActiveFilters = computed(() => {
+  return !!(
+    searchQuery.value ||
+    assignmentFilter.value !== 'ALL' ||
+    filters.value.category_id ||
+    filters.value.brand_id ||
+    filters.value.company_id ||
+    filters.value.status_id
+  )
+})
+
+const resetFilters = () => {
+  searchQuery.value = ''
+  assignmentFilter.value = 'ALL'
+  filters.value.category_id = ''
+  filters.value.brand_id = ''
+  filters.value.company_id = ''
+  filters.value.status_id = ''
+}
+
+// Dialog & Sticker/Scanner references
 const configDialog = ref(null)
 const assetDialog = ref(null)
 const checkoutDialog = ref(null)
 const logsDialog = ref(null)
+
+const showStickerModal = ref(false)
+const selectedStickerAsset = ref(null)
+const showScannerModal = ref(false)
+
+const openStickerModal = (asset) => {
+  selectedStickerAsset.value = asset
+  batchStickerAssets.value = []
+  showStickerModal.value = true
+}
+
+const openBatchStickerModal = () => {
+  if (selectedAssetIds.value.length === 0) return
+  selectedStickerAsset.value = null
+  batchStickerAssets.value = assetStore.assets.filter(a => selectedAssetIds.value.includes(a.id))
+  showStickerModal.value = true
+}
+
+const handleScanResult = (scannedCode) => {
+  searchQuery.value = scannedCode
+  showToast(`Taranan kod arandı: ${scannedCode}`, 'info')
+}
 
 // Forms & States
 const isEditMode = ref(false)
@@ -491,7 +707,13 @@ const assetForm = ref({
   lifetime_months: 60,
   notes: '',
   invoice_path: null,
-  warranty_path: null
+  warranty_path: null,
+  mac_address: '',
+  ip_address: '',
+  cpu_model: '',
+  ram_gb: null,
+  disk_gb: null,
+  os_version: ''
 })
 
 // File upload references
@@ -535,28 +757,40 @@ onMounted(async () => {
   await assetStore.fetchAssets()
   await assetStore.fetchMetadata()
   await assetStore.fetchFinancialSummary()
+  await masterData.fetchCompanies()
 })
 
-// Computed List View Filterings
+// Computed List View Filterings with Smart Global Search & Multi-Select Bar
 const filteredAssets = computed(() => {
   return assetStore.assets.filter(a => {
-    // Search query matches
+    // 1. Smart Search query matches ALL fields (brand, model, category, company, personnel, location, serial, barcode, notes)
     if (searchQuery.value) {
-      const q = searchQuery.value.toLowerCase()
+      const q = searchQuery.value.trim().toLowerCase()
       const inSerial = (a.serial_no || '').toLowerCase().includes(q)
       const inBarcode = (a.barcode || '').toLowerCase().includes(q)
+      const inBrand = (a.brand_name || '').toLowerCase().includes(q)
+      const inModel = (a.model_name || '').toLowerCase().includes(q)
+      const inCategory = (a.category_name || '').toLowerCase().includes(q)
+      const inCompany = (a.company_name || '').toLowerCase().includes(q)
+      const inPersonnel = (a.personnel_name || '').toLowerCase().includes(q)
+      const inLocation = (a.location_name || '').toLowerCase().includes(q)
       const inNotes = (a.notes || '').toLowerCase().includes(q)
-      if (!inSerial && !inBarcode && !inNotes) return false
+
+      if (!inSerial && !inBarcode && !inBrand && !inModel && !inCategory && !inCompany && !inPersonnel && !inLocation && !inNotes) {
+        return false
+      }
     }
 
-    // Dynamic assignment filter
+    // 2. Dynamic assignment filter tab (ALL, ASSIGNED, UNASSIGNED)
     if (assignmentFilter.value === 'ASSIGNED' && !a.personnel_id && !a.location_id) return false
     if (assignmentFilter.value === 'UNASSIGNED' && (a.personnel_id || a.location_id)) return false
 
-    // Field filter matches
+    // 3. Dropdown field filter matches
     if (filters.value.category_id && a.category_id !== Number(filters.value.category_id)) return false
     if (filters.value.brand_id && a.brand_id !== Number(filters.value.brand_id)) return false
+    if (filters.value.company_id && a.company_id !== Number(filters.value.company_id)) return false
     if (filters.value.status_id && a.status_id !== Number(filters.value.status_id)) return false
+
     return true
   })
 })
@@ -574,9 +808,14 @@ const getStatusClass = (statusName) => {
   if (!statusName) return 'bg-gray-100 text-gray-500'
   const name = statusName.toLowerCase()
   if (name.includes('zimmet') || name.includes('kullanım')) return 'bg-emerald-100 text-emerald-700'
-  if (name.includes('arıza') || name.includes('servis')) return 'bg-amber-100 text-amber-700'
-  if (name.includes('hurda')) return 'bg-red-100 text-red-700'
-  return 'bg-blue-100 text-blue-700'
+  if (name.includes('depo') || name.includes('boşta')) return 'bg-blue-100 text-blue-700'
+  if (name.includes('hazırlık') || name.includes('image')) return 'bg-indigo-100 text-indigo-700'
+  if (name.includes('yedek') || name.includes('standby')) return 'bg-cyan-100 text-cyan-700'
+  if (name.includes('servis') || name.includes('bakım')) return 'bg-amber-100 text-amber-700'
+  if (name.includes('arıza')) return 'bg-orange-100 text-orange-700'
+  if (name.includes('kayıp') || name.includes('çalındı')) return 'bg-rose-100 text-rose-700 font-bold'
+  if (name.includes('hurda') || name.includes('arşiv')) return 'bg-red-100 text-red-700'
+  return 'bg-gray-100 text-gray-700'
 }
 
 // File handles
@@ -589,8 +828,8 @@ const handleFileChange = (e, type) => {
   }
 }
 
-// Modals management
-const openConfigModal = () => configDialog.value.showModal()
+// Modals & Navigation management
+const openConfigModal = () => router.push('/master-data/asset-definitions')
 const closeConfigModal = () => {
   configDialog.value.close()
   newCategory.value = ''
@@ -614,7 +853,13 @@ const openAddModal = () => {
     lifetime_months: 60,
     notes: '',
     invoice_path: null,
-    warranty_path: null
+    warranty_path: null,
+    mac_address: '',
+    ip_address: '',
+    cpu_model: '',
+    ram_gb: null,
+    disk_gb: null,
+    os_version: ''
   }
   assetDialog.value.showModal()
 }
@@ -697,6 +942,12 @@ const saveAsset = async () => {
     formData.append('purchase_date', assetForm.value.purchase_date || '')
     formData.append('lifetime_months', assetForm.value.lifetime_months || 60)
     formData.append('notes', assetForm.value.notes || '')
+    formData.append('mac_address', assetForm.value.mac_address || '')
+    formData.append('ip_address', assetForm.value.ip_address || '')
+    formData.append('cpu_model', assetForm.value.cpu_model || '')
+    formData.append('ram_gb', assetForm.value.ram_gb || '')
+    formData.append('disk_gb', assetForm.value.disk_gb || '')
+    formData.append('os_version', assetForm.value.os_version || '')
     
     if (invoiceFile.value) {
       formData.append('invoice', invoiceFile.value)
@@ -763,6 +1014,200 @@ const getActionLabel = (action) => {
     'CHECKIN': 'Zimmet iade edildi / Depoya çekildi.'
   }
   return map[action] || action
+}
+
+const downloadTemplate = () => {
+  const ws = XLSX.utils.json_to_sheet([
+    {
+      'Seri No': 'S123456789',
+      'Barkod': 'B987654321',
+      'Kategori': 'Laptop',
+      'Marka': 'Dell',
+      'Model': 'Latitude 5420',
+      'Şirket': 'Talay Logistics',
+      'Alış Fiyatı': 15000,
+      'Alış Tarihi': '2025-01-15',
+      'Ömür (Ay)': 60,
+      'Durum': 'Depoda (Boşta)',
+      'Açıklama': 'Genel kullanım için alındı.'
+    }
+  ])
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Sablon')
+  XLSX.writeFile(wb, 'Cihaz_Iceri_Aktarma_Sablonu.xlsx')
+}
+
+const handleExcelImport = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = async (evt) => {
+    try {
+      assetStore.loading = true
+      const data = new Uint8Array(evt.target.result)
+      const workbook = XLSX.read(data, { type: 'array' })
+      const sheetName = workbook.SheetNames[0]
+      const sheet = workbook.Sheets[sheetName]
+      const rows = XLSX.utils.sheet_to_json(sheet)
+
+      if (rows.length === 0) {
+        showToast('Excel dosyasında veri bulunamadı.', 'warning')
+        return
+      }
+
+      let successCount = 0
+      let errorCount = 0
+      let lastErrorMessage = ''
+
+      const getVal = (row, ...keys) => {
+        for (const k of keys) {
+          const foundKey = Object.keys(row).find(rk => rk.trim().toLowerCase() === k.toLowerCase())
+          if (foundKey) return row[foundKey]
+        }
+        return null
+      }
+
+      for (const row of rows) {
+        try {
+          const serialNo = String(getVal(row, 'Seri No', 'SerialNo', 'Serial No') || '').trim()
+          if (!serialNo) {
+            console.warn('Seri No bulunmayan satır atlandı:', row)
+            continue
+          }
+
+          // 1. Kategori
+          let categoryId = null
+          const catName = String(getVal(row, 'Kategori', 'Category') || '').trim()
+          if (catName) {
+            let cat = assetStore.metadata.categories.find(c => c.name.toLowerCase() === catName.toLowerCase())
+            if (!cat) {
+              const newCat = await assetStore.addCategory(catName)
+              categoryId = newCat.id
+            } else {
+              categoryId = cat.id
+            }
+          }
+
+          // 2. Marka
+          let brandId = null
+          const brandName = String(getVal(row, 'Marka', 'Brand') || '').trim()
+          if (brandName) {
+            let brnd = assetStore.metadata.brands.find(b => b.name.toLowerCase() === brandName.toLowerCase())
+            if (!brnd) {
+              const newBrnd = await assetStore.addBrand(brandName)
+              brandId = newBrnd.id
+            } else {
+              brandId = brnd.id
+            }
+          }
+
+          // 3. Model
+          let modelId = null
+          const modelName = String(getVal(row, 'Model', 'ModelName', 'Model Name') || '').trim()
+          if (modelName && categoryId && brandId) {
+            let mdl = assetStore.metadata.models.find(m => 
+              m.name.toLowerCase() === modelName.toLowerCase() && 
+              m.category_id === categoryId && 
+              m.brand_id === brandId
+            )
+            if (!mdl) {
+              const newMdl = await assetStore.addModel({
+                name: modelName,
+                category_id: categoryId,
+                brand_id: brandId
+              })
+              modelId = newMdl.id
+            } else {
+              modelId = mdl.id
+            }
+          }
+
+          if (!modelId) {
+            throw new Error(`Kategori/Marka/Model bilgileri geçersiz veya eksik: ${catName} / ${brandName} / ${modelName}`)
+          }
+
+          // 4. Şirket
+          let companyId = null
+          const companyName = String(getVal(row, 'Şirket', 'Company') || '').trim()
+          if (companyName) {
+            let comp = masterData.companies.find(c => c.name.toLowerCase() === companyName.toLowerCase())
+            if (!comp) {
+              const newComp = await masterData.createItem('companies', { name: companyName })
+              companyId = newComp.id
+              await masterData.fetchCompanies() // Yenile
+            } else {
+              companyId = comp.id
+            }
+          }
+
+          if (!companyId) {
+            if (masterData.companies.length > 0) {
+              companyId = masterData.companies[0].id
+            } else {
+              throw new Error('Sistemde tanımlı hiçbir şirket bulunamadı.')
+            }
+          }
+
+          // 5. Durum (Status)
+          let statusId = null
+          const statusName = String(getVal(row, 'Durum', 'Status') || '').trim()
+          if (statusName) {
+            let stat = assetStore.metadata.statuses.find(s => s.name.toLowerCase() === statusName.toLowerCase())
+            if (stat) statusId = stat.id
+          }
+          if (!statusId) {
+            const defaultStat = assetStore.metadata.statuses.find(s => s.name.includes('Depo') || s.name.includes('Boşta'))
+            statusId = defaultStat ? defaultStat.id : (assetStore.metadata.statuses[0]?.id || 1)
+          }
+
+          // 6. Diğer alanlar
+          const barcode = String(getVal(row, 'Barkod', 'Barcode') || '').trim()
+          const purchasePrice = parseFloat(getVal(row, 'Alış Fiyatı', 'Purchase Price', 'Price') || 0)
+          const purchaseDate = getVal(row, 'Alış Tarihi', 'Purchase Date', 'Date') || null
+          const lifetimeMonths = parseInt(getVal(row, 'Ömür', 'Lifetime', 'Ömür (Ay)') || 60)
+          const notes = String(getVal(row, 'Açıklama', 'Not', 'Notes', 'Notes') || '').trim()
+
+          // Payload oluştur
+          const formData = new FormData()
+          formData.append('serial_no', serialNo)
+          formData.append('barcode', barcode)
+          formData.append('model_id', modelId)
+          formData.append('status_id', statusId)
+          formData.append('company_id', companyId)
+          formData.append('purchase_price', purchasePrice)
+          formData.append('purchase_date', purchaseDate || '')
+          formData.append('lifetime_months', lifetimeMonths)
+          formData.append('notes', notes)
+
+          await assetStore.addAsset(formData)
+          successCount++
+        } catch (err) {
+          console.error('Satır işlenirken hata:', err)
+          errorCount++
+          lastErrorMessage = err.message || 'Bilinmeyen hata'
+        }
+      }
+
+      if (successCount > 0) {
+        showToast(`${successCount} cihaz başarıyla envantere aktarıldı.`, 'success')
+      }
+      if (errorCount > 0) {
+        showToast(`${errorCount} cihaz yüklenirken hata oluştu. Son Hata: ${lastErrorMessage}`, 'error', 5000)
+      }
+      
+      // Veriyi yenileyelim
+      await assetStore.fetchAssets()
+      await assetStore.fetchFinancialSummary()
+    } catch (excelErr) {
+      console.error(excelErr)
+      showToast('Excel dosyası okunurken hata oluştu.', 'error')
+    } finally {
+      assetStore.loading = false
+      e.target.value = '' // Reset input
+    }
+  }
+  reader.readAsArrayBuffer(file)
 }
 </script>
 

@@ -84,6 +84,7 @@ export default {
       },
     },
   },
+  darkMode: 'class',
   plugins: [daisyui],
   daisyui: {
     themes: [
@@ -96,6 +97,15 @@ export default {
           "base-200": "#f8f9fa",
           "base-300": "#f1f3f4",
           "base-content": "#202124",
+        },
+        dark: {
+          ...require("daisyui/src/theming/themes")["dark"],
+          primary: "#8ab4f8",
+          "primary-content": "#202124",
+          "base-100": "#202124",
+          "base-200": "#292a2d",
+          "base-300": "#3c4043",
+          "base-content": "#e8eaed",
         },
       },
     ],

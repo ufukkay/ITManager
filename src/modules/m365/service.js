@@ -91,6 +91,106 @@ class M365Service {
     transaction();
     return true;
   }
+
+  getOptimizationRecommendations() {
+    const sql = `
+      SELECT 
+        mau.id as allocation_user_id,
+        mau.allocation_id,
+        mau.personnel_id,
+        mau.last_activity_date,
+        mau.mail_active,
+        mau.teams_active,
+        p.first_name,
+        p.last_name,
+        p.email,
+        c.name as company_name,
+        ml.name as license_name,
+        ml.unit_price,
+        ml.currency
+      FROM m365_allocation_users mau
+      JOIN m365_allocations ma ON mau.allocation_id = ma.id
+      JOIN m365_licenses ml ON ma.license_id = ml.id
+      JOIN personnel p ON mau.personnel_id = p.id
+      JOIN companies c ON ma.company_id = c.id
+    `;
+    
+    const users = db.prepare(sql).all();
+    const recommendations = [];
+    let totalSavings = 0;
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    users.forEach(user => {
+      let isInactive = false;
+      let reason = '';
+      
+      const lastActivity = user.last_activity_date ? new Date(user.last_activity_date) : null;
+
+      // Rule 1: No activity for over 30 days
+      if (!lastActivity || lastActivity < thirtyDaysAgo) {
+        isInactive = true;
+        const days = lastActivity 
+          ? Math.floor((new Date() - lastActivity) / (1000 * 60 * 60 * 24))
+          : '30+';
+        reason = `Pasif Kullanıcı (${days} gündür işlem yapmadı)`;
+      } 
+      // Rule 2: Active recently but BOTH mail and teams are unused
+      else if (user.mail_active === 0 && user.teams_active === 0) {
+        isInactive = true;
+        reason = 'Atıl Lisans (E-Posta ve Teams servisleri inaktif)';
+      }
+
+      if (isInactive) {
+        const potentialSavings = user.unit_price || 0;
+        totalSavings += potentialSavings;
+
+        recommendations.push({
+          id: user.allocation_user_id,
+          personnelId: user.personnel_id,
+          name: `${user.first_name} ${user.last_name}`,
+          email: user.email,
+          companyName: user.company_name,
+          licenseName: user.license_name,
+          lastActivity: user.last_activity_date,
+          reason: reason,
+          monthlyCost: user.unit_price,
+          currency: user.currency || 'USD',
+          allocationId: user.allocation_id
+        });
+      }
+    });
+
+    return {
+      recommendations,
+      totalSavings: parseFloat(totalSavings.toFixed(2)),
+      currency: 'USD'
+    };
+  }
+
+  removeAllocationUser(allocationUserId) {
+    const transaction = db.transaction(() => {
+      const row = db.prepare("SELECT allocation_id FROM m365_allocation_users WHERE id = ?").get(allocationUserId);
+      if (row) {
+        db.prepare("DELETE FROM m365_allocation_users WHERE id = ?").run(allocationUserId);
+        
+        db.prepare(`
+          UPDATE m365_allocations 
+          SET quantity = (
+            SELECT COUNT(*) 
+            FROM m365_allocation_users 
+            WHERE m365_allocation_users.allocation_id = ?
+          ) 
+          WHERE id = ?
+        `).run(row.allocation_id, row.allocation_id);
+        return true;
+      }
+      return false;
+    });
+
+    return transaction();
+  }
 }
 
 module.exports = new M365Service();

@@ -1,6 +1,19 @@
 const imaps = require('imap-simple');
 const simpleParser = require('mailparser').simpleParser;
 const { db } = require('../database/db');
+const path = require('path');
+
+function extractPeriod(filename, subject, emailDate) {
+    const periodRegex = /(20\d{2})[-_\s]?(0[1-9]|1[0-2])/;
+    let match = filename?.match(periodRegex);
+    if (match) return `${match[1]}-${match[2]}`;
+    
+    match = subject?.match(periodRegex);
+    if (match) return `${match[1]}-${match[2]}`;
+    
+    const date = emailDate ? new Date(emailDate) : new Date();
+    return date.toISOString().slice(0, 7);
+}
 
 class MailFetcherService {
     constructor() {
@@ -150,6 +163,79 @@ class MailFetcherService {
                             fs.writeFileSync(savePath, att.content);
                             
                             insertAtt.run(ticketId, messageId, fileName, '/uploads/helpdesk/' + saveName, att.contentType);
+
+                            // Fatura Kontrol ve Otomatik Entegrasyon
+                            const isPDF = fileName.toLowerCase().endsWith('.pdf');
+                            const isXML = fileName.toLowerCase().endsWith('.xml');
+                            const looksLikeInvoice = fileName.toLowerCase().includes('fatura') || 
+                                                     fileName.toLowerCase().includes('invoice') || 
+                                                     fileName.toLowerCase().includes('turkcell') || 
+                                                     fileName.toLowerCase().includes('vodafone') || 
+                                                     fileName.toLowerCase().includes('telekom') ||
+                                                     subject.toLowerCase().includes('fatura') ||
+                                                     subject.toLowerCase().includes('invoice');
+
+                            if ((isPDF || isXML) && looksLikeInvoice) {
+                                try {
+                                    console.log(`Fatura eki algılandı, otomatik işleniyor: ${fileName}`);
+                                    let operator = 'Bilinmeyen Operatör';
+                                    const lowerName = fileName.toLowerCase();
+                                    const lowerSubject = subject.toLowerCase();
+                                    if (lowerName.includes('vodafone') || lowerSubject.includes('vodafone')) {
+                                        operator = 'Vodafone';
+                                    } else if (lowerName.includes('turkcell') || lowerSubject.includes('turkcell')) {
+                                        operator = 'Turkcell';
+                                    } else if (lowerName.includes('telekom') || lowerSubject.includes('telekom')) {
+                                        operator = 'Türk Telekom';
+                                    }
+
+                                    const period = extractPeriod(fileName, subject, mail.date);
+                                    let extractedRecords = [];
+
+                                    if (isPDF) {
+                                        const { parseInvoicePDF } = require('../modules/simcardtracking/services/invoiceParser');
+                                        extractedRecords = await parseInvoicePDF(att.content);
+                                    } else if (isXML) {
+                                        const { parseInvoiceXML } = require('../modules/simcardtracking/services/ublParser');
+                                        extractedRecords = await parseInvoiceXML(att.content);
+                                    }
+
+                                    if (extractedRecords && extractedRecords.length > 0) {
+                                        const { findPersonnelByPhone } = require('../modules/simcardtracking/services/invoiceMatcher');
+                                        const MasterDataService = require('../modules/core/service');
+
+                                        db.transaction(() => {
+                                            // Aynı dosyanın tekrar yüklenmesi durumunda önceki kayıtları temizle
+                                            db.prepare('DELETE FROM invoices WHERE period = ? AND operator = ? AND source_file = ?')
+                                              .run(period, operator, fileName);
+
+                                            for (const rec of extractedRecords) {
+                                                const match = findPersonnelByPhone(rec.phoneNo);
+
+                                                MasterDataService.insertInvoiceRecord({
+                                                    invoice_type: 'gsm',
+                                                    operator: operator,
+                                                    period: period,
+                                                    phone_no: rec.phoneNo,
+                                                    personnel_id: match.personnel_id,
+                                                    company_id: match.company_id,
+                                                    cost_center_id: match.cost_center_id,
+                                                    source_file: fileName,
+                                                    tariff: match.tariff || rec.tariff || '',
+                                                    amount: rec.amount,
+                                                    tax_kdv: rec.tax_kdv,
+                                                    tax_oiv: rec.tax_oiv,
+                                                    total_amount: rec.total_amount,
+                                                    is_matched: match.isMatched ? 1 : 0
+                                                });
+                                            }
+                                        })();
+                                        console.log(`Fatura e-postası başarıyla aktarıldı: ${extractedRecords.length} kayıt, ${operator} / ${period}`);
+                                    }
+                                } catch (err) {
+                                    console.error(`Fatura eki işleme hatası (${fileName}):`, err);
+                                }
+                            }
                         }
                     }
 

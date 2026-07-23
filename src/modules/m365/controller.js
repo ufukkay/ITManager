@@ -23,6 +23,34 @@ class M365Controller {
     }
   }
 
+  async getRecommendations(req, res) {
+    try {
+      const data = m365Service.getOptimizationRecommendations();
+      res.json(data);
+    } catch (error) {
+      console.error("[M365Controller] getRecommendations Error:", error);
+      res.status(500).json({ error: "Öneriler alınırken hata oluştu" });
+    }
+  }
+
+  async applyRecommendation(req, res) {
+    try {
+      const { id } = req.body;
+      if (!id) {
+        return res.status(400).json({ error: "Kimlik (id) belirtilmedi" });
+      }
+      const success = m365Service.removeAllocationUser(id);
+      if (success) {
+        res.json({ success: true, message: "İnaktif lisans başarıyla iptal edildi." });
+      } else {
+        res.status(404).json({ error: "Öneri bulunamadı veya daha önce uygulanmış." });
+      }
+    } catch (error) {
+      console.error("[M365Controller] applyRecommendation Error:", error);
+      res.status(500).json({ error: "Öneri uygulanırken hata oluştu" });
+    }
+  }
+
 }
 
 module.exports = new M365Controller();

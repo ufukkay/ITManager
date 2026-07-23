@@ -9,7 +9,8 @@ const menuSections = [
   {
     title: 'Genel',
     items: [
-      { name: 'Kumanda Paneli', icon: 'fa-chart-line', path: '/master-data' }
+      { name: 'Kumanda Paneli', icon: 'fa-chart-line', path: '/master-data' },
+      { name: 'Aktivite Günlüğü', icon: 'fa-history', path: '/master-data/audit-logs' }
     ]
   },
   {
@@ -17,6 +18,7 @@ const menuSections = [
     items: [
       { name: 'Personel Listesi', icon: 'fa-users', path: '/master-data/personnel' },
       { name: 'Organizasyon Yapısı', icon: 'fa-sitemap', path: '/master-data/organization' },
+      { name: 'Envanter Tanımları', icon: 'fa-boxes', path: '/master-data/asset-definitions' },
       { name: 'Araç Envanteri', icon: 'fa-truck-moving', path: '/master-data/vehicles' },
       { name: 'Lokasyonlar', icon: 'fa-map-marker-alt', path: '/master-data/locations' },
       { name: 'Sunucu Envanteri', icon: 'fa-server', path: '/master-data/servers' },
@@ -24,6 +26,7 @@ const menuSections = [
       { name: 'Operatör & Paketler', icon: 'fa-hand-holding-heart', path: '/master-data/services' },
       { name: 'Yazılım Lisansları', icon: 'fa-key', path: '/master-data/licensing' },
       { name: 'IT Destek Ayarları', icon: 'fa-headset', path: '/master-data/helpdesk-settings' },
+      { name: 'M365 / AD Entegrasyonu', icon: 'fa-sync-alt', path: '/master-data/m365-settings' },
       { name: 'SMTP & Mail Ayarları', icon: 'fa-envelope', path: '/master-data/smtp-settings' }
     ]
   }

@@ -156,6 +156,49 @@ const initDb = () => {
     )
   `).run();
 
+  // Thermal Label Templates & Mobile Audit Tables
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS label_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        width_mm REAL DEFAULT 70.0,
+        height_mm REAL DEFAULT 35.0,
+        config_json TEXT NOT NULL,
+        is_default INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS asset_audits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        asset_id INTEGER NOT NULL,
+        audited_by INTEGER,
+        audited_by_name TEXT,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
+    )
+  `).run();
+
+  // Seed default 70x35mm Thermal Template if empty
+  const tCount = db.prepare('SELECT COUNT(*) as c FROM label_templates').get().c;
+  if (tCount === 0) {
+    const defaultConfig = JSON.stringify({
+      width_mm: 70,
+      height_mm: 35,
+      elements: [
+        { id: 'company', type: 'company', label: 'Şirket Adı', x: 5, y: 4, fontSize: 10, fontWeight: 'extrabold', color: '#000000' },
+        { id: 'qr', type: 'qr', label: 'QR Kod (Mobil Audit Linki)', x: 5, y: 28, size: 75 },
+        { id: 'model', type: 'model', label: 'Marka & Model', x: 34, y: 30, fontSize: 12, fontWeight: 'extrabold', color: '#000000' },
+        { id: 'serial', type: 'serial', label: 'Seri Numarası', x: 34, y: 54, fontSize: 11, fontWeight: 'bold', color: '#1e40af' },
+        { id: 'barcode', type: 'barcode_text', label: 'Envanter No', x: 34, y: 74, fontSize: 10.5, fontWeight: 'bold', color: '#000000' },
+        { id: 'barcode1d', type: 'barcode1d', label: '1D Lazer Barkod', x: 5, y: 88, height: 22 }
+      ]
+    });
+    db.prepare('INSERT INTO label_templates (name, width_mm, height_mm, config_json, is_default) VALUES (?, ?, ?, ?, ?)').run('Standart 70x35mm Termal Rulo', 70.0, 35.0, defaultConfig, 1);
+  }
+
   // HR Requests table (Personnel Entry/Exit)
   // Check for old schema and drop if found (Normalization)
   try {
@@ -569,12 +612,26 @@ const initDb = () => {
     }
   } catch (e) { console.log("m365_allocations FK migration skipped:", e.message); }
   
-  // Migration for m365_allocation_users (Adding personnel_id if missing)
+  // Migration for m365_allocation_users (Adding personnel_id, last_activity_date, mail_active, teams_active if missing)
   try {
     const columns = db.prepare("PRAGMA table_info(m365_allocation_users)").all();
-    if (columns.length > 0 && !columns.some(c => c.name === 'personnel_id')) {
-        console.log("Adding personnel_id to m365_allocation_users table...");
-        db.prepare("ALTER TABLE m365_allocation_users ADD COLUMN personnel_id INTEGER REFERENCES personnel(id)").run();
+    if (columns.length > 0) {
+        if (!columns.some(c => c.name === 'personnel_id')) {
+            console.log("Adding personnel_id to m365_allocation_users table...");
+            db.prepare("ALTER TABLE m365_allocation_users ADD COLUMN personnel_id INTEGER REFERENCES personnel(id)").run();
+        }
+        if (!columns.some(c => c.name === 'last_activity_date')) {
+            console.log("Adding last_activity_date to m365_allocation_users table...");
+            db.prepare("ALTER TABLE m365_allocation_users ADD COLUMN last_activity_date DATETIME").run();
+        }
+        if (!columns.some(c => c.name === 'mail_active')) {
+            console.log("Adding mail_active to m365_allocation_users table...");
+            db.prepare("ALTER TABLE m365_allocation_users ADD COLUMN mail_active INTEGER DEFAULT 1").run();
+        }
+        if (!columns.some(c => c.name === 'teams_active')) {
+            console.log("Adding teams_active to m365_allocation_users table...");
+            db.prepare("ALTER TABLE m365_allocation_users ADD COLUMN teams_active INTEGER DEFAULT 1").run();
+        }
     }
   } catch (e) { console.log("m365_allocation_users migration skipped:", e.message); }
   
@@ -584,7 +641,23 @@ const initDb = () => {
         allocation_id INTEGER,
         personnel_id INTEGER REFERENCES personnel(id),
         user_name TEXT, -- Legacy support during transit
+        last_activity_date DATETIME,
+        mail_active INTEGER DEFAULT 1,
+        teams_active INTEGER DEFAULT 1,
         FOREIGN KEY (allocation_id) REFERENCES m365_allocations(id) ON DELETE CASCADE
+    )
+  `).run();
+
+  // Entra ID Settings table
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS entra_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tenant_id TEXT,
+        client_id TEXT,
+        client_secret TEXT,
+        is_active INTEGER DEFAULT 0,
+        sync_interval_minutes INTEGER DEFAULT 60,
+        last_sync DATETIME
     )
   `).run();
 
@@ -652,6 +725,30 @@ const initDb = () => {
       if (!columns.some(c => c.name === 'warranty_path')) {
         console.log("Adding warranty_path to assets table...");
         db.prepare("ALTER TABLE assets ADD COLUMN warranty_path TEXT").run();
+      }
+      if (!columns.some(c => c.name === 'mac_address')) {
+        console.log("Adding mac_address to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN mac_address TEXT").run();
+      }
+      if (!columns.some(c => c.name === 'ip_address')) {
+        console.log("Adding ip_address to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN ip_address TEXT").run();
+      }
+      if (!columns.some(c => c.name === 'cpu_model')) {
+        console.log("Adding cpu_model to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN cpu_model TEXT").run();
+      }
+      if (!columns.some(c => c.name === 'ram_gb')) {
+        console.log("Adding ram_gb to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN ram_gb INTEGER").run();
+      }
+      if (!columns.some(c => c.name === 'disk_gb')) {
+        console.log("Adding disk_gb to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN disk_gb INTEGER").run();
+      }
+      if (!columns.some(c => c.name === 'os_version')) {
+        console.log("Adding os_version to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN os_version TEXT").run();
       }
     }
   } catch (e) { console.log("assets migration skipped:", e.message); }
@@ -820,6 +917,16 @@ const initDb = () => {
     )
   `).run();
 
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS helpdesk_csat (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER UNIQUE REFERENCES helpdesk_tickets(id) ON DELETE CASCADE,
+        score INTEGER NOT NULL CHECK(score >= 1 AND score <= 5),
+        feedback TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
   // Helpdesk Migrations
   try {
     const columns = db.prepare("PRAGMA table_info(helpdesk_tickets)").all();
@@ -846,6 +953,108 @@ const initDb = () => {
       }
     }
   } catch (e) { console.log("helpdesk_tickets migration skipped:", e.message); }
+
+  // Personnel table migrations
+  try {
+    const personnelCols = db.prepare("PRAGMA table_info(personnel)").all();
+    if (personnelCols.length > 0) {
+      if (!personnelCols.some(c => c.name === 'entra_id')) {
+        console.log("Adding entra_id to personnel table...");
+        db.prepare("ALTER TABLE personnel ADD COLUMN entra_id TEXT").run();
+      }
+      if (!personnelCols.some(c => c.name === 'source')) {
+        console.log("Adding source to personnel table...");
+        db.prepare("ALTER TABLE personnel ADD COLUMN source TEXT DEFAULT 'manual'").run();
+      }
+      
+      // Assign employee_id to personnel where it is NULL
+      const nullEmp = db.prepare("SELECT id FROM personnel WHERE employee_id IS NULL ORDER BY id").all();
+      if (nullEmp.length > 0) {
+        console.log(`Veritabanında ${nullEmp.length} adet Sicil No bulunmayan personel tespit edildi. Otomatik atanıyor...`);
+        const lastRow = db.prepare("SELECT MAX(employee_id) as max_id FROM personnel").get();
+        let nextEmpId = Math.max(lastRow.max_id || 999, 999) + 1;
+        const updateEmpStmt = db.prepare("UPDATE personnel SET employee_id = ? WHERE id = ?");
+        db.transaction(() => {
+          for (const p of nullEmp) {
+            updateEmpStmt.run(nextEmpId++, p.id);
+          }
+        })();
+        console.log("Sicil numaraları başarıyla atandı.");
+      }
+    }
+  } catch (e) { console.log("Personnel migration skipped:", e.message); }
+
+  // m365_licenses table migrations
+  try {
+    const licCols = db.prepare("PRAGMA table_info(m365_licenses)").all();
+    if (licCols.length > 0) {
+      if (!licCols.some(c => c.name === 'sku_id')) {
+        console.log("Adding sku_id to m365_licenses table...");
+        db.prepare("ALTER TABLE m365_licenses ADD COLUMN sku_id TEXT").run();
+      }
+      if (!licCols.some(c => c.name === 'sku_part_number')) {
+        console.log("Adding sku_part_number to m365_licenses table...");
+        db.prepare("ALTER TABLE m365_licenses ADD COLUMN sku_part_number TEXT").run();
+      }
+      if (!licCols.some(c => c.name === 'consumed_units')) {
+        console.log("Adding consumed_units to m365_licenses table...");
+        db.prepare("ALTER TABLE m365_licenses ADD COLUMN consumed_units INTEGER DEFAULT 0").run();
+      }
+    }
+  } catch (e) { console.log("m365_licenses migration skipped:", e.message); }
+
+  // Entra settings table migrations
+  try {
+    const entraCols = db.prepare("PRAGMA table_info(entra_settings)").all();
+    if (entraCols.length > 0) {
+      if (!entraCols.some(c => c.name === 'allowed_domains')) {
+        console.log("Adding allowed_domains to entra_settings table...");
+        db.prepare("ALTER TABLE entra_settings ADD COLUMN allowed_domains TEXT DEFAULT '[\"talay.com\"]'").run();
+      }
+      if (!entraCols.some(c => c.name === 'domain_company_map')) {
+        console.log("Adding domain_company_map to entra_settings table...");
+        db.prepare("ALTER TABLE entra_settings ADD COLUMN domain_company_map TEXT DEFAULT '{}'").run();
+      }
+    }
+  } catch (e) { console.log("Entra settings migration skipped:", e.message); }
+
+  // Entra settings table (ensure it exists)
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS entra_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tenant_id TEXT,
+        client_id TEXT,
+        client_secret TEXT,
+        is_active INTEGER DEFAULT 0,
+        sync_interval_minutes INTEGER DEFAULT 60,
+        last_sync DATETIME,
+        allowed_domains TEXT DEFAULT '["talay.com"]',
+        domain_company_map TEXT DEFAULT '{}'
+    )
+  `).run();
+
+  // Thermal Label & Zimmet Form Templates
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS label_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        width_mm REAL DEFAULT 70,
+        height_mm REAL DEFAULT 35,
+        elements_json TEXT NOT NULL,
+        is_default INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS zimmet_form_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        elements_json TEXT NOT NULL,
+        is_default INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
 
   console.log("Veritabanı tabloları hazır.");
 
@@ -915,7 +1124,17 @@ const seedInitialData = () => {
     });
 
     // Seed Asset Statuses
-    const statuses = ['Depoda (Boşta)', 'Zimmetlendi (Kullanımda)', 'Arızalı', 'Hurda', 'Bakımda / Serviste'];
+    const statuses = [
+        'Depoda (Boşta / Atanabilir)',
+        'Zimmetlendi (Kullanımda)',
+        'Hazırlık Aşamasında (Kurulum / Image)',
+        'Yedek Cihaz (Standby / Kit)',
+        'Bakımda / Serviste (Tedarikçi Firma)',
+        'Arızalı (Tamir Bekliyor)',
+        'Kayıp / Çalındı',
+        'Hurda (İmha Edilecek)',
+        'Arşivlendi (Kullanım Dışı)'
+    ];
     statuses.forEach(s => {
         db.prepare('INSERT OR IGNORE INTO asset_statuses (name) VALUES (?)').run(s);
     });

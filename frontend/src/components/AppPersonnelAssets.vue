@@ -61,7 +61,7 @@ watch(() => props.personnelId, fetchPersonnelAssets)
         <table class="w-full text-left text-[12.5px]">
           <thead class="bg-gray-50 text-gray-400 uppercase text-[9.5px] font-bold">
             <tr>
-              <th class="px-4 py-2.5">Seri No / Barkod</th>
+              <th class="px-4 py-2.5">Seri No / Envanter No</th>
               <th class="px-4 py-2.5">Cihaz Bilgisi</th>
               <th class="px-4 py-2.5">Alış Bedeli</th>
               <th class="px-4 py-2.5">Alış Tarihi</th>

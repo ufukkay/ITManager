@@ -378,6 +378,12 @@ exports.updateStatus = (req, res) => {
                   <p style="margin: 0; font-weight: bold; color: #137333;">Çözüm Açıklaması:</p>
                   <p style="margin: 10px 0 0 0; color: #137333; white-space: pre-wrap;">${resolution_note}</p>
                 </div>
+                
+                <div style="text-align: center; margin: 25px 0;">
+                  <p style="font-size: 13px; color: #5f6368; margin-bottom: 12px;">Hizmet kalitemizi değerlendirmek için lütfen aşağıdaki butona tıklayın:</p>
+                  <a href="http://localhost:5173/feedback/${ticket.id}" style="background-color: #1a73e8; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; font-size: 14px; border-radius: 6px; display: inline-block; shadow: 0 2px 4px rgba(0,0,0,0.1);">Hizmet Kalitesini Değerlendir</a>
+                </div>
+
                 <p style="font-size: 12px; color: #5f6368;">
                   Eğer sorununuz devam ediyorsa, bu e-postaya yanıt vererek veya sistem üzerinden talebinizi tekrar açabilirsiniz.
                 </p>
@@ -820,5 +826,99 @@ exports.deleteChecklistItem = (req, res) => {
     } catch (err) {
         console.error('deleteChecklistItem error:', err);
         res.status(500).json({ error: 'Silme başarısız.' });
+    }
+};
+
+exports.submitFeedback = (req, res) => {
+    try {
+        const { id } = req.params;
+        const { score, feedback } = req.body;
+
+        if (!score || score < 1 || score > 5) {
+            return res.status(400).json({ error: 'Lütfen 1-5 arasında bir memnuniyet puanı verin.' });
+        }
+
+        // Check if ticket exists
+        const ticket = db.prepare('SELECT id, status FROM helpdesk_tickets WHERE id = ?').get(id);
+        if (!ticket) {
+            return res.status(404).json({ error: 'Talep bulunamadı.' });
+        }
+
+        // Insert or replace CSAT feedback
+        db.prepare(`
+            INSERT OR REPLACE INTO helpdesk_csat (ticket_id, score, feedback)
+            VALUES (?, ?, ?)
+        `).run(id, score, feedback || '');
+
+        res.json({ success: true, message: 'Geri bildiriminiz başarıyla kaydedildi. Teşekkür ederiz!' });
+    } catch (err) {
+        console.error('submitFeedback error:', err);
+        res.status(500).json({ error: 'Geri bildirim kaydedilirken bir hata oluştu.' });
+    }
+};
+
+exports.getCSATReport = (req, res) => {
+    try {
+        const stats = db.prepare(`
+            SELECT 
+                AVG(score) as avgScore,
+                COUNT(*) as totalRatings
+            FROM helpdesk_csat
+        `).get();
+
+        const distributionRaw = db.prepare(`
+            SELECT score, COUNT(*) as count 
+            FROM helpdesk_csat 
+            GROUP BY score
+        `).all();
+
+        const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        distributionRaw.forEach(d => {
+            distribution[d.score] = d.count;
+        });
+
+        const ratings = db.prepare(`
+            SELECT 
+                c.id,
+                c.ticket_id,
+                c.score,
+                c.feedback,
+                c.created_at,
+                t.ticket_no,
+                t.title as ticket_title,
+                u.full_name as user_name
+            FROM helpdesk_csat c
+            JOIN helpdesk_tickets t ON c.ticket_id = t.id
+            LEFT JOIN users u ON t.user_id = u.id
+            ORDER BY c.created_at DESC
+            LIMIT 50
+        `).all();
+
+        res.json({
+            success: true,
+            stats: {
+                avgScore: stats.avgScore ? parseFloat(stats.avgScore.toFixed(2)) : 0,
+                totalRatings: stats.totalRatings || 0
+            },
+            distribution,
+            ratings
+        });
+    } catch (err) {
+        console.error('getCSATReport error:', err);
+        res.status(500).json({ error: 'Rapor yüklenirken bir hata oluştu.' });
+    }
+};
+
+exports.getPublicTicketInfo = (req, res) => {
+    try {
+        const { id } = req.params;
+        const ticket = db.prepare('SELECT ticket_no, title FROM helpdesk_tickets WHERE id = ?').get(id);
+        if (!ticket) {
+            return res.status(404).json({ error: 'Talep bulunamadı.' });
+        }
+        res.json({ success: true, ticket_no: ticket.ticket_no, title: ticket.title });
+    } catch (err) {
+        console.error('getPublicTicketInfo error:', err);
+        res.status(500).json({ error: 'Bilgiler alınamadı.' });
     }
 };

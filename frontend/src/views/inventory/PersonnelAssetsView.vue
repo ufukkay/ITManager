@@ -7,22 +7,53 @@
         <h1 class="text-[15px] font-bold text-gray-900">Personel Zimmet Özeti</h1>
       </div>
 
-      <!-- Search -->
+      <!-- Search & Filter Controls -->
       <div class="flex items-center gap-2 ml-4 flex-1">
         <input
           v-model="searchQuery"
           type="text"
           placeholder="Personel adı veya şirkete göre ara..."
-          class="h-8 px-3 bg-gray-50 border border-gray-200 rounded text-[12px] font-medium text-gray-700 outline-none focus:border-blue-500 w-72"
+          class="h-8 px-3 bg-gray-50 border border-gray-200 rounded text-[12px] font-medium text-gray-700 outline-none focus:border-blue-500 w-64"
         />
         <select v-model="selectedCompanyId" class="h-8 px-2 bg-gray-50 border border-gray-200 rounded text-[12px] font-medium text-gray-700 outline-none focus:border-blue-500 cursor-pointer">
           <option value="">Tüm Şirketler</option>
           <option v-for="c in companies" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
+
+        <!-- Toggle Filter (Only Assigned vs All) -->
+        <div class="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg ml-2">
+          <button 
+            @click="onlyAssignedFilter = true"
+            :class="['px-2.5 py-1 rounded text-[11px] font-bold transition-all', onlyAssignedFilter ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+          >
+            Sadece Zimmetliler ({{ personnelWithAssetsCount }})
+          </button>
+          <button 
+            @click="onlyAssignedFilter = false"
+            :class="['px-2.5 py-1 rounded text-[11px] font-bold transition-all', !onlyAssignedFilter ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+          >
+            Tüm Personel
+          </button>
+        </div>
       </div>
 
-      <!-- Stats -->
-      <div class="ml-auto flex items-center gap-4 text-[12px]">
+      <!-- Stats & Batch Actions -->
+      <div class="ml-auto flex items-center gap-2 text-[12px]">
+        <RouterLink 
+          to="/master-data/form-designer" 
+          class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11.5px] rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+          title="A4 Zimmet Formunu Görsel Tasarla"
+        >
+          <i class="fas fa-file-signature"></i> A4 Form Studio
+        </RouterLink>
+        <button 
+          v-if="personnelWithAssetsCount > 0"
+          @click="openBatchPrintModal"
+          class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11.5px] rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+          title="Aktif zimmeti olan tüm personellerin formunu sırayla görüntüle/yazdır"
+        >
+          <i class="fas fa-print"></i> Toplu Zimmet Formları
+        </button>
         <span class="text-gray-400">
           <span class="font-bold text-gray-700">{{ filteredPersonnel.length }}</span> personel
         </span>
@@ -70,27 +101,36 @@
               </div>
             </div>
 
-            <!-- Asset Count Badge -->
-            <div class="flex items-center gap-3 shrink-0">
-              <div
-                v-if="personnelAssets[person.id]"
-                class="flex items-center gap-2"
-              >
-                <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-bold rounded-full">
-                  <i class="fas fa-desktop mr-1"></i>
-                  {{ personnelAssets[person.id].active?.length || 0 }} Aktif Zimmet
-                </span>
-                <span
-                  v-if="personnelAssets[person.id].totalValue > 0"
-                  class="px-2.5 py-1 bg-blue-50 text-blue-700 text-[11px] font-bold rounded-full"
+              <!-- Asset Count Badge & Actions -->
+              <div class="flex items-center gap-3 shrink-0">
+                <div
+                  v-if="personnelAssets[person.id]"
+                  class="flex items-center gap-2"
                 >
-                  {{ fmt(personnelAssets[person.id].totalValue) }}
-                </span>
-              </div>
-              <div v-else class="text-gray-300 text-[11px] italic">Yükleniyor...</div>
+                  <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-bold rounded-full">
+                    <i class="fas fa-desktop mr-1"></i>
+                    {{ personnelAssets[person.id].active?.length || 0 }} Aktif Zimmet
+                  </span>
+                  <span
+                    v-if="personnelAssets[person.id].totalValue > 0"
+                    class="px-2.5 py-1 bg-blue-50 text-blue-700 text-[11px] font-bold rounded-full"
+                  >
+                    {{ fmt(personnelAssets[person.id].totalValue) }}
+                  </span>
+                  <button
+                    v-if="personnelAssets[person.id].active?.length > 0"
+                    @click.stop="openPrintModal(person)"
+                    class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-bold rounded-lg flex items-center gap-1.5 transition-colors print:hidden"
+                    title="Zimmet Formu Yazdır"
+                  >
+                    <i class="fas fa-print text-gray-500"></i>
+                    <span>Zimmet Formu</span>
+                  </button>
+                </div>
+                <div v-else class="text-gray-300 text-[11px] italic">Yükleniyor...</div>
 
-              <i :class="['fas', expandedIds.has(person.id) ? 'fa-chevron-up' : 'fa-chevron-down', 'text-gray-400 text-[11px] transition-transform']"></i>
-            </div>
+                <i :class="['fas', expandedIds.has(person.id) ? 'fa-chevron-up' : 'fa-chevron-down', 'text-gray-400 text-[11px] transition-transform']"></i>
+              </div>
           </div>
 
           <!-- Expanded Assets Table -->
@@ -101,7 +141,7 @@
             <table v-else class="w-full text-left text-[12px]">
               <thead class="bg-gray-50 text-gray-400 uppercase text-[9.5px] font-bold border-b border-gray-100">
                 <tr>
-                  <th class="px-5 py-2.5">Seri No / Barkod</th>
+                  <th class="px-5 py-2.5">Seri No / Envanter No</th>
                   <th class="px-5 py-2.5">Cihaz Bilgisi</th>
                   <th class="px-5 py-2.5">Kategori</th>
                   <th class="px-5 py-2.5">Alış Bedeli</th>
@@ -163,12 +203,109 @@
         </div>
       </div>
     </main>
+
+    <!-- PRINT ZİMMET MODAL -->
+    <div v-if="showPrintModal && selectedPrintPerson" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 print:p-0 print:static print:bg-transparent">
+      <div class="bg-white rounded-2xl max-w-3xl w-full p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto print:max-h-none print:shadow-none print:w-full print:p-0">
+        <!-- Close & Print Action Buttons (Hidden on Print) -->
+        <div class="flex items-center justify-between border-b pb-4 mb-6 print:hidden">
+          <div class="flex items-center gap-2">
+            <i class="fas fa-file-contract text-blue-600 text-xl"></i>
+            <h2 class="text-lg font-bold text-gray-800">Zimmet Teslim ve Tesellüm Tutanağı</h2>
+          </div>
+          <div class="flex items-center gap-3">
+            <button @click="triggerPrint" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center gap-2 transition-colors">
+              <i class="fas fa-print"></i> Yazdır / PDF İndir
+            </button>
+            <button @click="showPrintModal = false" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-xs rounded-lg">
+              Kapat
+            </button>
+          </div>
+        </div>
+
+        <!-- PRINTABLE DOCUMENT AREA -->
+        <div id="zimmet-print-area" class="text-gray-800 font-sans text-xs space-y-6">
+          <!-- Document Header -->
+          <div class="text-center border-b-2 border-gray-800 pb-4">
+            <h1 class="text-xl font-bold uppercase tracking-wider text-gray-900 mb-1">ZİMMET TESLİM VE TESELLÜM TUTANAĞI</h1>
+            <p class="text-xs text-gray-500 font-medium">{{ selectedPrintPerson.company_name || 'KURUM İÇİ IT BİLİŞİM ENVALERİ' }}</p>
+          </div>
+
+          <!-- Personnel Info Table -->
+          <div class="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <div>
+              <span class="text-gray-500 block font-medium text-[11px]">PERSONEL ADI SOYADI:</span>
+              <span class="font-bold text-sm text-gray-900">{{ selectedPrintPerson.first_name }} {{ selectedPrintPerson.last_name }}</span>
+            </div>
+            <div>
+              <span class="text-gray-500 block font-medium text-[11px]">UNVAN:</span>
+              <span class="font-semibold text-gray-800">{{ selectedPrintPerson.title || '—' }}</span>
+            </div>
+            <div>
+              <span class="text-gray-500 block font-medium text-[11px]">ŞİRKET / DEPARTMAN:</span>
+              <span class="font-semibold text-gray-800">{{ selectedPrintPerson.company_name }} / {{ selectedPrintPerson.department_name || '—' }}</span>
+            </div>
+            <div>
+              <span class="text-gray-500 block font-medium text-[11px]">DÜZENLEME TARİHİ:</span>
+              <span class="font-bold text-gray-900">{{ new Date().toLocaleDateString('tr-TR') }}</span>
+            </div>
+          </div>
+
+          <!-- Assets Table -->
+          <div>
+            <h3 class="font-bold text-gray-800 mb-2 uppercase tracking-wider text-[11px]">Teslim Edilen Donanım ve Cihaz Listesi:</h3>
+            <table class="w-full border-collapse border border-gray-300 text-left">
+              <thead>
+                <tr class="bg-gray-100 border-b border-gray-300">
+                  <th class="border border-gray-300 px-3 py-2 font-bold text-[11px]">S.No</th>
+                  <th class="border border-gray-300 px-3 py-2 font-bold text-[11px]">Kategori</th>
+                  <th class="border border-gray-300 px-3 py-2 font-bold text-[11px]">Marka & Model</th>
+                  <th class="border border-gray-300 px-3 py-2 font-bold text-[11px]">Seri Numarası</th>
+                  <th class="border border-gray-300 px-3 py-2 font-bold text-[11px]">Envanter No</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(asset, idx) in (personnelAssets[selectedPrintPerson.id]?.active || [])" :key="asset.id" class="border-b border-gray-200">
+                  <td class="border border-gray-300 px-3 py-2 text-center font-bold">{{ idx + 1 }}</td>
+                  <td class="border border-gray-300 px-3 py-2">{{ asset.category_name }}</td>
+                  <td class="border border-gray-300 px-3 py-2 font-semibold">{{ asset.brand_name }} {{ asset.model_name }}</td>
+                  <td class="border border-gray-300 px-3 py-2 font-mono font-bold">{{ asset.serial_no }}</td>
+                  <td class="border border-gray-300 px-3 py-2 font-mono">{{ asset.barcode || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Legal & Commitment Terms -->
+          <div class="text-[11px] text-gray-600 leading-relaxed border p-3 rounded-lg bg-gray-50 border-gray-200">
+            <p class="font-bold mb-1 text-gray-800">Taahhütname:</p>
+            <p>Yukarıda detayları ve seri numaraları belirtilen şirket malı cihaz ve teçhizatı eksiksiz, sağlam ve çalışır vaziyette teslim aldım. Bu cihazları şirket iş süreçleri haricinde kullanmayacağımı, özenle koruyacağımı, işten ayrılma veya zimmet iptali durumunda IT departmanına eksiksiz iade edeceğimi beyan ve taahhüt ederim.</p>
+          </div>
+
+          <!-- Signatures Area -->
+          <div class="grid grid-cols-2 gap-8 pt-8 mt-6">
+            <div class="text-center border-t border-gray-300 pt-3">
+              <p class="font-bold text-gray-800 text-[11px]">TESLİM EDEN (IT DEPARTMANI)</p>
+              <p class="text-gray-400 text-[10px] mt-1">İmza & Tarih</p>
+              <div class="h-16"></div>
+            </div>
+            <div class="text-center border-t border-gray-300 pt-3">
+              <p class="font-bold text-gray-800 text-[11px]">TESLİM ALAN (PERSONEL)</p>
+              <p class="text-gray-900 font-semibold text-[11px] mt-0.5">{{ selectedPrintPerson.first_name }} {{ selectedPrintPerson.last_name }}</p>
+              <p class="text-gray-400 text-[10px]">İmza & Tarih</p>
+              <div class="h-16"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import axios from 'axios'
 import { useAssetStore } from '../../stores/assetStore'
 import { useMasterDataStore } from '../../stores/masterData'
 
@@ -178,13 +315,110 @@ const masterData = useMasterDataStore()
 const loading = ref(false)
 const searchQuery = ref('')
 const selectedCompanyId = ref('')
+const onlyAssignedFilter = ref(true)
 const expandedIds = ref(new Set())
 const personnelAssets = ref({})
+const showPrintModal = ref(false)
+const selectedPrintPerson = ref(null)
+const formTemplates = ref([])
+const activeFormTemplate = ref(null)
+
+const fetchFormTemplates = async () => {
+  try {
+    const res = await axios.get('/api/assets/form-templates')
+    formTemplates.value = res.data
+    const def = res.data.find(t => t.is_default) || res.data[0]
+    if (def) activeFormTemplate.value = def
+  } catch (err) {
+    console.error('fetchFormTemplates error:', err)
+  }
+}
 
 const companies = computed(() => masterData.companies)
 
 const fmt = (v) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(v || 0)
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('tr-TR') : '—'
+
+const openPrintModal = (person) => {
+  selectedPrintPerson.value = person
+  showPrintModal.value = true
+}
+
+const openBatchPrintModal = () => {
+  const firstPersonWithAssets = filteredPersonnel.value.find(p => personnelAssets.value[p.id]?.active?.length > 0)
+  if (firstPersonWithAssets) {
+    selectedPrintPerson.value = firstPersonWithAssets
+    showPrintModal.value = true
+  }
+}
+
+const triggerPrint = () => {
+  const printArea = document.getElementById('zimmet-print-area')
+  if (!printArea) return
+
+  const printWin = window.open('', '_blank', 'width=950,height=800')
+  if (!printWin) {
+    alert('Popup penceresi açılamadı. Lütfen tarayıcı popup iznini kontrol edin.')
+    return
+  }
+
+  printWin.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8"/>
+      <title>Zimmet Teslim ve Tesellüm Tutanağı - ${selectedPrintPerson.value?.first_name || ''} ${selectedPrintPerson.value?.last_name || ''}</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; color: #111827; background: #ffffff; padding: 20px; }
+        @page { size: A4 portrait; margin: 15mm; }
+        @media print {
+          body { padding: 0; }
+        }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .font-bold { font-weight: 700; }
+        .font-semibold { font-weight: 600; }
+        .font-mono { font-family: monospace; }
+        .uppercase { text-transform: uppercase; }
+        .tracking-wider { letter-spacing: 0.05em; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .bg-gray-50 { background-color: #f9fafb; }
+        .p-4 { padding: 16px; }
+        .p-3 { padding: 12px; }
+        .rounded-xl { border-radius: 12px; }
+        .rounded-lg { border-radius: 8px; }
+        .border { border: 1px solid #e5e7eb; }
+        .border-b-2 { border-bottom: 2px solid #111827; }
+        .pb-4 { padding-bottom: 16px; }
+        .mb-1 { margin-bottom: 4px; }
+        .mb-2 { margin-between: 8px; margin-bottom: 8px; }
+        .mt-6 { margin-top: 24px; }
+        .pt-8 { padding-top: 32px; }
+        .space-y-6 > * + * { margin-top: 24px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th, td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; }
+        th { background-color: #f3f4f6; font-weight: 700; font-size: 11px; }
+      </style>
+    </head>
+    <body>
+      <div class="space-y-6">${printArea.innerHTML}</div>
+    </body>
+    </html>
+  `)
+
+  printWin.document.close()
+  printWin.focus()
+
+  setTimeout(() => {
+    printWin.print()
+    printWin.close()
+  }, 400)
+}
+
+const personnelWithAssetsCount = computed(() => {
+  return masterData.personnel.filter(p => personnelAssets.value[p.id]?.active?.length > 0).length
+})
 
 const filteredPersonnel = computed(() => {
   return masterData.personnel
@@ -194,6 +428,10 @@ const filteredPersonnel = computed(() => {
       department_name: masterData.departments?.find(d => d.id === p.department_id)?.name || ''
     }))
     .filter(p => {
+      if (onlyAssignedFilter.value) {
+        const pa = personnelAssets.value[p.id]
+        if (!pa || !pa.active || pa.active.length === 0) return false
+      }
       if (selectedCompanyId.value && p.company_id !== Number(selectedCompanyId.value)) return false
       if (searchQuery.value) {
         const q = searchQuery.value.toLowerCase()
@@ -232,13 +470,24 @@ const loadPersonnelAssets = async (personnelId) => {
   }
 }
 
-// Pre-load all personnel badge counts
+// Ultra-fast in-memory preloading for all personnel (0ms latency!)
 const preloadBadges = async () => {
-  for (const p of masterData.personnel) {
-    if (!personnelAssets.value[p.id]) {
-      await loadPersonnelAssets(p.id)
-    }
+  if (assetStore.assets.length === 0) {
+    await assetStore.fetchAssets()
   }
+
+  const map = {}
+  assetStore.assets.forEach(a => {
+    if (a.personnel_id) {
+      if (!map[a.personnel_id]) {
+        map[a.personnel_id] = { active: [], history: [], totalValue: 0 }
+      }
+      map[a.personnel_id].active.push(a)
+      map[a.personnel_id].totalValue += (a.purchase_price || 0)
+    }
+  })
+
+  personnelAssets.value = map
 }
 
 onMounted(async () => {
@@ -247,7 +496,9 @@ onMounted(async () => {
     await Promise.all([
       masterData.fetchPersonnel(),
       masterData.fetchCompanies(),
-      masterData.fetchDepartments()
+      masterData.fetchDepartments(),
+      assetStore.fetchAssets(),
+      fetchFormTemplates()
     ])
     await preloadBadges()
   } finally {
@@ -255,3 +506,4 @@ onMounted(async () => {
   }
 })
 </script>
+

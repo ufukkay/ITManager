@@ -6,9 +6,19 @@ import { useMasterDataStore } from '../stores/masterData'
 const authStore = useAuthStore()
 const masterData = useMasterDataStore()
 const activities = ref([])
+const stats = ref({
+  activeTickets: 0,
+  activeAlerts: 0,
+  totalMonthlyCost: 0,
+  latestPeriod: ''
+})
 
 onMounted(async () => {
   activities.value = await masterData.fetchAuditLogs(10)
+  const res = await masterData.fetchDashboardStats()
+  if (res) {
+    stats.value = res
+  }
 })
 
 const getIcon = (module) => {
@@ -151,13 +161,58 @@ const filteredModules = computed(() => {
 
     <!-- Karşılama -->
     <div class="mb-10">
-      <div class="text-[13px] text-gray-500">Merhaba {{ authStore.userName.split(' ')[0] }},</div>
-      <h1 class="text-[26px] font-semibold tracking-tight text-gray-900 mt-1">Bugün nasıl yardımcı olabilirim?</h1>
+      <div class="text-[13px] text-gray-500 dark:text-gray-400">Merhaba {{ authStore.userName.split(' ')[0] }},</div>
+      <h1 class="text-[26px] font-semibold tracking-tight text-gray-900 dark:text-white mt-1">Bugün nasıl yardımcı olabilirim?</h1>
+    </div>
+
+    <!-- Analitik KPI Kartları -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+      <!-- Destek Talepleri -->
+      <router-link to="/helpdesk" class="group relative overflow-hidden p-6 rounded-2xl border border-gray-200/80 bg-gradient-to-br from-white to-blue-50/20 dark:from-gray-800 dark:to-gray-900/50 dark:border-gray-700/50 hover:border-blue-400 hover:shadow-lg dark:hover:border-blue-500 transition-all duration-300 flex flex-col justify-between h-32">
+        <div class="flex items-center justify-between">
+          <span class="text-[12px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Açık Destek Talepleri</span>
+          <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <i class="fas fa-headset text-sm"></i>
+          </div>
+        </div>
+        <div class="flex items-baseline gap-2 mt-2">
+          <span class="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{{ stats.activeTickets }}</span>
+          <span class="text-[11px] font-medium text-gray-400 dark:text-gray-500">aktif talep</span>
+        </div>
+      </router-link>
+
+      <!-- Sunucu Alarmları -->
+      <router-link to="/monitoring" class="group relative overflow-hidden p-6 rounded-2xl border border-gray-200/80 bg-gradient-to-br from-white to-red-50/20 dark:from-gray-800 dark:to-gray-900/50 dark:border-gray-700/50 hover:border-red-400 hover:shadow-lg dark:hover:border-red-500 transition-all duration-300 flex flex-col justify-between h-32">
+        <div class="flex items-center justify-between">
+          <span class="text-[12px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Aktif Sistem Alarmları</span>
+          <div class="w-8 h-8 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/50 dark:text-red-400 flex items-center justify-center group-hover:scale-110 transition-transform duration-300" :class="{'animate-pulse bg-red-100 dark:bg-red-905': stats.activeAlerts > 0}">
+            <i class="fas fa-bell text-sm" :class="{'fa-shake text-red-500': stats.activeAlerts > 0}"></i>
+          </div>
+        </div>
+        <div class="flex items-baseline gap-2 mt-2">
+          <span class="text-3xl font-black text-gray-900 dark:text-white tracking-tight" :class="{'text-red-600 dark:text-red-400': stats.activeAlerts > 0}">{{ stats.activeAlerts }}</span>
+          <span class="text-[11px] font-medium text-gray-400 dark:text-gray-500">kritik uyarı</span>
+        </div>
+      </router-link>
+
+      <!-- Aylık Maliyet -->
+      <router-link to="/cost-management" class="group relative overflow-hidden p-6 rounded-2xl border border-gray-200/80 bg-gradient-to-br from-white to-emerald-50/20 dark:from-gray-800 dark:to-gray-900/50 dark:border-gray-700/50 hover:border-emerald-400 hover:shadow-lg dark:hover:border-emerald-500 transition-all duration-300 flex flex-col justify-between h-32">
+        <div class="flex items-center justify-between">
+          <span class="text-[12px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{{ stats.latestPeriod ? stats.latestPeriod + ' Dönemi Maliyeti' : 'Aylık Toplam Maliyet' }}</span>
+          <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <i class="fas fa-file-invoice-dollar text-sm"></i>
+          </div>
+        </div>
+        <div class="flex items-baseline gap-1 mt-2">
+          <span class="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{{ (stats.totalMonthlyCost || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }}</span>
+          <span class="text-[12px] font-bold text-gray-400 dark:text-gray-500">₺</span>
+        </div>
+      </router-link>
     </div>
 
     <!-- Modüller -->
     <div class="mb-8">
-      <div class="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-3">Modüller</div>
+      <div class="text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-semibold mb-3">Modüller</div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
 
         <!-- Aktif modül -->
@@ -165,32 +220,32 @@ const filteredModules = computed(() => {
           v-for="m in filteredModules.filter(m => !m.soon)"
           :key="m.title"
           :to="m.href"
-          class="group text-left p-4 rounded-xl border border-gray-200 bg-white flex items-center gap-3 hover:border-gray-300 hover:shadow-sm transition-all"
+          class="group text-left p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-3 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all"
         >
-          <div class="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center shrink-0 text-gray-500 group-hover:text-gray-900 transition-colors">
+          <div class="w-10 h-10 rounded-lg bg-gray-50 dark:bg-gray-750 flex items-center justify-center shrink-0 text-gray-500 dark:text-gray-450 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
             <i :class="['fas text-[15px]', m.icon]"></i>
           </div>
           <div class="flex-1 min-w-0">
-            <div class="text-[14px] font-semibold text-gray-900">{{ m.title }}</div>
-            <div class="text-[12px] text-gray-500 truncate">{{ m.desc }}</div>
+            <div class="text-[14px] font-semibold text-gray-900 dark:text-white">{{ m.title }}</div>
+            <div class="text-[12px] text-gray-500 dark:text-gray-400 truncate">{{ m.desc }}</div>
           </div>
-          <div class="text-[11px] font-medium text-gray-500 shrink-0">{{ m.count }}</div>
+          <div class="text-[11px] font-medium text-gray-500 dark:text-gray-450 shrink-0">{{ m.count }}</div>
         </router-link>
 
         <!-- Yakında -->
         <div
           v-for="m in filteredModules.filter(m => m.soon)"
           :key="m.title"
-          class="p-4 rounded-xl border border-gray-100 bg-gray-50 flex items-center gap-3 cursor-not-allowed"
+          class="p-4 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/40 flex items-center gap-3 cursor-not-allowed"
         >
-          <div class="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 text-gray-300">
+          <div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-900 flex items-center justify-center shrink-0 text-gray-300 dark:text-gray-700">
             <i :class="['fas text-[15px]', m.icon]"></i>
           </div>
           <div class="flex-1 min-w-0">
-            <div class="text-[14px] font-semibold text-gray-400">{{ m.title }}</div>
-            <div class="text-[12px] text-gray-400 truncate">{{ m.desc }}</div>
+            <div class="text-[14px] font-semibold text-gray-400 dark:text-gray-600">{{ m.title }}</div>
+            <div class="text-[12px] text-gray-400 dark:text-gray-600 truncate">{{ m.desc }}</div>
           </div>
-          <div class="text-[11px] font-medium text-gray-400 shrink-0">{{ m.count }}</div>
+          <div class="text-[11px] font-medium text-gray-400 dark:text-gray-600 shrink-0">{{ m.count }}</div>
         </div>
 
       </div>
@@ -198,26 +253,26 @@ const filteredModules = computed(() => {
 
     <!-- Son Etkinlik -->
     <div>
-      <div class="text-[11px] uppercase tracking-wider text-gray-400 font-semibold mb-3">Son Etkinlik</div>
-      <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100 overflow-hidden shadow-sm">
-        <div v-if="activities.length === 0" class="p-8 text-center text-gray-400 text-[13px]">
+      <div class="text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500 font-semibold mb-3">Son Etkinlik</div>
+      <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden shadow-sm">
+        <div v-if="activities.length === 0" class="p-8 text-center text-gray-400 dark:text-gray-500 text-[13px]">
           Henüz bir aktivite kaydı bulunmuyor.
         </div>
         <div
           v-for="(a, i) in activities"
           :key="a.id"
-          class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+          class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
         >
           <div
-            class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-gray-50 text-gray-500"
+            class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-gray-50 dark:bg-gray-750 text-gray-500 dark:text-gray-450"
           >
             <i :class="['fas text-[12px]', getIcon(a.module)]"></i>
           </div>
           <div class="flex-1 min-w-0">
-            <div class="text-[13px] text-gray-700 truncate">{{ formatAction(a) }}</div>
-            <div class="text-[11px] text-gray-400">{{ a.user_name || 'Sistem' }} tarafından</div>
+            <div class="text-[13px] text-gray-700 dark:text-gray-200 truncate">{{ formatAction(a) }}</div>
+            <div class="text-[11px] text-gray-400 dark:text-gray-550">{{ a.user_name || 'Sistem' }} tarafından</div>
           </div>
-          <div class="text-[12px] text-gray-400 shrink-0 font-medium">{{ getTimeAgo(a.created_at) }}</div>
+          <div class="text-[12px] text-gray-400 dark:text-gray-500 shrink-0 font-medium">{{ getTimeAgo(a.created_at) }}</div>
         </div>
       </div>
     </div>

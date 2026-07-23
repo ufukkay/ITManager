@@ -375,6 +375,15 @@ export const useMasterDataStore = defineStore('masterData', {
       } finally {
         this.loading = false
       }
+    },
+    async fetchDashboardStats() {
+      try {
+        const response = await api.get('/auth/api/dashboard/stats')
+        return response.data
+      } catch (err) {
+        console.error('Fetch dashboard stats error:', err)
+        return null
+      }
     }
   }
 })

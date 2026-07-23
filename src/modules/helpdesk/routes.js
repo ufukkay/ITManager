@@ -21,6 +21,10 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// Public Feedback (Email link target)
+router.get('/tickets/:id/public-info', helpdeskController.getPublicTicketInfo);
+router.post('/tickets/:id/feedback', helpdeskController.submitFeedback);
+
 router.use(requireAuth);
 
 // Metadata (Kategori ve Alt Kategoriler)
@@ -68,5 +72,8 @@ router.delete('/categories/:id', hasPermission('system:settings'), helpdeskContr
 router.post('/subcategories', hasPermission('system:settings'), helpdeskController.createSubcategory);
 router.put('/subcategories/:id', hasPermission('system:settings'), helpdeskController.updateSubcategory);
 router.delete('/subcategories/:id', hasPermission('system:settings'), helpdeskController.deleteSubcategory);
+
+// CSAT Report (Technician and Admin dashboard)
+router.get('/csat/report', hasPermission('helpdesk:manage'), helpdeskController.getCSATReport);
 
 module.exports = router;

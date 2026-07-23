@@ -165,14 +165,45 @@ router.put('/:id', hasPermission('hr:edit'), upload.single('photo'), (req, res) 
             const companyId = body.company_id || request.company_id;
             const deptId    = body.department_id || request.department_id;
             const costCenterId = body.cost_center_id || request.cost_center_id;
+            const emailVal  = body.email || request.email;
+            const requestDate = body.request_date || request.request_date;
 
             // Personel var mı kontrol et
             const exists = db.prepare('SELECT id FROM personnel WHERE first_name = ? AND last_name = ?').get(firstName, lastName);
             if (!exists) {
+                // --- Sicil No (1000+) Otomatik Atama ---
+                const lastRow = db.prepare("SELECT MAX(employee_id) as max_id FROM personnel").get();
+                const employeeId = Math.max(lastRow.max_id || 999, 999) + 1;
+
                 db.prepare(`
-                    INSERT INTO personnel (first_name, last_name, company_id, department_id, cost_center_id, status, notes, photo_path, email, title_tr, title_en, title)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `).run(firstName, lastName, companyId, deptId, costCenterId, 'active', `IK Talebi (${id}) ile otomatik oluşturuldu.`, request.photo_path, body.email || request.email, titleTr, titleEn, titleTr);
+                    INSERT INTO personnel (employee_id, first_name, last_name, company_id, department_id, cost_center_id, status, notes, photo_path, email, title_tr, title_en, title, hire_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `).run(employeeId, firstName, lastName, companyId, deptId, costCenterId, 'active', `İK Giriş Talebi (${id}) ile otomatik oluşturuldu.`, request.photo_path, emailVal, titleTr, titleEn, titleTr, requestDate);
+            }
+        }
+
+        // Eğer talep "EXIT" ise ve "COMPLETED" durumuna geçtiyse, personeli pasife al ve çıkış tarihini yaz
+        if (request.type === 'EXIT' && body.status === 'COMPLETED' && request.status !== 'COMPLETED') {
+            const emailVal = body.email || request.email;
+            const firstName = body.first_name || request.first_name;
+            const lastName = body.last_name || request.last_name;
+            const exitDate = body.request_date || request.request_date || new Date().toISOString().split('T')[0];
+
+            let personnel = null;
+            if (emailVal) {
+                personnel = db.prepare('SELECT id, notes FROM personnel WHERE email = ?').get(emailVal);
+            }
+            if (!personnel) {
+                personnel = db.prepare('SELECT id, notes FROM personnel WHERE first_name = ? AND last_name = ?').get(firstName, lastName);
+            }
+
+            if (personnel) {
+                const newNotes = (personnel.notes || '') + `\nİK Çıkış Talebi (${id}) ile otomatik pasifleştirildi.`;
+                db.prepare(`
+                    UPDATE personnel 
+                    SET status = 'passive', exit_date = ?, notes = ? 
+                    WHERE id = ?
+                `).run(exitDate, newNotes, personnel.id);
             }
         }
 

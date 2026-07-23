@@ -294,4 +294,66 @@ router.post('/api/settings/imap/test', async (req, res) => {
     }
 });
 
+// GET /admin/api/settings/entra - Entra ID (M365) ayarlarını getir
+router.get('/api/settings/entra', async (req, res) => {
+    try {
+        const MicrosoftGraphService = require('../../services/MicrosoftGraphService');
+        const settings = await MicrosoftGraphService.getSettings();
+        res.json({ success: true, settings });
+    } catch (err) {
+        console.error('Get Entra settings error:', err);
+        res.status(500).json({ success: false, message: 'Entra ID ayarları alınırken hata oluştu.' });
+    }
+});
+
+// POST /admin/api/settings/entra - Entra ID (M365) ayarlarını kaydet
+router.post('/api/settings/entra', async (req, res) => {
+    try {
+        const MicrosoftGraphService = require('../../services/MicrosoftGraphService');
+        const updated = await MicrosoftGraphService.saveSettings(req.body);
+        res.json({ success: true, settings: updated, message: 'Entra ID ayarları kaydedildi.' });
+    } catch (err) {
+        console.error('Save Entra settings error:', err);
+        res.status(500).json({ success: false, message: 'Entra ID ayarları kaydedilirken hata oluştu.' });
+    }
+});
+
+// POST /admin/api/settings/entra/sync - Microsoft Graph eşitlemesini başlat
+router.post('/api/settings/entra/sync', async (req, res) => {
+    try {
+        const MicrosoftGraphService = require('../../services/MicrosoftGraphService');
+        const result = await MicrosoftGraphService.sync();
+        res.json(result);
+    } catch (err) {
+        console.error('Sync Entra settings error:', err);
+        res.status(500).json({ success: false, message: 'Microsoft Graph eşitlemesi sırasında hata oluştu: ' + err.message });
+    }
+});
+
+// GET /admin/api/settings/entra/domains - Azure'daki tüm domain'leri ve istatistiklerini getir
+router.get('/api/settings/entra/domains', async (req, res) => {
+    try {
+        const MicrosoftGraphService = require('../../services/MicrosoftGraphService');
+        const domains = await MicrosoftGraphService.getAzureDomains();
+        res.json({ success: true, domains });
+    } catch (err) {
+        console.error('Get Azure domains error:', err);
+        res.status(500).json({ success: false, message: 'Domain listesi alınamadı: ' + err.message });
+    }
+});
+
+// POST /admin/api/settings/entra/personnel-sync - Tam personel senkronizasyonu
+router.post('/api/settings/entra/personnel-sync', async (req, res) => {
+    try {
+        const { allowed_domains, domain_company_map } = req.body;
+        const MicrosoftGraphService = require('../../services/MicrosoftGraphService');
+        const result = await MicrosoftGraphService.fullPersonnelSync(allowed_domains, domain_company_map || {});
+        res.json(result);
+    } catch (err) {
+        console.error('Personnel sync error:', err);
+        res.status(500).json({ success: false, message: 'Personel senkronizasyonu sırasında hata oluştu: ' + err.message });
+    }
+});
+
 module.exports = router;
+

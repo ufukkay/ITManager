@@ -12,6 +12,17 @@
 
       <nav class="flex-1 overflow-y-auto px-2 py-4 flex flex-col gap-1">
         <RouterLink
+          to="/inventory/matrix"
+          class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all"
+          :class="$route.path.startsWith('/inventory/matrix')
+            ? 'bg-blue-50 text-blue-600'
+            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'"
+        >
+          <i class="fas fa-sitemap w-4 text-center text-[12px]"></i>
+          Kumanda Matrisi
+        </RouterLink>
+
+        <RouterLink
           to="/inventory/assets"
           class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all"
           :class="$route.path.startsWith('/inventory/assets') || $route.path === '/inventory'

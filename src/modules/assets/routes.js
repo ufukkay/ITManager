@@ -29,11 +29,20 @@ router.use(requireAuth);
 // Metadata & Help dropdown Lists
 router.get('/metadata', assetController.getMetadata);
 router.post('/categories', hasPermission('asset:edit'), assetController.addCategory);
+router.delete('/categories/:id', hasPermission('asset:edit'), assetController.deleteCategory);
 router.post('/brands', hasPermission('asset:edit'), assetController.addBrand);
+router.delete('/brands/:id', hasPermission('asset:edit'), assetController.deleteBrand);
 router.post('/models', hasPermission('asset:edit'), assetController.addModel);
+router.delete('/models/:id', hasPermission('asset:edit'), assetController.deleteModel);
 
-// Financial Summaries
+// Statuses CRUD
+router.post('/statuses', hasPermission('asset:edit'), assetController.addStatus);
+router.put('/statuses/:id', hasPermission('asset:edit'), assetController.updateStatus);
+router.delete('/statuses/:id', hasPermission('asset:edit'), assetController.deleteStatus);
+
+// Financial Summaries & Structural Matrix
 router.get('/financial-summary', assetController.getFinancialSummary);
+router.get('/matrix-analytics', hasPermission('asset:view'), assetController.getMatrixAnalytics);
 
 // Personnel asset assignment history
 router.get('/personnel/:id', hasPermission('asset:view'), assetController.getPersonnelAssets);
@@ -61,5 +70,18 @@ router.get('/:id/logs', hasPermission('asset:view'), assetController.getAssetLog
 // Checkout & Checkin
 router.post('/:id/checkout', hasPermission('asset:edit'), assetController.checkoutAsset);
 router.post('/:id/checkin', hasPermission('asset:edit'), assetController.checkinAsset);
+
+// Thermal Label Templates & Mobile QR Audit Routes
+router.get('/label-templates', assetController.getLabelTemplates);
+router.post('/label-templates', hasPermission('asset:edit'), assetController.saveLabelTemplate);
+router.delete('/label-templates/:id', hasPermission('asset:edit'), assetController.deleteLabelTemplate);
+
+// A4 Zimmet Form Templates Routes
+router.get('/form-templates', assetController.getFormTemplates);
+router.post('/form-templates', hasPermission('asset:edit'), assetController.saveFormTemplate);
+router.delete('/form-templates/:id', hasPermission('asset:edit'), assetController.deleteFormTemplate);
+
+router.get('/scan/:id', assetController.getAssetScanDetail);
+router.post('/:id/audit', assetController.submitAssetAudit);
 
 module.exports = router;

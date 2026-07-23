@@ -36,79 +36,76 @@ exports.getAssets = (req, res) => {
 // Add a new asset
 exports.addAsset = (req, res) => {
     try {
-        const { serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, notes } = req.body;
+        const { serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version } = req.body;
         
         if (!serial_no || !model_id || !status_id || !company_id) {
             return res.status(400).json({ error: 'Lütfen zorunlu alanları (Seri No, Model, Durum, Şirket) doldurun.' });
         }
 
-        // Multer upload file paths
         const invoice_path = req.files && req.files.invoice ? '/uploads/assets/' + req.files.invoice[0].filename : null;
         const warranty_path = req.files && req.files.warranty ? '/uploads/assets/' + req.files.warranty[0].filename : null;
 
         const info = db.prepare(`
-            INSERT INTO assets (serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, invoice_path, warranty_path, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(serial_no, barcode || null, model_id, status_id, company_id, purchase_price || 0, purchase_date || null, lifetime_months || 60, invoice_path, warranty_path, notes || null);
+            INSERT INTO assets (serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, invoice_path, warranty_path, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            serial_no, barcode || null, model_id, status_id, company_id, purchase_price || 0, purchase_date || null, lifetime_months || 60, invoice_path, warranty_path, notes || null,
+            mac_address || null, ip_address || null, cpu_model || null, ram_gb ? Number(ram_gb) : null, disk_gb ? Number(disk_gb) : null, os_version || null
+        );
 
-        // Write log
         db.prepare(`
             INSERT INTO asset_logs (asset_id, action, target_type, notes)
             VALUES (?, 'CREATE', 'NONE', 'Varlık oluşturuldu.')
         `).run(info.lastInsertRowid);
 
-        res.json({ id: info.lastInsertRowid, message: 'Varlık başarıyla eklendi.' });
+        res.json({ id: info.lastInsertRowid, serial_no, message: 'Varlık başarıyla oluşturuldu.' });
     } catch (err) {
         console.error('addAsset error:', err);
-        res.status(500).json({ error: 'Varlık eklenirken hata oluştu veya seri numarası/barkod zaten mevcut.' });
+        res.status(500).json({ error: 'Varlık eklenirken veritabanı hatası oluştu.' });
     }
 };
 
-// Update an asset
+// Update existing asset
 exports.updateAsset = (req, res) => {
     try {
         const { id } = req.params;
-        const { serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, notes } = req.body;
+        const { serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version } = req.body;
 
-        if (!serial_no || !model_id || !status_id || !company_id) {
-            return res.status(400).json({ error: 'Lütfen zorunlu alanları doldurun.' });
-        }
-
-        // Get existing asset to retain file paths if no new file is uploaded
         const currentAsset = db.prepare('SELECT invoice_path, warranty_path FROM assets WHERE id = ?').get(id);
-        
-        let invoice_path = currentAsset ? currentAsset.invoice_path : null;
-        let warranty_path = currentAsset ? currentAsset.warranty_path : null;
+        if (!currentAsset) {
+            return res.status(404).json({ error: 'Varlık bulunamadı.' });
+        }
 
-        if (req.files && req.files.invoice) {
-            invoice_path = '/uploads/assets/' + req.files.invoice[0].filename;
-        }
-        if (req.files && req.files.warranty) {
-            warranty_path = '/uploads/assets/' + req.files.warranty[0].filename;
-        }
+        const invoice_path = req.files && req.files.invoice ? '/uploads/assets/' + req.files.invoice[0].filename : currentAsset.invoice_path;
+        const warranty_path = req.files && req.files.warranty ? '/uploads/assets/' + req.files.warranty[0].filename : currentAsset.warranty_path;
 
         db.prepare(`
-            UPDATE assets 
-            SET serial_no = ?, barcode = ?, model_id = ?, status_id = ?, company_id = ?, purchase_price = ?, purchase_date = ?, lifetime_months = ?, invoice_path = ?, warranty_path = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+            UPDATE assets
+            SET serial_no = ?, barcode = ?, model_id = ?, status_id = ?, company_id = ?, purchase_price = ?, purchase_date = ?, lifetime_months = ?, invoice_path = ?, warranty_path = ?, notes = ?, mac_address = ?, ip_address = ?, cpu_model = ?, ram_gb = ?, disk_gb = ?, os_version = ?
             WHERE id = ?
-        `).run(serial_no, barcode || null, model_id, status_id, company_id, purchase_price || 0, purchase_date || null, lifetime_months || 60, invoice_path, warranty_path, notes || null, id);
+        `).run(
+            serial_no, barcode || null, model_id, status_id, company_id, purchase_price || 0, purchase_date || null, lifetime_months || 60, invoice_path, warranty_path, notes || null,
+            mac_address || null, ip_address || null, cpu_model || null, ram_gb ? Number(ram_gb) : null, disk_gb ? Number(disk_gb) : null, os_version || null,
+            id
+        );
 
         db.prepare(`
             INSERT INTO asset_logs (asset_id, action, target_type, notes)
-            VALUES (?, 'UPDATE', 'NONE', 'Varlık detayları güncellendi.')
+            VALUES (?, 'UPDATE', 'NONE', 'Varlık bilgileri güncellendi.')
         `).run(id);
 
         res.json({ message: 'Varlık başarıyla güncellendi.' });
     } catch (err) {
         console.error('updateAsset error:', err);
-        res.status(500).json({ error: 'Varlık güncellenirken hata oluştu.' });
+        res.status(500).json({ error: 'Varlık güncellenirken veritabanı hatası oluştu.' });
     }
 };
 
-// Delete an asset
+// Delete asset
 exports.deleteAsset = (req, res) => {
     try {
         const { id } = req.params;
+        db.prepare('DELETE FROM asset_logs WHERE asset_id = ?').run(id);
         db.prepare('DELETE FROM assets WHERE id = ?').run(id);
         res.json({ message: 'Varlık başarıyla silindi.' });
     } catch (err) {
@@ -117,81 +114,87 @@ exports.deleteAsset = (req, res) => {
     }
 };
 
-// Checkout (Zimmetle)
+// Checkout asset to personnel or location
 exports.checkoutAsset = (req, res) => {
     try {
         const { id } = req.params;
-        const { target_type, target_id, notes } = req.body; // target_type: 'PERSONNEL' or 'LOCATION'
+        const { target_type, target_id, notes } = req.body;
 
         if (!target_type || !target_id) {
-            return res.status(400).json({ error: 'Lütfen zimmetlenecek hedef tipi ve hedefi seçin.' });
+            return res.status(400).json({ error: 'Lütfen zimmet hedef türünü ve hedefini belirtin.' });
         }
 
-        const statusInUse = db.prepare("SELECT id FROM asset_statuses WHERE name LIKE '%Zimmetlendi%' OR name LIKE '%Kullanımda%'").get();
-        const statusId = statusInUse ? statusInUse.id : 2;
+        let personnel_id = null;
+        let location_id = null;
 
         if (target_type === 'PERSONNEL') {
-            db.prepare('UPDATE assets SET personnel_id = ?, location_id = NULL, status_id = ? WHERE id = ?').run(target_id, statusId, id);
+            personnel_id = target_id;
         } else if (target_type === 'LOCATION') {
-            db.prepare('UPDATE assets SET location_id = ?, personnel_id = NULL, status_id = ? WHERE id = ?').run(target_id, statusId, id);
+            location_id = target_id;
+        } else {
+            return res.status(400).json({ error: 'Geçersiz zimmet türü.' });
         }
+
+        const statusInUse = db.prepare("SELECT id FROM asset_statuses WHERE name LIKE '%Zimmet%' OR name LIKE '%Kullanım%' LIMIT 1").get();
+        const statusId = statusInUse ? statusInUse.id : 2;
+
+        db.prepare(`
+            UPDATE assets 
+            SET personnel_id = ?, location_id = ?, status_id = ?
+            WHERE id = ?
+        `).run(personnel_id, location_id, statusId, id);
 
         db.prepare(`
             INSERT INTO asset_logs (asset_id, action, target_type, target_id, notes)
             VALUES (?, 'CHECKOUT', ?, ?, ?)
-        `).run(id, target_type, target_id, notes || 'Zimmet atandı.');
+        `).run(id, target_type, target_id, notes || 'Zimmetlendi.');
 
-        res.json({ message: 'Varlık başarıyla zimmetlendi.' });
+        res.json({ message: 'Varlık zimmetlendi.' });
     } catch (err) {
         console.error('checkoutAsset error:', err);
-        res.status(500).json({ error: 'Zimmet ataması yapılırken hata oluştu.' });
+        res.status(500).json({ error: 'Zimmetleme işlemi sırasında hata oluştu.' });
     }
 };
 
-// Checkin (Zimmeti Geri Al / Depoya Çek)
+// Checkin asset (Return to warehouse)
 exports.checkinAsset = (req, res) => {
     try {
         const { id } = req.params;
-        const { notes } = req.body;
+        const { notes, status_id } = req.body;
 
-        const statusInWarehouse = db.prepare("SELECT id FROM asset_statuses WHERE name LIKE '%Depoda%' OR name LIKE '%Boşta%'").get();
-        const statusId = statusInWarehouse ? statusInWarehouse.id : 1;
+        const statusAvailable = db.prepare("SELECT id FROM asset_statuses WHERE name LIKE '%Depo%' OR name LIKE '%Boşta%' LIMIT 1").get();
+        const finalStatusId = status_id || (statusAvailable ? statusAvailable.id : 1);
 
-        db.prepare('UPDATE assets SET personnel_id = NULL, location_id = NULL, status_id = ? WHERE id = ?').run(statusId, id);
+        db.prepare(`
+            UPDATE assets 
+            SET personnel_id = NULL, location_id = NULL, status_id = ?
+            WHERE id = ?
+        `).run(finalStatusId, id);
 
         db.prepare(`
             INSERT INTO asset_logs (asset_id, action, target_type, notes)
             VALUES (?, 'CHECKIN', 'NONE', ?)
         `).run(id, notes || 'Depoya iade edildi.');
 
-        res.json({ message: 'Varlık başarıyla depoya iade edildi.' });
+        res.json({ message: 'Varlık depoya iade edildi.' });
     } catch (err) {
         console.error('checkinAsset error:', err);
-        res.status(500).json({ error: 'Zimmet iadesi yapılırken hata oluştu.' });
+        res.status(500).json({ error: 'İade işlemi sırasında hata oluştu.' });
     }
 };
 
-// Financial summary (Total Cost & Monthly Amortization)
+// Financial Summary
 exports.getFinancialSummary = (req, res) => {
     try {
-        const assets = db.prepare(`SELECT purchase_price, purchase_date, lifetime_months FROM assets`).all();
-        
+        const assets = db.prepare('SELECT purchase_price, lifetime_months FROM assets').all();
         let totalValuation = 0;
         let totalMonthlyCost = 0;
-        const now = new Date();
 
         assets.forEach(a => {
-            const price = a.purchase_price || 0;
+            const price = parseFloat(a.purchase_price) || 0;
             totalValuation += price;
-
-            if (price > 0 && a.purchase_date && a.lifetime_months) {
-                const pDate = new Date(a.purchase_date);
-                const diffMonths = (now.getFullYear() - pDate.getFullYear()) * 12 + (now.getMonth() - pDate.getMonth());
-                
-                // If lifetime is not yet expired, calculate monthly cost
-                if (diffMonths < a.lifetime_months && diffMonths >= 0) {
-                    totalMonthlyCost += price / a.lifetime_months;
-                }
+            if (a.lifetime_months && a.lifetime_months > 0) {
+                totalMonthlyCost += price / a.lifetime_months;
             }
         });
 
@@ -254,6 +257,44 @@ exports.getMyAssets = (req, res) => {
     }
 };
 
+// Personnel Assets
+exports.getPersonnelAssets = (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const active = db.prepare(`
+            SELECT 
+                a.id, a.serial_no, a.barcode, a.purchase_price, a.purchase_date,
+                am.name as model_name, ab.name as brand_name, ac.name as category_name
+            FROM assets a
+            JOIN asset_models am ON a.model_id = am.id
+            JOIN asset_brands ab ON am.brand_id = ab.id
+            JOIN asset_categories ac ON am.category_id = ac.id
+            WHERE a.personnel_id = ?
+        `).all(id);
+
+        const history = db.prepare(`
+            SELECT 
+                al.id, al.action, al.notes, al.created_at,
+                a.serial_no, a.barcode,
+                am.name as model_name, ab.name as brand_name,
+                u.full_name as user_name
+            FROM asset_logs al
+            JOIN assets a ON al.asset_id = a.id
+            JOIN asset_models am ON a.model_id = am.id
+            JOIN asset_brands ab ON am.brand_id = ab.id
+            LEFT JOIN users u ON al.created_by = u.id
+            WHERE al.target_type = 'PERSONNEL' AND al.target_id = ?
+            ORDER BY al.created_at DESC
+        `).all(id);
+
+        res.json({ active, history });
+    } catch (err) {
+        console.error('getPersonnelAssets error:', err);
+        res.status(500).json({ error: 'Personel zimmet bilgileri alınamadı.' });
+    }
+};
+
 // Help-data configurations (Dropdown structures)
 exports.getMetadata = (req, res) => {
     try {
@@ -264,7 +305,6 @@ exports.getMetadata = (req, res) => {
         const locations = db.prepare('SELECT id, name FROM locations ORDER BY name').all();
         const personnel = db.prepare("SELECT id, first_name || ' ' || last_name as name FROM personnel ORDER BY first_name").all();
         
-        // Also fetch models with category & brand details
         const models = db.prepare(`
             SELECT am.id, am.name, am.category_id, am.brand_id, ac.name as category_name, ab.name as brand_name
             FROM asset_models am
@@ -280,7 +320,7 @@ exports.getMetadata = (req, res) => {
     }
 };
 
-// Create Categories, Brands, Models (Metadata helper)
+// Create & Delete Categories, Brands, Models, Statuses
 exports.addCategory = (req, res) => {
     try {
         const { name } = req.body;
@@ -288,7 +328,19 @@ exports.addCategory = (req, res) => {
         const info = db.prepare('INSERT INTO asset_categories (name) VALUES (?)').run(name);
         res.json({ id: info.lastInsertRowid, name });
     } catch (err) {
-        res.status(500).json({ error: 'Kategori eklenemedi (Zaten mevcut olabilir).' });
+        res.status(500).json({ error: 'Kategori eklenemedi.' });
+    }
+};
+
+exports.deleteCategory = (req, res) => {
+    try {
+        const { id } = req.params;
+        const count = db.prepare('SELECT COUNT(*) as c FROM asset_models WHERE category_id = ?').get(id);
+        if (count.c > 0) return res.status(400).json({ error: 'Bu kategoriye bağlı modeller bulunduğu için silinemez.' });
+        db.prepare('DELETE FROM asset_categories WHERE id = ?').run(id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Kategori silinemedi.' });
     }
 };
 
@@ -299,7 +351,19 @@ exports.addBrand = (req, res) => {
         const info = db.prepare('INSERT INTO asset_brands (name) VALUES (?)').run(name);
         res.json({ id: info.lastInsertRowid, name });
     } catch (err) {
-        res.status(500).json({ error: 'Marka eklenemedi (Zaten mevcut olabilir).' });
+        res.status(500).json({ error: 'Marka eklenemedi.' });
+    }
+};
+
+exports.deleteBrand = (req, res) => {
+    try {
+        const { id } = req.params;
+        const count = db.prepare('SELECT COUNT(*) as c FROM asset_models WHERE brand_id = ?').get(id);
+        if (count.c > 0) return res.status(400).json({ error: 'Bu markaya bağlı modeller bulunduğu için silinemez.' });
+        db.prepare('DELETE FROM asset_brands WHERE id = ?').run(id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Marka silinemedi.' });
     }
 };
 
@@ -310,11 +374,58 @@ exports.addModel = (req, res) => {
         const info = db.prepare('INSERT INTO asset_models (name, category_id, brand_id) VALUES (?, ?, ?)').run(name, category_id, brand_id);
         res.json({ id: info.lastInsertRowid, name, category_id, brand_id });
     } catch (err) {
-        res.status(500).json({ error: 'Model eklenemedi (Zaten mevcut olabilir).' });
+        res.status(500).json({ error: 'Model eklenemedi.' });
     }
 };
 
-// Logs history for a single asset
+exports.deleteModel = (req, res) => {
+    try {
+        const { id } = req.params;
+        const count = db.prepare('SELECT COUNT(*) as c FROM assets WHERE model_id = ?').get(id);
+        if (count.c > 0) return res.status(400).json({ error: 'Bu modele bağlı envanterler bulunduğu için silinemez.' });
+        db.prepare('DELETE FROM asset_models WHERE id = ?').run(id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Model silinemedi.' });
+    }
+};
+
+exports.addStatus = (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name) return res.status(400).json({ error: 'Durum adı gerekli.' });
+        const info = db.prepare('INSERT INTO asset_statuses (name) VALUES (?)').run(name);
+        res.json({ id: info.lastInsertRowid, name });
+    } catch (err) {
+        res.status(500).json({ error: 'Durum eklenemedi.' });
+    }
+};
+
+exports.updateStatus = (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name } = req.body;
+        if (!name) return res.status(400).json({ error: 'Durum adı gerekli.' });
+        db.prepare('UPDATE asset_statuses SET name = ? WHERE id = ?').run(name, id);
+        res.json({ id: Number(id), name });
+    } catch (err) {
+        res.status(500).json({ error: 'Durum güncellenemedi.' });
+    }
+};
+
+exports.deleteStatus = (req, res) => {
+    try {
+        const { id } = req.params;
+        const count = db.prepare('SELECT COUNT(*) as c FROM assets WHERE status_id = ?').get(id);
+        if (count.c > 0) return res.status(400).json({ error: 'Bu duruma atanmış envanterler bulunduğu için silinemez.' });
+        db.prepare('DELETE FROM asset_statuses WHERE id = ?').run(id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Durum silinemedi.' });
+    }
+};
+
+// Logs history for single asset
 exports.getAssetLogs = (req, res) => {
     try {
         const { id } = req.params;
@@ -338,42 +449,254 @@ exports.getAssetLogs = (req, res) => {
     }
 };
 
-// Get active and past asset assignments for a single personnel member
-exports.getPersonnelAssets = (req, res) => {
+// Matrix Analytics & Structural Envanter Haritası
+exports.getMatrixAnalytics = (req, res) => {
     try {
-        const { id } = req.params;
+        // 1. General Status Breakdown & Financials
+        const totalAssets = db.prepare(`SELECT COUNT(*) as count, SUM(purchase_price) as totalValuation FROM assets`).get();
+        
+        const inUseAssets = db.prepare(`
+            SELECT COUNT(*) as count, SUM(purchase_price) as totalValuation 
+            FROM assets a 
+            JOIN asset_statuses ast ON a.status_id = ast.id 
+            WHERE (a.personnel_id IS NOT NULL OR a.location_id IS NOT NULL) 
+               OR ast.name LIKE '%Zimmet%' OR ast.name LIKE '%Kullanım%'
+        `).get();
 
-        // Active assets assigned to this personnel
-        const active = db.prepare(`
+        const inRepairAssets = db.prepare(`
+            SELECT COUNT(*) as count, SUM(purchase_price) as totalValuation 
+            FROM assets a 
+            JOIN asset_statuses ast ON a.status_id = ast.id 
+            WHERE ast.name LIKE '%Arıza%' OR ast.name LIKE '%Servis%' OR ast.name LIKE '%Tamir%'
+        `).get();
+
+        const scrappedAssets = db.prepare(`
+            SELECT COUNT(*) as count, SUM(purchase_price) as totalValuation 
+            FROM assets a 
+            JOIN asset_statuses ast ON a.status_id = ast.id 
+            WHERE ast.name LIKE '%Hurda%' OR ast.name LIKE '%Arşiv%'
+        `).get();
+
+        const warehouseCount = (totalAssets.count || 0) - (inUseAssets.count || 0) - (inRepairAssets.count || 0) - (scrappedAssets.count || 0);
+
+        // 2. Category Breakdown
+        const categoryBreakdown = db.prepare(`
+            SELECT ac.id, ac.name, COUNT(a.id) as count, SUM(a.purchase_price) as total_value
+            FROM asset_categories ac
+            LEFT JOIN asset_models am ON am.category_id = ac.id
+            LEFT JOIN assets a ON a.model_id = am.id
+            GROUP BY ac.id, ac.name
+            ORDER BY count DESC
+        `).all();
+
+        // 3. Location Breakdown Matrix
+        const locationBreakdown = db.prepare(`
             SELECT 
-                a.id, a.serial_no, a.barcode, a.purchase_price, a.purchase_date,
-                am.name as model_name, ab.name as brand_name, ac.name as category_name
-            FROM assets a
-            JOIN asset_models am ON a.model_id = am.id
-            JOIN asset_brands ab ON am.brand_id = ab.id
-            JOIN asset_categories ac ON am.category_id = ac.id
-            WHERE a.personnel_id = ?
-        `).all(id);
+                l.id, l.name, l.address,
+                COUNT(a.id) as total_assets,
+                SUM(CASE WHEN a.personnel_id IS NOT NULL OR a.location_id IS NOT NULL THEN 1 ELSE 0 END) as in_use_count,
+                SUM(CASE WHEN ast.name LIKE '%Arıza%' OR ast.name LIKE '%Servis%' THEN 1 ELSE 0 END) as repair_count,
+                SUM(a.purchase_price) as total_value
+            FROM locations l
+            LEFT JOIN assets a ON a.location_id = l.id
+            LEFT JOIN asset_statuses ast ON a.status_id = ast.id
+            GROUP BY l.id, l.name
+            ORDER BY total_assets DESC
+        `).all();
 
-        // Past assignments history retrieved from asset logs
-        const history = db.prepare(`
+        // 4. Company & Department Assignment Matrix
+        const companyBreakdown = db.prepare(`
             SELECT 
-                al.id, al.action, al.notes, al.created_at,
-                a.serial_no, a.barcode,
-                am.name as model_name, ab.name as brand_name,
-                u.full_name as user_name
-            FROM asset_logs al
-            JOIN assets a ON al.asset_id = a.id
-            JOIN asset_models am ON a.model_id = am.id
-            JOIN asset_brands ab ON am.brand_id = ab.id
-            LEFT JOIN users u ON al.created_by = u.id
-            WHERE al.target_type = 'PERSONNEL' AND al.target_id = ?
-            ORDER BY al.created_at DESC
-        `).all(id);
+                c.id, c.name,
+                COUNT(a.id) as total_assets,
+                SUM(CASE WHEN a.personnel_id IS NOT NULL THEN 1 ELSE 0 END) as personnel_assigned_count,
+                SUM(a.purchase_price) as total_value
+            FROM companies c
+            LEFT JOIN assets a ON a.company_id = c.id
+            GROUP BY c.id, c.name
+            ORDER BY total_assets DESC
+        `).all();
 
-        res.json({ active, history });
+        res.json({
+            summary: {
+                totalCount: totalAssets.count || 0,
+                totalValuation: totalAssets.totalValuation || 0,
+                inUseCount: inUseAssets.count || 0,
+                inUseValuation: inUseAssets.totalValuation || 0,
+                warehouseCount: warehouseCount < 0 ? 0 : warehouseCount,
+                inRepairCount: inRepairAssets.count || 0,
+                scrappedCount: scrappedAssets.count || 0
+            },
+            categories: categoryBreakdown,
+            locations: locationBreakdown,
+            companies: companyBreakdown
+        });
     } catch (err) {
-        console.error('getPersonnelAssets error:', err);
-        res.status(500).json({ error: 'Personel zimmet geçmişi yüklenemedi.' });
+        console.error('getMatrixAnalytics error:', err);
+        res.status(500).json({ error: 'Matris verileri alınamadı.' });
     }
 };
+
+// --- THERMAL LABEL STUDIO & MOBILE QR AUDIT ENDPOINTS ---
+
+// Get all label templates
+exports.getLabelTemplates = (req, res) => {
+    try {
+        const templates = db.prepare('SELECT * FROM label_templates ORDER BY is_default DESC, name ASC').all();
+        res.json(templates);
+    } catch (err) {
+        res.status(500).json({ error: 'Etiket şablonları yüklenemedi.' });
+    }
+};
+
+// Create or update a label template
+exports.saveLabelTemplate = (req, res) => {
+    try {
+        const { id, name, width_mm, height_mm, config_json, is_default } = req.body;
+        if (!name || !config_json) return res.status(400).json({ error: 'Şablon adı ve görsel düzen verisi gerekli.' });
+
+        const jsonStr = typeof config_json === 'object' ? JSON.stringify(config_json) : config_json;
+
+        if (is_default) {
+            db.prepare('UPDATE label_templates SET is_default = 0').run();
+        }
+
+        if (id) {
+            db.prepare('UPDATE label_templates SET name = ?, width_mm = ?, height_mm = ?, config_json = ?, is_default = ? WHERE id = ?')
+              .run(name, width_mm || 70.0, height_mm || 35.0, jsonStr, is_default ? 1 : 0, id);
+            res.json({ success: true, id: Number(id), name });
+        } else {
+            const info = db.prepare('INSERT INTO label_templates (name, width_mm, height_mm, config_json, is_default) VALUES (?, ?, ?, ?, ?)')
+                           .run(name, width_mm || 70.0, height_mm || 35.0, jsonStr, is_default ? 1 : 0);
+            res.json({ success: true, id: info.lastInsertRowid, name });
+        }
+    } catch (err) {
+        console.error('saveLabelTemplate error:', err);
+        res.status(500).json({ error: 'Şablon kaydedilemedi.' });
+    }
+};
+
+// Delete label template
+exports.deleteLabelTemplate = (req, res) => {
+    try {
+        const { id } = req.params;
+        db.prepare('DELETE FROM label_templates WHERE id = ?').run(id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Şablon silinemedi.' });
+    }
+};
+
+// Get Single Asset Info for Mobile Scan (Public/Authenticated)
+exports.getAssetScanDetail = (req, res) => {
+    try {
+        const { id } = req.params;
+        const query = `
+            SELECT 
+                a.*,
+                am.name as model_name,
+                ac.name as category_name,
+                ab.name as brand_name,
+                as_t.name as status_name,
+                c.name as company_name,
+                p.first_name || ' ' || p.last_name as personnel_name,
+                p.email as personnel_email,
+                l.name as location_name
+            FROM assets a
+            JOIN asset_models am ON a.model_id = am.id
+            JOIN asset_categories ac ON am.category_id = ac.id
+            JOIN asset_brands ab ON am.brand_id = ab.id
+            JOIN asset_statuses as_t ON a.status_id = as_t.id
+            JOIN companies c ON a.company_id = c.id
+            LEFT JOIN personnel p ON a.personnel_id = p.id
+            LEFT JOIN locations l ON a.location_id = l.id
+            WHERE a.id = ? OR a.barcode = ? OR a.serial_no = ?
+        `;
+        const asset = db.prepare(query).get(id, id, id);
+        if (!asset) {
+            return res.status(404).json({ error: 'Envanter bulunamadı.' });
+        }
+
+        const audits = db.prepare('SELECT * FROM asset_audits WHERE asset_id = ? ORDER BY created_at DESC LIMIT 5').all(asset.id);
+        res.json({ asset, audits });
+    } catch (err) {
+        console.error('getAssetScanDetail error:', err);
+        res.status(500).json({ error: 'Mobil tarama detayı alınamadı.' });
+    }
+};
+
+// Submit Mobile Asset Audit (Saha Sayımı Onayı)
+exports.submitAssetAudit = (req, res) => {
+    try {
+        const { id } = req.params;
+        const { notes, audited_by_name } = req.body;
+
+        const asset = db.prepare('SELECT id, serial_no FROM assets WHERE id = ?').get(id);
+        if (!asset) return res.status(404).json({ error: 'Varlık bulunamadı.' });
+
+        const auditorName = audited_by_name || (req.session?.user?.full_name) || 'Mobil Saha Personeli';
+        const auditorId = req.session?.user?.id || null;
+
+        db.prepare('INSERT INTO asset_audits (asset_id, audited_by, audited_by_name, notes) VALUES (?, ?, ?, ?)')
+          .run(id, auditorId, auditorName, notes || 'Mobil QR Saha Sayımı Yapıldı - Zimmet Yerinde OK');
+
+        db.prepare("INSERT INTO asset_logs (asset_id, action, target_type, notes) VALUES (?, 'AUDIT', 'NONE', ?)")
+          .run(id, `Saha Sayımı Doğrulandı: ${auditorName}`);
+
+        res.json({ success: true, message: 'Mobil QR Saha Sayımı başarıyla doğrulandı.' });
+    } catch (err) {
+        console.error('submitAssetAudit error:', err);
+        res.status(500).json({ error: 'Saha sayımı işlenemedi.' });
+    }
+};
+
+// Zimmet Form Templates CRUD
+exports.getFormTemplates = (req, res) => {
+    try {
+        const templates = db.prepare('SELECT * FROM zimmet_form_templates ORDER BY is_default DESC, id DESC').all();
+        res.json(templates.map(t => ({
+            ...t,
+            elements: JSON.parse(t.elements_json || '[]')
+        })));
+    } catch (err) {
+        console.error('getFormTemplates error:', err);
+        res.status(500).json({ error: 'Form şablonları alınamadı.' });
+    }
+};
+
+exports.saveFormTemplate = (req, res) => {
+    try {
+        const { id, name, elements, is_default } = req.body;
+        if (!name || !elements) return res.status(400).json({ error: 'Şablon adı ve bileşen verileri gerekli.' });
+
+        const jsonStr = typeof elements === 'object' ? JSON.stringify(elements) : elements;
+
+        if (is_default) {
+            db.prepare('UPDATE zimmet_form_templates SET is_default = 0').run();
+        }
+
+        if (id) {
+            db.prepare('UPDATE zimmet_form_templates SET name = ?, elements_json = ?, is_default = ? WHERE id = ?')
+              .run(name, jsonStr, is_default ? 1 : 0, id);
+            res.json({ success: true, id: Number(id), name });
+        } else {
+            const info = db.prepare('INSERT INTO zimmet_form_templates (name, elements_json, is_default) VALUES (?, ?, ?)')
+                           .run(name, jsonStr, is_default ? 1 : 0);
+            res.json({ success: true, id: info.lastInsertRowid, name });
+        }
+    } catch (err) {
+        console.error('saveFormTemplate error:', err);
+        res.status(500).json({ error: 'Form şablonu kaydedilemedi.' });
+    }
+};
+
+exports.deleteFormTemplate = (req, res) => {
+    try {
+        const { id } = req.params;
+        db.prepare('DELETE FROM zimmet_form_templates WHERE id = ?').run(id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Form şablonu silinemedi.' });
+    }
+};
+

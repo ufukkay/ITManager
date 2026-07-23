@@ -31,16 +31,211 @@ const quickFilters = computed(() => [
 const selectedIds    = ref([])
 const onSelectionChange = (rows) => { selectedIds.value = rows.map(r => r.id) }
 
-const exportSelected = () => {
-  const selected = dataList.value.filter(r => selectedIds.value.includes(r.id))
-  const rows = selected.map(r => ({
-    ICCID: r.iccid, Telefon: r.phone_no, Operatör: r.operator,
-    Lokasyon: r.location_name, Cihaz: r.device_info, Durum: r.status
+const excelInput = ref(null)
+
+const exportExcel = (customRows = null) => {
+  const list = customRows || dataList.value
+  const rows = list.map(r => ({
+    'ICCID': r.iccid, 
+    'Telefon No': r.phone_no, 
+    'Operatör': r.operator,
+    'Lokasyon': r.location_name || '', 
+    'Cihaz Bilgisi': r.device_info || '', 
+    'Şirket': r.company_name || '', 
+    'Departman': r.department_name || '', 
+    'Durum': r.status,
+    'Notlar': r.notes || ''
   }))
   const ws = XLSX.utils.json_to_sheet(rows)
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Data')
-  XLSX.writeFile(wb, 'data-secili-kayitlar.xlsx')
+  XLSX.writeFile(wb, customRows ? 'data-secili-kayitlar.xlsx' : 'data-listesi.xlsx')
+}
+
+const exportSelected = () => {
+  const selected = dataList.value.filter(r => selectedIds.value.includes(r.id))
+  exportExcel(selected)
+}
+
+const downloadTemplate = () => {
+  const ws = XLSX.utils.json_to_sheet([
+    {
+      'Telefon No': '5321234567',
+      'ICCID': '8990123456789012345',
+      'Operatör': 'Turkcell',
+      'Lokasyon': 'Merkez Ofis',
+      'Cihaz Bilgisi': 'Cisco Router 3G/4G',
+      'Şirket': 'Talay Logistics',
+      'Departman': 'Operasyon',
+      'Durum': 'Aktif',
+      'Notlar': 'Yedek internet hattı.'
+    }
+  ])
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Sablon')
+  XLSX.writeFile(wb, 'Data_Yukleme_Sablonu.xlsx')
+}
+
+const handleExcelImport = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = async (evt) => {
+    try {
+      startLoading()
+      const data = new Uint8Array(evt.target.result)
+      const workbook = XLSX.read(data, { type: 'array' })
+      const sheetName = workbook.SheetNames[0]
+      const sheet = workbook.Sheets[sheetName]
+      const rows = XLSX.utils.sheet_to_json(sheet)
+
+      if (rows.length === 0) {
+        showToast('Excel dosyasında veri bulunamadı.', 'warning')
+        return
+      }
+
+      let successCount = 0
+      let errorCount = 0
+      let lastErrorMessage = ''
+
+      const getVal = (row, ...keys) => {
+        for (const k of keys) {
+          const foundKey = Object.keys(row).find(rk => rk.trim().toLowerCase() === k.toLowerCase())
+          if (foundKey) return row[foundKey]
+        }
+        return null
+      }
+
+      for (const row of rows) {
+        try {
+          const phoneNo = String(getVal(row, 'Telefon No', 'Telefon', 'Phone', 'PhoneNo') || '').trim()
+          const iccid = String(getVal(row, 'ICCID', 'iccid') || '').trim()
+          
+          if (!phoneNo && !iccid) {
+            console.warn('Telefon veya ICCID bulunmayan satır atlandı:', row)
+            continue
+          }
+
+          // 1. Operator
+          const opName = String(getVal(row, 'Operatör', 'Operator') || '').trim()
+          let operatorVal = ''
+          if (opName) {
+            const foundOp = masterData.operators.find(o => o.name.toLowerCase() === opName.toLowerCase())
+            if (foundOp) {
+              operatorVal = foundOp.name
+            } else {
+              const newOp = await masterData.createItem('operators', { name: opName })
+              await masterData.fetchOperators()
+              operatorVal = opName
+            }
+          }
+
+          // 2. Company
+          const companyName = String(getVal(row, 'Şirket', 'Company') || '').trim()
+          let companyId = null
+          if (companyName) {
+            let comp = masterData.companies.find(c => c.name.toLowerCase() === companyName.toLowerCase())
+            if (!comp) {
+              const newComp = await masterData.createItem('companies', { name: companyName })
+              companyId = newComp.id
+              await masterData.fetchCompanies()
+            } else {
+              companyId = comp.id
+            }
+          }
+
+          // 3. Department
+          const deptName = String(getVal(row, 'Departman', 'Department', 'Bölüm') || '').trim()
+          let departmentId = null
+          if (deptName) {
+            let dept = masterData.departments.find(d => d.name.toLowerCase() === deptName.toLowerCase())
+            if (!dept) {
+              const newDept = await masterData.createItem('departments', { name: deptName })
+              departmentId = newDept.id
+              await masterData.fetchDepartments()
+            } else {
+              departmentId = dept.id
+            }
+          }
+
+          // 4. Package
+          const packageName = String(getVal(row, 'Paket', 'Package') || '').trim()
+          let packageId = null
+          if (packageName) {
+            let pkg = masterData.packages.find(p => p.name.toLowerCase() === packageName.toLowerCase())
+            if (pkg) {
+              packageId = pkg.id
+            }
+          }
+
+          // 5. Location
+          const locName = String(getVal(row, 'Lokasyon', 'Location') || '').trim()
+          let locationId = null
+          if (locName) {
+            let loc = masterData.locations.find(l => l.name.toLowerCase() === locName.toLowerCase())
+            if (!loc) {
+              const newLoc = await masterData.createItem('locations', { name: locName })
+              locationId = newLoc.id
+              await masterData.fetchLocations()
+            } else {
+              locationId = loc.id
+            }
+          }
+
+          const deviceVal = getVal(row, 'Cihaz Bilgisi', 'Cihaz', 'Device', 'DeviceInfo') || ''
+          const statusVal = getVal(row, 'Durum', 'Status') || 'Aktif'
+          const notesVal = getVal(row, 'Notlar', 'Not', 'Açıklama', 'Notes') || ''
+
+          const payload = {
+            phone_no: phoneNo,
+            iccid: iccid,
+            operator: operatorVal,
+            company_id: companyId,
+            department_id: departmentId,
+            package_id: packageId,
+            location_id: locationId,
+            device_info: deviceVal,
+            status: statusVal,
+            notes: notesVal
+          }
+
+          await createItem(payload)
+          successCount++
+        } catch (err) {
+          console.error(err)
+          errorCount++
+          lastErrorMessage = err.message || 'Satır ekleme hatası'
+        }
+      }
+
+      if (successCount > 0) {
+        showToast(`${successCount} data hattı başarıyla aktarıldı.`, 'success')
+      }
+      if (errorCount > 0) {
+        showToast(`${errorCount} kayıt hata nedeniyle atlandı. Son Hata: ${lastErrorMessage}`, 'error', 5000)
+      }
+      
+      fetchList()
+    } catch (excelErr) {
+      console.error(excelErr)
+      showToast('Excel dosyası okunurken hata oluştu.', 'error')
+    } finally {
+      stopLoading()
+      e.target.value = ''
+    }
+  }
+  reader.readAsArrayBuffer(file)
+}
+
+const openAddModal = () => {
+  selectedItem.value = null
+  form.value = {
+    iccid: '', phone_no: '', operator: '', company_id: null,
+    department_id: null, package_id: null, location_id: null,
+    device_info: '', status: 'Aktif', notes: ''
+  }
+  isModalOpen.value = true
 }
 
 // Modal Logic
@@ -129,12 +324,37 @@ onMounted(() => {
     >
       <template #toolbar>
         <template v-if="selectedIds.length > 0">
-          <span class="text-[13px] font-bold text-[#1a73e8]">{{ selectedIds.length }} Kayıt Seçildi</span>
-          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-md text-[12px] font-bold hover:bg-emerald-100"
+          <span class="text-[13px] font-bold text-[#1a73e8]">{{ selectedIds.length }} Seçili</span>
+          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[12px] font-bold hover:bg-emerald-100"
             @click="exportSelected">
             <i class="fas fa-file-excel"></i> Seçilenleri İndir
           </button>
         </template>
+        <div class="ml-auto flex items-center gap-2">
+          <input 
+            type="file" 
+            ref="excelInput" 
+            class="hidden" 
+            accept=".xlsx, .xls" 
+            @change="handleExcelImport" 
+          />
+          <button type="button" @click="downloadTemplate"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-[12px] font-semibold hover:bg-gray-50">
+            <i class="fas fa-file-download text-blue-500"></i> Şablon
+          </button>
+          <button type="button" @click="$refs.excelInput.click()"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-[12px] font-semibold hover:bg-gray-50">
+            <i class="fas fa-file-import text-blue-500"></i> Excel Yükle
+          </button>
+          <button type="button" @click="exportExcel()"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-[12px] font-semibold hover:bg-gray-50">
+            <i class="fas fa-file-excel text-emerald-500"></i> Excel Dışa Aktar
+          </button>
+          <button type="button" @click="openAddModal"
+            class="flex items-center gap-1.5 px-4 py-1.5 bg-[#1a73e8] text-white rounded-lg text-[12px] font-bold hover:bg-blue-700 shadow-sm">
+            <i class="fas fa-plus text-[11px]"></i> Yeni Data Ekle
+          </button>
+        </div>
       </template>
 
       <!-- ICCID font-mono -->

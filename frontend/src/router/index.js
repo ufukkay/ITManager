@@ -21,6 +21,18 @@ const routes = [
     meta: { layout: 'auth', requiresAuth: false }
   },
   {
+    path: '/feedback/:ticket_id',
+    name: 'ticket-feedback',
+    component: () => import('../views/helpdesk/TicketFeedbackView.vue'),
+    meta: { layout: 'auth', requiresAuth: false }
+  },
+  {
+    path: '/scan/asset/:id',
+    name: 'mobile-asset-scan',
+    component: () => import('../views/inventory/MobileAuditView.vue'),
+    meta: { layout: 'auth', requiresAuth: false }
+  },
+  {
     path: '/',
     name: 'dashboard',
     component: () => import('../views/DashboardView.vue'),
@@ -132,7 +144,12 @@ const routes = [
     children: [
       {
         path: '',
-        redirect: '/inventory/assets'
+        redirect: '/inventory/matrix'
+      },
+      {
+        path: 'matrix',
+        name: 'inventory-matrix',
+        component: () => import('../views/inventory/InventoryMatrixView.vue')
       },
       {
         path: 'assets',
@@ -167,6 +184,7 @@ const routes = [
       { path: '', redirect: '/helpdesk/my-tickets' },
       { path: 'my-tickets', component: () => import('../views/helpdesk/MyTicketsView.vue') },
       { path: 'pool', component: () => import('../views/helpdesk/TechnicianPoolView.vue'), meta: { permission: 'helpdesk:manage' } },
+      { path: 'csat', component: () => import('../views/helpdesk/CSATReportView.vue'), meta: { permission: 'helpdesk:manage' } },
       { path: 'ticket/:id', component: () => import('../views/helpdesk/TicketDetailView.vue') }
     ]
   },
@@ -190,6 +208,11 @@ const routes = [
         path: 'organization',
         name: 'master-organization',
         component: () => import('../views/master-data/OrganizationView.vue')
+      },
+      {
+        path: 'asset-definitions',
+        name: 'master-asset-definitions',
+        component: () => import('../views/master-data/AssetDefinitionsView.vue')
       },
       {
         path: 'vehicles',
@@ -228,10 +251,31 @@ const routes = [
         meta: { permission: 'system:settings' }
       },
       {
+        path: 'm365-settings',
+        name: 'master-m365-settings',
+        component: () => import('../views/master-data/M365SettingsView.vue'),
+        meta: { permission: 'system:settings' }
+      },
+      {
         path: 'helpdesk-settings',
         name: 'master-helpdesk-settings',
         component: () => import('../views/master-data/HelpDeskSettingsView.vue'),
         meta: { permission: 'system:settings' }
+      },
+      {
+        path: 'label-designer',
+        name: 'master-label-designer',
+        component: () => import('../views/master-data/LabelDesignerView.vue')
+      },
+      {
+        path: 'form-designer',
+        name: 'master-form-designer',
+        component: () => import('../views/master-data/ZimmetFormDesignerView.vue')
+      },
+      {
+        path: 'audit-logs',
+        name: 'master-audit-logs',
+        component: () => import('../views/master-data/AuditLogsView.vue')
       }
     ]
   },

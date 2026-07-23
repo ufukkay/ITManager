@@ -57,11 +57,8 @@ export const useAssetStore = defineStore('asset', {
     async addAsset(formData) {
       this.loading = true
       try {
-        // Must send as multipart/form-data for file uploads
         const response = await api.post('/assets', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+          headers: { 'Content-Type': 'multipart/form-data' }
         })
         await this.fetchAssets()
         await this.fetchFinancialSummary()
@@ -77,11 +74,8 @@ export const useAssetStore = defineStore('asset', {
     async updateAsset(id, formData) {
       this.loading = true
       try {
-        // Must send as multipart/form-data for file uploads
         const response = await api.put(`/assets/${id}`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+          headers: { 'Content-Type': 'multipart/form-data' }
         })
         await this.fetchAssets()
         await this.fetchFinancialSummary()
@@ -139,30 +133,86 @@ export const useAssetStore = defineStore('asset', {
     async addCategory(name) {
       try {
         const response = await api.post('/assets/categories', { name })
-        this.metadata.categories.push(response.data)
+        await this.fetchMetadata()
         return response.data
       } catch (err) {
         throw err.response?.data?.error || 'Kategori eklenemedi.'
       }
     },
 
+    async deleteCategory(id) {
+      try {
+        await api.delete(`/assets/categories/${id}`)
+        await this.fetchMetadata()
+      } catch (err) {
+        throw err.response?.data?.error || 'Kategori silinemedi.'
+      }
+    },
+
     async addBrand(name) {
       try {
         const response = await api.post('/assets/brands', { name })
-        this.metadata.brands.push(response.data)
+        await this.fetchMetadata()
         return response.data
       } catch (err) {
         throw err.response?.data?.error || 'Marka eklenemedi.'
       }
     },
 
+    async deleteBrand(id) {
+      try {
+        await api.delete(`/assets/brands/${id}`)
+        await this.fetchMetadata()
+      } catch (err) {
+        throw err.response?.data?.error || 'Marka silinemedi.'
+      }
+    },
+
     async addModel(modelData) {
       try {
         const response = await api.post('/assets/models', modelData)
-        this.metadata.models.push(response.data)
+        await this.fetchMetadata()
         return response.data
       } catch (err) {
         throw err.response?.data?.error || 'Model eklenemedi.'
+      }
+    },
+
+    async deleteModel(id) {
+      try {
+        await api.delete(`/assets/models/${id}`)
+        await this.fetchMetadata()
+      } catch (err) {
+        throw err.response?.data?.error || 'Model silinemedi.'
+      }
+    },
+
+    async addStatus(name) {
+      try {
+        const response = await api.post('/assets/statuses', { name })
+        await this.fetchMetadata()
+        return response.data
+      } catch (err) {
+        throw err.response?.data?.error || 'Durum eklenemedi.'
+      }
+    },
+
+    async updateStatus(id, name) {
+      try {
+        const response = await api.put(`/assets/statuses/${id}`, { name })
+        await this.fetchMetadata()
+        return response.data
+      } catch (err) {
+        throw err.response?.data?.error || 'Durum güncellenemedi.'
+      }
+    },
+
+    async deleteStatus(id) {
+      try {
+        await api.delete(`/assets/statuses/${id}`)
+        await this.fetchMetadata()
+      } catch (err) {
+        throw err.response?.data?.error || 'Durum silinemedi.'
       }
     },
 

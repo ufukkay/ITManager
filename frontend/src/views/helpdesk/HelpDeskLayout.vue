@@ -29,6 +29,17 @@
         >
           <i class="fas fa-inbox w-5 text-center"></i> Talep Havuzu
         </router-link>
+
+        <router-link
+          v-if="authStore.hasPermission('helpdesk:manage')"
+          to="/helpdesk/csat"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors mt-1"
+          active-class="bg-indigo-50 text-indigo-700 font-bold"
+          exact-active-class="bg-indigo-50 text-indigo-700 font-bold"
+          :class="[$route.path.includes('/csat') ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-600 hover:bg-gray-50']"
+        >
+          <i class="fas fa-smile w-5 text-center"></i> Memnuniyet (CSAT)
+        </router-link>
       </nav>
     </div>
 
