@@ -45,6 +45,17 @@
         </RouterLink>
 
         <RouterLink
+          to="/inventory/audit"
+          class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all"
+          :class="$route.path.startsWith('/inventory/audit')
+            ? 'bg-blue-50 text-blue-600'
+            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'"
+        >
+          <i class="fas fa-clipboard-check w-4 text-center text-[12px] text-indigo-600"></i>
+          Zimmet Stok Sayımı
+        </RouterLink>
+
+        <RouterLink
           to="/inventory/reports"
           class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all"
           :class="$route.path.startsWith('/inventory/reports')

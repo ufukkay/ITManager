@@ -162,6 +162,11 @@ const routes = [
         component: () => import('../views/inventory/PersonnelAssetsView.vue')
       },
       {
+        path: 'audit',
+        name: 'inventory-audit',
+        component: () => import('../views/inventory/AssetAuditView.vue')
+      },
+      {
         path: 'reports',
         name: 'inventory-reports',
         component: () => import('../views/inventory/AmortizationView.vue')
