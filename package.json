@@ -32,6 +32,7 @@
   "devDependencies": {
     "axios": "^1.13.6",
     "nodemon": "^3.1.14",
-    "pkg": "^5.8.1"
+    "pkg": "^5.8.1",
+    "playwright": "^1.61.1"
   }
 }

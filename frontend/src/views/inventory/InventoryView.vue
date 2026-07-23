@@ -219,155 +219,157 @@
               <tr v-if="filteredAssets.length === 0" class="text-center">
                 <td colspan="8" class="py-12 text-gray-400 text-sm">Hiçbir varlık bulunamadı.</td>
               </tr>
-              <tr v-for="asset in filteredAssets" :key="asset.id" :class="['hover:bg-gray-50/50 transition-colors text-[12.5px]', isSelected(asset.id) ? 'bg-blue-50/30' : '']">
-                <td class="w-10 px-3 py-3 text-center">
-                  <input 
-                    type="checkbox" 
-                    :value="asset.id" 
-                    v-model="selectedAssetIds" 
-                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                  />
-                </td>
-                <td class="px-5 py-3">
-                  <div @click="toggleExpand(asset.id)" class="flex items-center gap-1.5 cursor-pointer group hover:text-blue-600">
-                    <i :class="['fas fa-chevron-right text-[10px] transition-transform text-gray-400 group-hover:text-blue-500', expandedAssetId === asset.id ? 'rotate-90 text-blue-500' : '']"></i>
-                    <div class="font-bold text-gray-900">{{ asset.serial_no }}</div>
-                  </div>
-                  <div class="text-[10.5px] text-gray-400 flex items-center gap-1.5 mt-0.5 pl-4" v-if="asset.barcode">
-                    <i class="fas fa-barcode"></i> {{ asset.barcode }}
-                  </div>
-                </td>
-                <td class="px-5 py-3">
-                  <div class="font-semibold text-gray-700">{{ asset.brand_name }} {{ asset.model_name }}</div>
-                  <div class="text-[10.5px] text-gray-400">{{ asset.category_name }}</div>
-                </td>
-                <td class="px-5 py-3">
-                  <span :class="['px-2 py-0.5 rounded-full text-[10px] font-bold uppercase', getStatusClass(asset.status_name)]">
-                    {{ asset.status_name }}
-                  </span>
-                </td>
-                <td class="px-5 py-3">
-                  <div class="font-medium text-gray-800">{{ asset.company_name }}</div>
-                  <div class="text-[11.5px] text-gray-500 mt-0.5">
-                    <span v-if="asset.personnel_id" class="text-blue-600 font-semibold">
-                      <i class="fas fa-user mr-1 text-[10px]"></i> {{ asset.personnel_name }}
-                    </span>
-                    <span v-else-if="asset.location_id" class="text-purple-600 font-semibold">
-                      <i class="fas fa-map-marker-alt mr-1 text-[10px]"></i> {{ asset.location_name }}
-                    </span>
-                    <span v-else class="text-gray-400 italic">Depoda / Atanmamış</span>
-                  </div>
-                </td>
-                <td class="px-5 py-3">
-                  <div class="flex items-center gap-2">
-                    <a v-if="asset.invoice_path" :href="asset.invoice_path" target="_blank" class="text-blue-600 hover:text-blue-800 text-[11px] font-bold flex items-center gap-1" title="Faturayı Görüntüle">
-                      <i class="fas fa-file-invoice"></i> Fatura
-                    </a>
-                    <a v-if="asset.warranty_path" :href="asset.warranty_path" target="_blank" class="text-purple-600 hover:text-purple-800 text-[11px] font-bold flex items-center gap-1" title="Garanti Belgesini Görüntüle">
-                      <i class="fas fa-shield-alt"></i> Garanti
-                    </a>
-                    <span v-if="!asset.invoice_path && !asset.warranty_path" class="text-gray-300 text-[11px] italic">Dosya yok</span>
-                  </div>
-                </td>
-                <td class="px-5 py-3 text-right">
-                  <div class="font-semibold text-gray-900">{{ fmt(calculateMonthlyCost(asset)) }}</div>
-                  <div class="text-[10px] text-gray-400">
-                    Ömür: {{ asset.lifetime_months }} Ay · Bedel: {{ fmt(asset.purchase_price) }}
-                  </div>
-                </td>
-                <td class="px-5 py-3 text-right">
-                  <div class="flex items-center justify-end gap-1.5">
-                    <button @click="openStickerModal(asset)" class="btn-actions" title="QR & Barkod Etiketi Yazdır">
-                      <i class="fas fa-qrcode text-blue-600"></i>
-                    </button>
-                    <RouterLink v-if="asset.personnel_id" to="/inventory/personnel" class="btn-actions" title="Zimmet Formu / Tutanağı Yazdır">
-                      <i class="fas fa-file-contract text-purple-600"></i>
-                    </RouterLink>
-                    <button @click="showLogs(asset)" class="btn-actions" title="İşlem Geçmişi">
-                      <i class="fas fa-history text-gray-500"></i>
-                    </button>
-                    <!-- Checkout (Zimmetle) -->
-                    <button 
-                      v-if="!asset.personnel_id && !asset.location_id && authStore.hasPermission('asset:edit')" 
-                      @click="openCheckoutModal(asset)" 
-                      class="btn-actions" 
-                      title="Zimmet Atama"
-                    >
-                      <i class="fas fa-user-plus text-emerald-600"></i>
-                    </button>
-                    <!-- Checkin (Zimmet İade) -->
-                    <button 
-                      v-if="(asset.personnel_id || asset.location_id) && authStore.hasPermission('asset:edit')" 
-                      @click="handleCheckin(asset)" 
-                      class="btn-actions" 
-                      title="Depoya İade Et"
-                    >
-                      <i class="fas fa-undo text-amber-600"></i>
-                    </button>
-                    <!-- Edit -->
-                    <button 
-                      v-if="authStore.hasPermission('asset:edit')" 
-                      @click="openEditModal(asset)" 
-                      class="btn-actions" 
-                      title="Düzenle"
-                    >
-                      <i class="fas fa-edit text-blue-600"></i>
-                    </button>
-                    <!-- Delete -->
-                    <button 
-                      v-if="authStore.hasPermission('asset:edit')" 
-                      @click="handleDelete(asset)" 
-                      class="btn-actions" 
-                      title="Sil"
-                    >
-                      <i class="fas fa-trash text-red-500"></i>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-
-              <!-- EXPANDED SPECIFICATIONS DRAWER ROW -->
-              <tr v-if="expandedAssetId === asset.id" class="bg-blue-50/20 border-b border-blue-100 animate-fade-in">
-                <td colspan="8" class="px-8 py-4">
-                  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-gray-700 bg-white p-4 rounded-xl border border-blue-100 shadow-sm">
-                    <!-- Column 1: Hardware Specs -->
-                    <div class="space-y-2 border-r border-gray-100 pr-4">
-                      <div class="font-black text-gray-900 uppercase tracking-wider text-[10px] flex items-center gap-1.5 text-blue-600">
-                        <i class="fas fa-microchip"></i> Donanım Özellikleri
-                      </div>
-                      <div class="flex justify-between py-0.5 border-b border-gray-50"><span class="text-gray-400">İşlemci (CPU):</span> <span class="font-bold text-gray-900">{{ asset.cpu_model || '—' }}</span></div>
-                      <div class="flex justify-between py-0.5 border-b border-gray-50"><span class="text-gray-400">RAM:</span> <span class="font-bold text-gray-900">{{ asset.ram_gb ? asset.ram_gb + ' GB' : '—' }}</span></div>
-                      <div class="flex justify-between py-0.5 border-b border-gray-50"><span class="text-gray-400">Disk Depolama:</span> <span class="font-bold text-gray-900">{{ asset.disk_gb ? asset.disk_gb + ' GB' : '—' }}</span></div>
-                      <div class="flex justify-between py-0.5"><span class="text-gray-400">İşletim Sistemi:</span> <span class="font-bold text-gray-900">{{ asset.os_version || '—' }}</span></div>
+              <template v-for="asset in filteredAssets" :key="asset.id">
+                <tr :class="['hover:bg-gray-50/50 transition-colors text-[12.5px]', isSelected(asset.id) ? 'bg-blue-50/30' : '']">
+                  <td class="w-10 px-3 py-3 text-center">
+                    <input 
+                      type="checkbox" 
+                      :value="asset.id" 
+                      v-model="selectedAssetIds" 
+                      class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </td>
+                  <td class="px-5 py-3">
+                    <div @click="toggleExpand(asset.id)" class="flex items-center gap-1.5 cursor-pointer group hover:text-blue-600">
+                      <i :class="['fas fa-chevron-right text-[10px] transition-transform text-gray-400 group-hover:text-blue-500', expandedAssetId === asset.id ? 'rotate-90 text-blue-500' : '']"></i>
+                      <div class="font-bold text-gray-900">{{ asset.serial_no }}</div>
                     </div>
-
-                    <!-- Column 2: Network Specs -->
-                    <div class="space-y-2 border-r border-gray-100 pr-4">
-                      <div class="font-black text-gray-900 uppercase tracking-wider text-[10px] flex items-center gap-1.5 text-purple-600">
-                        <i class="fas fa-network-wired"></i> Ağ & Bağlantı Bilgileri
-                      </div>
-                      <div class="flex justify-between py-0.5 border-b border-gray-50"><span class="text-gray-400">IP Adresi:</span> <span class="font-mono font-bold text-gray-900">{{ asset.ip_address || '—' }}</span></div>
-                      <div class="flex justify-between py-0.5"><span class="text-gray-400">MAC Adresi:</span> <span class="font-mono font-bold text-gray-900">{{ asset.mac_address || '—' }}</span></div>
+                    <div class="text-[10.5px] text-gray-400 flex items-center gap-1.5 mt-0.5 pl-4" v-if="asset.barcode">
+                      <i class="fas fa-barcode"></i> {{ asset.barcode }}
                     </div>
+                  </td>
+                  <td class="px-5 py-3">
+                    <div class="font-semibold text-gray-700">{{ asset.brand_name }} {{ asset.model_name }}</div>
+                    <div class="text-[10.5px] text-gray-400">{{ asset.category_name }}</div>
+                  </td>
+                  <td class="px-5 py-3">
+                    <span :class="['px-2 py-0.5 rounded-full text-[10px] font-bold uppercase', getStatusClass(asset.status_name)]">
+                      {{ asset.status_name }}
+                    </span>
+                  </td>
+                  <td class="px-5 py-3">
+                    <div class="font-medium text-gray-800">{{ asset.company_name }}</div>
+                    <div class="text-[11.5px] text-gray-500 mt-0.5">
+                      <span v-if="asset.personnel_id" class="text-blue-600 font-semibold">
+                        <i class="fas fa-user mr-1 text-[10px]"></i> {{ asset.personnel_name }}
+                      </span>
+                      <span v-else-if="asset.location_id" class="text-purple-600 font-semibold">
+                        <i class="fas fa-map-marker-alt mr-1 text-[10px]"></i> {{ asset.location_name }}
+                      </span>
+                      <span v-else class="text-gray-400 italic">Depoda / Atanmamış</span>
+                    </div>
+                  </td>
+                  <td class="px-5 py-3">
+                    <div class="flex items-center gap-2">
+                      <a v-if="asset.invoice_path" :href="asset.invoice_path" target="_blank" class="text-blue-600 hover:text-blue-800 text-[11px] font-bold flex items-center gap-1" title="Faturayı Görüntüle">
+                        <i class="fas fa-file-invoice"></i> Fatura
+                      </a>
+                      <a v-if="asset.warranty_path" :href="asset.warranty_path" target="_blank" class="text-purple-600 hover:text-purple-800 text-[11px] font-bold flex items-center gap-1" title="Garanti Belgesini Görüntüle">
+                        <i class="fas fa-shield-alt"></i> Garanti
+                      </a>
+                      <span v-if="!asset.invoice_path && !asset.warranty_path" class="text-gray-300 text-[11px] italic">Dosya yok</span>
+                    </div>
+                  </td>
+                  <td class="px-5 py-3 text-right">
+                    <div class="font-semibold text-gray-900">{{ fmt(calculateMonthlyCost(asset)) }}</div>
+                    <div class="text-[10px] text-gray-400">
+                      Ömür: {{ asset.lifetime_months }} Ay · Bedel: {{ fmt(asset.purchase_price) }}
+                    </div>
+                  </td>
+                  <td class="px-5 py-3 text-right">
+                    <div class="flex items-center justify-end gap-1.5">
+                      <button @click="openStickerModal(asset)" class="btn-actions" title="QR & Barkod Etiketi Yazdır">
+                        <i class="fas fa-qrcode text-blue-600"></i>
+                      </button>
+                      <RouterLink v-if="asset.personnel_id" to="/inventory/personnel" class="btn-actions" title="Zimmet Formu / Tutanağı Yazdır">
+                        <i class="fas fa-file-contract text-purple-600"></i>
+                      </RouterLink>
+                      <button @click="showLogs(asset)" class="btn-actions" title="İşlem Geçmişi">
+                        <i class="fas fa-history text-gray-500"></i>
+                      </button>
+                      <!-- Checkout (Zimmetle) -->
+                      <button 
+                        v-if="!asset.personnel_id && !asset.location_id && authStore.hasPermission('asset:edit')" 
+                        @click="openCheckoutModal(asset)" 
+                        class="btn-actions" 
+                        title="Zimmet Atama"
+                      >
+                        <i class="fas fa-user-plus text-emerald-600"></i>
+                      </button>
+                      <!-- Checkin (Zimmet İade) -->
+                      <button 
+                        v-if="(asset.personnel_id || asset.location_id) && authStore.hasPermission('asset:edit')" 
+                        @click="handleCheckin(asset)" 
+                        class="btn-actions" 
+                        title="Depoya İade Et"
+                      >
+                        <i class="fas fa-undo text-amber-600"></i>
+                      </button>
+                      <!-- Edit -->
+                      <button 
+                        v-if="authStore.hasPermission('asset:edit')" 
+                        @click="openEditModal(asset)" 
+                        class="btn-actions" 
+                        title="Düzenle"
+                      >
+                        <i class="fas fa-edit text-blue-600"></i>
+                      </button>
+                      <!-- Delete -->
+                      <button 
+                        v-if="authStore.hasPermission('asset:edit')" 
+                        @click="handleDelete(asset)" 
+                        class="btn-actions" 
+                        title="Sil"
+                      >
+                        <i class="fas fa-trash text-red-500"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
 
-                    <!-- Column 3: Dynamic Category Specs (IMEI, Custom Attributes) -->
-                    <div class="space-y-2">
-                      <div class="font-black text-gray-900 uppercase tracking-wider text-[10px] flex items-center gap-1.5 text-amber-600">
-                        <i class="fas fa-sliders-h"></i> Dinamik & Kategori Özellikleri
+                <!-- EXPANDED SPECIFICATIONS DRAWER ROW -->
+                <tr v-if="expandedAssetId === asset.id" class="bg-blue-50/20 border-b border-blue-100 animate-fade-in">
+                  <td colspan="8" class="px-8 py-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-gray-700 bg-white p-4 rounded-xl border border-blue-100 shadow-sm">
+                      <!-- Column 1: Hardware Specs -->
+                      <div class="space-y-2 border-r border-gray-100 pr-4">
+                        <div class="font-black text-gray-900 uppercase tracking-wider text-[10px] flex items-center gap-1.5 text-blue-600">
+                          <i class="fas fa-microchip"></i> Donanım Özellikleri
+                        </div>
+                        <div class="flex justify-between py-0.5 border-b border-gray-50"><span class="text-gray-400">İşlemci (CPU):</span> <span class="font-bold text-gray-900">{{ asset.cpu_model || '—' }}</span></div>
+                        <div class="flex justify-between py-0.5 border-b border-gray-50"><span class="text-gray-400">RAM:</span> <span class="font-bold text-gray-900">{{ asset.ram_gb ? asset.ram_gb + ' GB' : '—' }}</span></div>
+                        <div class="flex justify-between py-0.5 border-b border-gray-50"><span class="text-gray-400">Disk Depolama:</span> <span class="font-bold text-gray-900">{{ asset.disk_gb ? asset.disk_gb + ' GB' : '—' }}</span></div>
+                        <div class="flex justify-between py-0.5"><span class="text-gray-400">İşletim Sistemi:</span> <span class="font-bold text-gray-900">{{ asset.os_version || '—' }}</span></div>
                       </div>
-                      <div v-if="parseCustomSpecs(asset.specs_json).length === 0" class="text-gray-400 italic text-[11px] py-2">
-                        Özel tanımlanmış detay bulunmuyor.
+
+                      <!-- Column 2: Network Specs -->
+                      <div class="space-y-2 border-r border-gray-100 pr-4">
+                        <div class="font-black text-gray-900 uppercase tracking-wider text-[10px] flex items-center gap-1.5 text-purple-600">
+                          <i class="fas fa-network-wired"></i> Ağ & Bağlantı Bilgileri
+                        </div>
+                        <div class="flex justify-between py-0.5 border-b border-gray-50"><span class="text-gray-400">IP Adresi:</span> <span class="font-mono font-bold text-gray-900">{{ asset.ip_address || '—' }}</span></div>
+                        <div class="flex justify-between py-0.5"><span class="text-gray-400">MAC Adresi:</span> <span class="font-mono font-bold text-gray-900">{{ asset.mac_address || '—' }}</span></div>
                       </div>
-                      <div v-else class="space-y-1">
-                        <div v-for="spec in parseCustomSpecs(asset.specs_json)" :key="spec.key" class="flex justify-between py-0.5 border-b border-gray-50">
-                          <span class="text-gray-400">{{ spec.key }}:</span>
-                          <span class="font-bold text-gray-900">{{ spec.value || '—' }}</span>
+
+                      <!-- Column 3: Dynamic Category Specs (IMEI, Custom Attributes) -->
+                      <div class="space-y-2">
+                        <div class="font-black text-gray-900 uppercase tracking-wider text-[10px] flex items-center gap-1.5 text-amber-600">
+                          <i class="fas fa-sliders-h"></i> Dinamik & Kategori Özellikleri
+                        </div>
+                        <div v-if="parseCustomSpecs(asset.specs_json).length === 0" class="text-gray-400 italic text-[11px] py-2">
+                          Özel tanımlanmış detay bulunmuyor.
+                        </div>
+                        <div v-else class="space-y-1">
+                          <div v-for="spec in parseCustomSpecs(asset.specs_json)" :key="spec.key" class="flex justify-between py-0.5 border-b border-gray-50">
+                            <span class="text-gray-400">{{ spec.key }}:</span>
+                            <span class="font-bold text-gray-900">{{ spec.value || '—' }}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </td>
-              </tr>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
