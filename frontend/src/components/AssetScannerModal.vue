@@ -114,43 +114,121 @@
       </div>
 
       <!-- ── AŞAMA 3: Hata ───────────────────────────────── -->
-      <div v-else-if="stage === 'error'" class="px-5 py-8 flex flex-col items-center gap-4 text-center">
-        <div class="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
-          <i class="fas fa-times-circle text-red-500 text-2xl"></i>
+      <div v-else-if="stage === 'error'" class="px-5 py-6 flex flex-col gap-4">
+
+        <!-- İzin Reddedildi ekranı -->
+        <div v-if="errorType === 'permission-denied'" class="flex flex-col gap-4">
+          <div class="flex flex-col items-center gap-3 text-center">
+            <div class="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
+              <i class="fas fa-ban text-red-500 text-2xl"></i>
+            </div>
+            <div>
+              <div class="font-bold text-gray-900 text-base mb-1">Kamera İzni Verilmemiş</div>
+              <p class="text-sm text-gray-500">Kamera iznini tarayıcı ayarlarından manuel olarak açmanız gerekiyor.</p>
+            </div>
+          </div>
+
+          <!-- iOS Safari Adımları -->
+          <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 space-y-3">
+            <div class="font-bold text-blue-800 text-xs flex items-center gap-2">
+              <i class="fab fa-apple"></i> iPhone / iPad — Safari için:
+            </div>
+            <ol class="space-y-2.5 text-xs text-gray-700">
+              <li class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-blue-600 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+                <span>iPhone'unuzun <strong>Ayarlar</strong> uygulamasını açın <i class="fas fa-cog text-gray-400 ml-0.5"></i></span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-blue-600 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+                <span>Aşağı kaydırarak <strong>Safari</strong>'yi bulun ve açın</span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-blue-600 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">3</span>
+                <span><strong>Kamera</strong> satırına dokunun → <strong>İzin Ver</strong> seçin</span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-blue-600 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">4</span>
+                <span>Bu sayfaya geri dönüp <strong>Tekrar Dene</strong>'ye basın</span>
+              </li>
+            </ol>
+          </div>
+
+          <!-- Android Chrome Adımları -->
+          <div class="bg-green-50 border border-green-100 rounded-2xl p-4 space-y-3">
+            <div class="font-bold text-green-800 text-xs flex items-center gap-2">
+              <i class="fab fa-android"></i> Android — Chrome için:
+            </div>
+            <ol class="space-y-2.5 text-xs text-gray-700">
+              <li class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-green-600 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+                <span>Adres çubuğunun solundaki <strong>🔒 kilit</strong> veya <strong>ⓘ bilgi</strong> simgesine dokunun</span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-green-600 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+                <span><strong>İzinler</strong> → <strong>Kamera</strong> → <strong>İzin Ver</strong></span>
+              </li>
+              <li class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-green-600 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">3</span>
+                <span>Sayfayı yenileyin ve tekrar deneyin</span>
+              </li>
+            </ol>
+          </div>
+
+          <!-- Görsel ipucu (Safari adres çubuğu) -->
+          <div class="bg-gray-50 border border-dashed border-gray-200 rounded-xl p-3 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
+              <i class="fas fa-lightbulb text-amber-500 text-sm"></i>
+            </div>
+            <p class="text-[11px] text-gray-600 leading-relaxed">
+              <strong>İpucu:</strong> Safari'de adres çubuğuna <span class="font-mono bg-white border border-gray-200 px-1 rounded text-[10px]">aa</span> harflerine dokunup <strong>Web Sitesi Ayarları</strong> → <strong>Kamera → İzin Ver</strong> diyebilirsiniz.
+            </p>
+          </div>
         </div>
-        <div>
-          <div class="font-bold text-gray-900 text-base mb-1">Kamera Açılamadı</div>
-          <p class="text-sm text-gray-500 leading-relaxed">{{ errorMessage }}</p>
+
+        <!-- Diğer hatalar -->
+        <div v-else class="flex flex-col items-center gap-3 text-center">
+          <div class="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center">
+            <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+          </div>
+          <div>
+            <div class="font-bold text-gray-900 text-sm mb-1">Kamera Açılamadı</div>
+            <p class="text-xs text-gray-500">{{ errorMessage }}</p>
+          </div>
         </div>
-        <!-- Manuel Giriş fallback -->
-        <div class="w-full pt-2 border-t border-gray-100">
-          <div class="text-xs font-bold text-gray-500 mb-2">Manuel olarak kodu girin:</div>
+
+        <!-- Manuel giriş (her iki hata türünde de görünür) -->
+        <div class="border-t border-gray-100 pt-4">
+          <div class="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+            <i class="fas fa-keyboard mr-1"></i>Alternatif: Manuel Giriş
+          </div>
           <div class="flex gap-2">
             <input
               v-model="manualCode"
               type="text"
-              placeholder="Barkod veya seri no..."
-              class="flex-1 h-10 px-3 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500 bg-gray-50"
+              placeholder="Barkod veya seri no girin..."
+              class="flex-1 h-10 px-3 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500 bg-gray-50 focus:bg-white"
               @keyup.enter="handleManualSubmit"
             />
             <button
               @click="handleManualSubmit"
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs rounded-xl transition-colors"
             >
               Ara
             </button>
           </div>
         </div>
-        <div class="flex gap-2 w-full">
+
+        <!-- Aksiyon butonları -->
+        <div class="flex gap-2">
           <button
             @click="stage = 'permission'"
-            class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-2xl transition-colors"
+            class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-sm rounded-2xl transition-colors flex items-center justify-center gap-2"
           >
-            <i class="fas fa-redo mr-1"></i> Tekrar Dene
+            <i class="fas fa-redo"></i> Tekrar Dene
           </button>
           <button
             @click="closeModal"
-            class="flex-1 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-sm rounded-2xl transition-colors"
+            class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-2xl transition-colors"
           >
             Kapat
           </button>
@@ -173,6 +251,7 @@ const stage = ref('permission')
 const currentFacing = ref('environment')
 const manualCode = ref('')
 const errorMessage = ref('')
+const errorType = ref('') // 'permission-denied' | 'other'
 
 let html5QrCode = null
 
@@ -187,7 +266,8 @@ const requestAndStart = async (facing) => {
     await navigator.mediaDevices.getUserMedia({ video: true })
   } catch (permErr) {
     stage.value = 'error'
-    errorMessage.value = 'Kamera erişim izni reddedildi. Tarayıcı ayarlarından kamera iznini verin ve tekrar deneyin.'
+    errorType.value = 'permission-denied'
+    errorMessage.value = 'Kamera erişim izni reddedildi.'
     return
   }
 
@@ -221,11 +301,18 @@ const requestAndStart = async (facing) => {
     )
   } catch (err) {
     stage.value = 'error'
-    if (err?.message?.includes('NotReadableError') || err?.message?.includes('in use')) {
+    const msg = err?.name || err?.message || ''
+    if (msg.includes('NotAllowed') || msg.includes('Permission')) {
+      errorType.value = 'permission-denied'
+      errorMessage.value = 'Kamera erişim izni reddedildi.'
+    } else if (msg.includes('NotReadable') || msg.includes('in use')) {
+      errorType.value = 'other'
       errorMessage.value = 'Kamera başka bir uygulama tarafından kullanılıyor. Diğer uygulamaları kapatıp tekrar deneyin.'
-    } else if (err?.message?.includes('NotFoundError')) {
+    } else if (msg.includes('NotFound')) {
+      errorType.value = 'other'
       errorMessage.value = 'Cihazda bu yönde kamera bulunamadı.'
     } else {
+      errorType.value = 'other'
       errorMessage.value = `Kamera başlatılamadı: ${err?.message || 'Bilinmeyen hata'}`
     }
   }
@@ -257,6 +344,7 @@ const closeModal = async () => {
   stage.value = 'permission'
   manualCode.value = ''
   errorMessage.value = ''
+  errorType.value = ''
   emit('close')
 }
 
@@ -277,6 +365,7 @@ watch(() => props.show, async (newVal) => {
     stage.value = 'permission'
     manualCode.value = ''
     errorMessage.value = ''
+    errorType.value = ''
   } else {
     await stopScanner()
     stage.value = 'permission'
