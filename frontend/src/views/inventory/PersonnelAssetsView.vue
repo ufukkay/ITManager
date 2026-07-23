@@ -65,25 +65,7 @@
 
     <!-- MAIN CONTENT -->
     <main class="flex-1 overflow-y-auto bg-gray-50/40 p-6">
-      <!-- SAHA ZİMMET STOK SAYIMI YÖNLENDİRME BANNERI -->
-      <div class="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-4 mb-6 shadow-sm flex items-center justify-between flex-wrap gap-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-lg shadow-sm">
-            <i class="fas fa-clipboard-check"></i>
-          </div>
-          <div>
-            <div class="font-bold text-gray-900 text-sm">Saha Zimmet Stok Sayımı Modülü</div>
-            <div class="text-xs text-gray-500 mt-0.5">3 Aylık periyodik stok denetimleri, mobil telefon kamera QR okuma ve personel doğrulamaları</div>
-          </div>
-        </div>
 
-        <RouterLink 
-          to="/inventory/audit" 
-          class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5"
-        >
-          <i class="fas fa-arrow-right"></i> Zimmet Stok Sayımı Ekranına Git
-        </RouterLink>
-      </div>
 
       <div v-if="loading" class="flex items-center justify-center h-64 text-gray-300">
         <i class="fas fa-circle-notch fa-spin text-3xl"></i>
@@ -113,13 +95,6 @@
             <div class="flex-1 min-w-0">
               <div class="font-bold text-gray-900 text-[13.5px] flex items-center gap-2">
                 <span>{{ person.first_name }} {{ person.last_name }}</span>
-                <!-- Audit Badge -->
-                <span v-if="getPersonAuditStatus(person.id).isOverdue" class="px-2 py-0.5 bg-red-50 text-red-700 border border-red-100 text-[10px] font-bold rounded-md flex items-center gap-1">
-                  <i class="fas fa-clock text-red-500"></i> Sayım Gecikti ({{ getPersonAuditStatus(person.id).label }})
-                </span>
-                <span v-else class="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold rounded-md flex items-center gap-1">
-                  <i class="fas fa-check-circle text-emerald-500"></i> Sayım Güncel ({{ getPersonAuditStatus(person.id).label }})
-                </span>
               </div>
               <div class="text-[11px] text-gray-400 flex items-center gap-2 mt-0.5">
                 <span v-if="person.title">{{ person.title }}</span>

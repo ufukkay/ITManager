@@ -86,11 +86,11 @@
           <!-- Quick Link to Full Personnel Audit Session -->
           <div v-if="asset.personnel_id" class="pt-1">
             <RouterLink 
-              to="/inventory/personnel" 
-              class="w-full py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+              to="/inventory/audit" 
+              class="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
             >
-              <i class="fas fa-clipboard-check text-amber-600"></i>
-              <span>{{ asset.personnel_name }} Personelinin Tüm Zimmetlerini Say</span>
+              <i class="fas fa-clipboard-check text-indigo-600"></i>
+              <span>Zimmet Stok Sayımı Modülüne Git</span>
             </RouterLink>
           </div>
 
