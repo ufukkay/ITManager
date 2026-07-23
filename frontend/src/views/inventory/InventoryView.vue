@@ -778,6 +778,7 @@ const configDialog = ref(null)
 const assetDialog = ref(null)
 const checkoutDialog = ref(null)
 const logsDialog = ref(null)
+const excelInput = ref(null)
 
 const showStickerModal = ref(false)
 const selectedStickerAsset = ref(null)
@@ -865,15 +866,20 @@ const calculateMonthlyCost = (asset) => {
 
 // Fetch Initial Data
 onMounted(async () => {
-  await assetStore.fetchAssets()
-  await assetStore.fetchMetadata()
-  await assetStore.fetchFinancialSummary()
-  await masterData.fetchCompanies()
+  try {
+    await assetStore.fetchAssets()
+    await assetStore.fetchMetadata()
+    await assetStore.fetchFinancialSummary()
+    await masterData.fetchCompanies()
+  } catch (err) {
+    console.error('InventoryView initial load error:', err)
+  }
 })
 
 // Computed List View Filterings with Smart Global Search & Multi-Select Bar
 const filteredAssets = computed(() => {
-  return assetStore.assets.filter(a => {
+  const list = assetStore.assets || []
+  return list.filter(a => {
     // 1. Smart Search query matches ALL fields (brand, model, category, company, personnel, location, serial, barcode, notes)
     if (searchQuery.value) {
       const q = searchQuery.value.trim().toLowerCase()
@@ -907,11 +913,13 @@ const filteredAssets = computed(() => {
 })
 
 const inUseCount = computed(() => {
-  return assetStore.assets.filter(a => a.personnel_id || a.location_id).length
+  const list = assetStore.assets || []
+  return list.filter(a => a.personnel_id || a.location_id).length
 })
 
 const warehouseCount = computed(() => {
-  return assetStore.assets.length - inUseCount.value
+  const list = assetStore.assets || []
+  return list.length - inUseCount.value
 })
 
 // CSS Helpers
@@ -942,7 +950,7 @@ const handleFileChange = (e, type) => {
 // Modals & Navigation management
 const openConfigModal = () => router.push('/master-data/asset-definitions')
 const closeConfigModal = () => {
-  configDialog.value.close()
+  configDialog.value?.close()
   newCategory.value = ''
   newBrand.value = ''
   newModelData.value = { name: '', category_id: '', brand_id: '' }
@@ -989,14 +997,17 @@ const parseCustomSpecs = (jsonStr) => {
 }
 
 const availableBrandsForSelect = computed(() => {
-  if (!selectedCategoryId.value) return assetStore.metadata.brands
-  const modelsInCat = assetStore.metadata.models.filter(m => m.category_id === Number(selectedCategoryId.value))
+  const brands = assetStore.metadata?.brands || []
+  const models = assetStore.metadata?.models || []
+  if (!selectedCategoryId.value) return brands
+  const modelsInCat = models.filter(m => m.category_id === Number(selectedCategoryId.value))
   const brandIdsInCat = new Set(modelsInCat.map(m => m.brand_id))
-  return assetStore.metadata.brands.filter(b => brandIdsInCat.has(b.id))
+  return brands.filter(b => brandIdsInCat.has(b.id))
 })
 
 const availableModelsForSelect = computed(() => {
-  return assetStore.metadata.models.filter(m => {
+  const models = assetStore.metadata?.models || []
+  return models.filter(m => {
     if (selectedCategoryId.value && m.category_id !== Number(selectedCategoryId.value)) return false
     if (selectedBrandId.value && m.brand_id !== Number(selectedBrandId.value)) return false
     return true
@@ -1005,12 +1016,14 @@ const availableModelsForSelect = computed(() => {
 
 const selectedCategoryName = computed(() => {
   let catId = selectedCategoryId.value
+  const models = assetStore.metadata?.models || []
+  const categories = assetStore.metadata?.categories || []
   if (!catId && assetForm.value.model_id) {
-    const m = assetStore.metadata.models.find(mod => mod.id === Number(assetForm.value.model_id))
+    const m = models.find(mod => mod.id === Number(assetForm.value.model_id))
     if (m) catId = m.category_id
   }
-  const cat = assetStore.metadata.categories.find(c => c.id === Number(catId))
-  return cat ? cat.name.toLowerCase() : ''
+  const cat = categories.find(c => c.id === Number(catId))
+  return cat ? (cat.name || '').toLowerCase() : ''
 })
 
 const isPhoneCategory = computed(() => {
