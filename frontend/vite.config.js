@@ -54,6 +54,10 @@ export default defineConfig({
       '/api/helpdesk': {
         target: 'http://localhost:3001',
         changeOrigin: true
+      },
+      '/api/update': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
       }
     }
   }
