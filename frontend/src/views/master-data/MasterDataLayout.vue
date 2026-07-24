@@ -10,6 +10,7 @@ const menuSections = [
     title: 'Genel',
     items: [
       { name: 'Kumanda Paneli', icon: 'fa-chart-line', path: '/master-data' },
+      { name: 'Sistem Güncellemesi', icon: 'fa-cloud-download-alt', path: '/master-data/system-update' },
       { name: 'Aktivite Günlüğü', icon: 'fa-history', path: '/master-data/audit-logs' }
     ]
   },

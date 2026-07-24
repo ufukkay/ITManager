@@ -278,6 +278,11 @@ const routes = [
         component: () => import('../views/master-data/ZimmetFormDesignerView.vue')
       },
       {
+        path: 'system-update',
+        name: 'master-system-update',
+        component: () => import('../views/master-data/SystemUpdateView.vue')
+      },
+      {
         path: 'audit-logs',
         name: 'master-audit-logs',
         component: () => import('../views/master-data/AuditLogsView.vue')

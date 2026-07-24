@@ -62,6 +62,9 @@ app.use('/api/assets', require('./modules/assets/routes'));
 // Merkezi Master Data Rotaları
 app.use('/api/master-data', hasPermission('system:admin'), require('./modules/core/routes'));
 
+// Sistem Güncelleme Rotaları
+app.use('/api/update', require('./modules/update/routes'));
+
 app.listen(PORT, () => {
     console.log(`ITManager server running at http://localhost:${PORT}`);
     
