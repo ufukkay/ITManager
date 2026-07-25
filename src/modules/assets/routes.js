@@ -92,4 +92,8 @@ router.get('/:id/logs', hasPermission('asset:view'), assetController.getAssetLog
 router.post('/:id/checkout', hasPermission('asset:edit'), assetController.checkoutAsset);
 router.post('/:id/checkin', hasPermission('asset:edit'), assetController.checkinAsset);
 
+// Asset Notes Archive
+router.get('/:id/notes', hasPermission('asset:view'), assetController.getAssetNotes);
+router.post('/:id/notes', hasPermission('asset:edit'), assetController.addAssetNote);
+
 module.exports = router;

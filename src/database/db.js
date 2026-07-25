@@ -814,6 +814,18 @@ const initDb = () => {
     )
   `).run();
 
+  // Asset Notes Archive table
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS asset_notes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        asset_id INTEGER NOT NULL,
+        user_name TEXT,
+        note TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE
+    )
+  `).run();
+
   // --- HELPDESK TABLES ---
   db.prepare(`
     CREATE TABLE IF NOT EXISTS helpdesk_categories (

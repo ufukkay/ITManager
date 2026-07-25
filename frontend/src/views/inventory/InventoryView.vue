@@ -287,6 +287,9 @@
                       <button @click="showLogs(asset)" class="btn-actions" title="İşlem Geçmişi">
                         <i class="fas fa-history text-gray-500"></i>
                       </button>
+                      <button @click="showNotesModal(asset)" class="btn-actions" title="Not Arşivi & Not Ekle">
+                        <i class="fas fa-[sticky-note] text-amber-500 fa-sticky-note"></i>
+                      </button>
                       <!-- Checkout (Zimmetle) -->
                       <button 
                         v-if="!asset.personnel_id && !asset.location_id && authStore.hasPermission('asset:edit')" 
@@ -692,6 +695,56 @@
       </div>
     </dialog>
 
+    <!-- NOT ARŞİVİ VE NOT EKLEME MODAL -->
+    <dialog ref="notesDialog" class="modal">
+      <div class="modal-box w-11/12 max-w-xl bg-white p-6 rounded-2xl relative shadow-2xl flex flex-col max-h-[550px]">
+        <h3 class="font-bold text-[16px] text-gray-900 mb-4 shrink-0 flex items-center gap-2">
+          <i class="fas fa-sticky-note text-amber-500"></i> Not Arşivi: {{ selectedAsset?.serial_no }}
+        </h3>
+        
+        <!-- Not Ekleme Formu -->
+        <div class="bg-amber-50/60 border border-amber-100 p-3 rounded-xl mb-4 shrink-0 space-y-2">
+          <div class="text-[11px] font-bold text-amber-900 uppercase">Yeni Not Ekle</div>
+          <textarea 
+            v-model="newNoteText" 
+            class="w-full text-xs p-2.5 bg-white border border-amber-200 rounded-lg outline-none focus:border-amber-500 font-medium" 
+            rows="2" 
+            placeholder="Bu varlık hakkında özel not veya servis/arıza detayı yazın..."
+          ></textarea>
+          <div class="flex justify-end">
+            <button 
+              @click="submitNewNote" 
+              :disabled="!newNoteText.trim() || savingNote" 
+              class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold text-[11px] rounded-lg transition-colors flex items-center gap-1"
+            >
+              <i class="fas fa-paper-plane text-[10px]"></i> Notu Arşive Ekle
+            </button>
+          </div>
+        </div>
+
+        <!-- Geçmiş Notlar Listesi -->
+        <div class="flex-1 overflow-y-auto pr-1 space-y-3">
+          <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Arşivlenmiş Notlar ({{ currentAssetNotes.length }})</div>
+          <div v-if="currentAssetNotes.length === 0" class="text-center py-8 text-gray-400 text-xs italic">
+            Bu cihaza ait henüz kaydedilmiş not bulunmuyor.
+          </div>
+          <div v-for="n in currentAssetNotes" :key="n.id" class="bg-gray-50 border border-gray-100 p-3 rounded-xl space-y-1">
+            <div class="flex justify-between items-center text-[10.5px] text-gray-400 font-medium">
+              <span class="font-bold text-gray-700"><i class="fas fa-user-circle text-amber-500 mr-1"></i>{{ n.user_name || 'Kullanıcı' }}</span>
+              <span>{{ formatDate(n.created_at) }}</span>
+            </div>
+            <div class="text-xs text-gray-800 font-medium whitespace-pre-wrap leading-relaxed">
+              {{ n.note }}
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-action shrink-0 mt-4">
+          <button @click="closeNotesModal" class="btn-secondary">Kapat</button>
+        </div>
+      </div>
+    </dialog>
+
     <!-- QR & BARCODE STICKER MODAL -->
     <AssetStickerModal 
       :show="showStickerModal"
@@ -780,7 +833,37 @@ const configDialog = ref(null)
 const assetDialog = ref(null)
 const checkoutDialog = ref(null)
 const logsDialog = ref(null)
+const notesDialog = ref(null)
 const excelInput = ref(null)
+
+const currentAssetNotes = ref([])
+const newNoteText = ref('')
+const savingNote = ref(false)
+
+const showNotesModal = async (asset) => {
+  selectedAsset.value = asset
+  newNoteText.value = ''
+  currentAssetNotes.value = await assetStore.fetchNotes(asset.id)
+  notesDialog.value?.showModal()
+}
+
+const closeNotesModal = () => {
+  notesDialog.value?.close()
+}
+
+const submitNewNote = async () => {
+  if (!newNoteText.value.trim() || !selectedAsset.value) return
+  savingNote.value = true
+  try {
+    const added = await assetStore.addNote(selectedAsset.value.id, newNoteText.value.trim())
+    currentAssetNotes.value.unshift(added)
+    newNoteText.value = ''
+  } catch (err) {
+    alert(err)
+  } finally {
+    savingNote.value = false
+  }
+}
 
 const showStickerModal = ref(false)
 const selectedStickerAsset = ref(null)

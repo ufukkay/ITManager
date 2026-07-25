@@ -126,6 +126,23 @@ exports.checkoutAsset = (req, res) => {
             return res.status(400).json({ error: 'Lütfen zimmet hedef türünü ve hedefini belirtin.' });
         }
 
+        // Durum kontrolü: Arızalı, Hurda, Kayıp vb. zimmetlenemesin
+        const asset = db.prepare(`
+            SELECT a.*, ast.name as status_name 
+            FROM assets a 
+            JOIN asset_statuses ast ON a.status_id = ast.id 
+            WHERE a.id = ?
+        `).get(id);
+
+        if (!asset) {
+            return res.status(404).json({ error: 'Varlık bulunamadı.' });
+        }
+
+        const statusNameLower = (asset.status_name || '').toLowerCase();
+        if (statusNameLower.includes('arıza') || statusNameLower.includes('hurda') || statusNameLower.includes('kayıp') || statusNameLower.includes('tamir') || statusNameLower.includes('servis')) {
+            return res.status(400).json({ error: `Bu varlık şu an "${asset.status_name}" durumunda olduğu için zimmetlenemez!` });
+        }
+
         let personnel_id = null;
         let location_id = null;
 
@@ -150,6 +167,12 @@ exports.checkoutAsset = (req, res) => {
             INSERT INTO asset_logs (asset_id, action, target_type, target_id, notes)
             VALUES (?, 'CHECKOUT', ?, ?, ?)
         `).run(id, target_type, target_id, notes || 'Zimmetlendi.');
+
+        // Eğe not eklenmişse arşiv notlarına da ekle
+        if (notes && notes.trim()) {
+            const userName = req.session?.user?.full_name || req.session?.user?.username || 'Sistem';
+            db.prepare('INSERT INTO asset_notes (asset_id, user_name, note) VALUES (?, ?, ?)').run(id, userName, notes.trim());
+        }
 
         res.json({ message: 'Varlık zimmetlendi.' });
     } catch (err) {
@@ -178,10 +201,41 @@ exports.checkinAsset = (req, res) => {
             VALUES (?, 'CHECKIN', 'NONE', ?)
         `).run(id, notes || 'Depoya iade edildi.');
 
+        if (notes && notes.trim()) {
+            const userName = req.session?.user?.full_name || req.session?.user?.username || 'Sistem';
+            db.prepare('INSERT INTO asset_notes (asset_id, user_name, note) VALUES (?, ?, ?)').run(id, userName, notes.trim());
+        }
+
         res.json({ message: 'Varlık depoya iade edildi.' });
     } catch (err) {
         console.error('checkinAsset error:', err);
         res.status(500).json({ error: 'İade işlemi sırasında hata oluştu.' });
+    }
+};
+
+// --- ASSET NOTES ARCHIVE ENDPOINTS ---
+exports.getAssetNotes = (req, res) => {
+    try {
+        const { id } = req.params;
+        const notes = db.prepare('SELECT * FROM asset_notes WHERE asset_id = ? ORDER BY created_at DESC').all(id);
+        res.json(notes);
+    } catch (err) {
+        res.status(500).json({ error: 'Notlar alınamadı.' });
+    }
+};
+
+exports.addAssetNote = (req, res) => {
+    try {
+        const { id } = req.params;
+        const { note } = req.body;
+        if (!note || !note.trim()) {
+            return res.status(400).json({ error: 'Not içeriği boş olamaz.' });
+        }
+        const userName = req.session?.user?.full_name || req.session?.user?.username || 'Kullanıcı';
+        const info = db.prepare('INSERT INTO asset_notes (asset_id, user_name, note) VALUES (?, ?, ?)').run(id, userName, note.trim());
+        res.json({ id: info.lastInsertRowid, user_name: userName, note: note.trim(), created_at: new Date().toISOString() });
+    } catch (err) {
+        res.status(500).json({ error: 'Not eklenemedi.' });
     }
 };
 

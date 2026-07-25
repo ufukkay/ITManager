@@ -130,6 +130,25 @@ export const useAssetStore = defineStore('asset', {
       }
     },
 
+    async fetchNotes(id) {
+      try {
+        const response = await api.get(`/assets/${id}/notes`)
+        return response.data
+      } catch (err) {
+        console.error('fetchNotes error:', err)
+        return []
+      }
+    },
+
+    async addNote(id, note) {
+      try {
+        const response = await api.post(`/assets/${id}/notes`, { note })
+        return response.data
+      } catch (err) {
+        throw err.response?.data?.error || 'Not eklenemedi.'
+      }
+    },
+
     async addCategory(name) {
       try {
         const response = await api.post('/assets/categories', { name })
