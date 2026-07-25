@@ -2,12 +2,10 @@ const express = require('express')
 const router = express.Router()
 const { checkForUpdates, downloadDbBackup, listBackups, downloadServerBackup, applyUpdate, getUpdateHistory } = require('./controller')
 
-// Tüm update endpoint'leri admin yetkisi gerektirir
-const requireAdmin = (req, res, next) => {
-  if (!req.session?.user) return res.status(401).json({ error: 'Giriş yapılmamış' })
-  if (!req.session.user.is_admin) return res.status(403).json({ error: 'Admin yetkisi gerekli' })
-  next()
-}
+const { hasPermission } = require('../../middleware/auth')
+
+// Tüm update endpoint'leri system:admin yetkisi gerektirir (role_id === 1 veya yetki)
+const requireAdmin = hasPermission('system:admin')
 
 // GitHub'dan güncel sürüm kontrolü
 router.get('/check', requireAdmin, checkForUpdates)

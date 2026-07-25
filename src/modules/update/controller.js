@@ -2,7 +2,7 @@ const { exec } = require('child_process')
 const path = require('path')
 const fs = require('fs')
 const archiver = require('archiver')
-const { getDb } = require('../../database/db')
+const { db } = require('../../database/db')
 
 const REPO_OWNER = 'ufukkay'
 const REPO_NAME = 'ITManager'
@@ -77,7 +77,6 @@ const checkForUpdates = async (req, res) => {
 // ── DB Backup: Hem İndir hem Sunucuya Kaydet ─────────────
 const downloadDbBackup = async (req, res) => {
   try {
-    const db = getDb()
     const currentVersion = getCurrentVersion()
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
     const backupFileName = `itmanager_backup_v${currentVersion}_${timestamp}.db`
