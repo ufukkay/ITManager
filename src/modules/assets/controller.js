@@ -1031,3 +1031,226 @@ exports.deleteFormTemplate = (req, res) => {
     }
 };
 
+// ── ENVANTER & ZİMMET STOK SAYIM MODÜLÜ (AUDIT WORKFLOW) ─────────────────────
+
+// 1. QR / Barkod ile Cihaz Bilgisi Arama (Kontrol Et Aşaması)
+exports.lookupAssetForAudit = (req, res) => {
+    try {
+        const { code } = req.body;
+        if (!code || !String(code).trim()) {
+            return res.status(400).json({ error: 'Lütfen taranan QR veya barkod kodunu giriniz.' });
+        }
+
+        const queryCode = String(code).trim();
+        const asset = db.prepare(`
+            SELECT 
+                a.*,
+                am.name as model_name,
+                ab.name as brand_name,
+                ac.name as category_name,
+                ac.custom_fields_json,
+                ast.name as status_name,
+                c.name as company_name,
+                p.first_name || ' ' || p.last_name as personnel_name,
+                dept.name as personnel_department,
+                l.name as location_name
+            FROM assets a
+            LEFT JOIN asset_models am ON a.model_id = am.id
+            LEFT JOIN asset_brands ab ON am.brand_id = ab.id
+            LEFT JOIN asset_categories ac ON am.category_id = ac.id
+            LEFT JOIN asset_statuses ast ON a.status_id = ast.id
+            LEFT JOIN companies c ON a.company_id = c.id
+            LEFT JOIN personnel p ON a.personnel_id = p.id
+            LEFT JOIN departments dept ON p.department_id = dept.id
+            LEFT JOIN locations l ON a.location_id = l.id
+            WHERE LOWER(a.serial_no) = LOWER(?) OR LOWER(a.barcode) = LOWER(?) OR a.id = ?
+        `).get(queryCode, queryCode, isNaN(queryCode) ? -1 : Number(queryCode));
+
+        if (!asset) {
+            return res.status(404).json({ error: `"${queryCode}" koduna ait envanter kaydı bulunamadı.` });
+        }
+
+        // Parse custom_fields & specs_json
+        let customFields = [];
+        if (asset.custom_fields_json) {
+            try { customFields = JSON.parse(asset.custom_fields_json); } catch (e) {}
+        }
+        let specs = {};
+        if (asset.specs_json) {
+            try { specs = typeof asset.specs_json === 'string' ? JSON.parse(asset.specs_json) : asset.specs_json; } catch (e) {}
+        }
+
+        // Check if there is a recent audit item record for this asset
+        const lastAuditItem = db.prepare(`
+            SELECT * FROM audit_session_items WHERE asset_id = ? ORDER BY scanned_at DESC LIMIT 1
+        `).get(asset.id);
+
+        res.json({
+            asset: {
+                ...asset,
+                custom_fields: customFields,
+                specs: specs,
+                last_audit_status: lastAuditItem ? lastAuditItem.status : null,
+                last_audit_note: lastAuditItem ? lastAuditItem.discrepancy_note : null,
+                last_audit_at: lastAuditItem ? lastAuditItem.scanned_at : null
+            }
+        });
+    } catch (err) {
+        console.error('lookupAssetForAudit error:', err);
+        res.status(500).json({ error: 'Cihaz bilgileri sorgulanırken hata oluştu.' });
+    }
+};
+
+// 2. Sayım Sonucu İletme (Say veya Cihaz Bilgileri Hatalı + Zorunlu Not)
+exports.submitAuditItemResult = (req, res) => {
+    try {
+        const { asset_id, campaign_id, status, discrepancy_note } = req.body;
+        const userId = req.session?.user?.id || null;
+        const userName = req.session?.user?.name || 'Saha Görevlisi';
+
+        if (!asset_id || !status) {
+            return res.status(400).json({ error: 'Varlık ID ve sayım durumu gereklidir.' });
+        }
+
+        // ZORUNLU NOT KONTROLÜ: Cihaz bilgileri hatalı seçildiyse not boş olamaz!
+        if (status === 'DATA_ERROR' && (!discrepancy_note || !discrepancy_note.trim())) {
+            return res.status(400).json({ error: 'Cihaz bilgileri hatalı seçildiğinde açıklama / not girilmesi zorunludur! Lütfen hatayı açıklayınız.' });
+        }
+
+        const noteText = (discrepancy_note || '').trim();
+
+        // 1. audit_session_items kaydı ekle
+        db.prepare(`
+            INSERT INTO audit_session_items (campaign_id, asset_id, status, discrepancy_note, scanned_by)
+            VALUES (?, ?, ?, ?, ?)
+        `).run(campaign_id || null, asset_id, status, noteText || null, userId);
+
+        // 2. Varlığın last_audit_date ve updated_at tarihlerini güncelle
+        db.prepare(`UPDATE assets SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(asset_id);
+
+        // 3. Log ve Not arşivine ekle
+        const logAction = status === 'COUNTED' ? 'AUDIT_VERIFIED' : 'AUDIT_DISCREPANCY';
+        const logNotes = status === 'COUNTED' 
+            ? 'Stok sayımında fiziksel olarak doğrulandı (Sayıldı).' 
+            : `Stok sayımında uyuşmazlık/hata bildirildi: ${noteText}`;
+
+        db.prepare(`
+            INSERT INTO asset_logs (asset_id, action, target_type, notes, created_by)
+            VALUES (?, ?, 'NONE', ?, ?)
+        `).run(asset_id, logAction, logNotes, userId);
+
+        if (noteText) {
+            db.prepare(`
+                INSERT INTO asset_notes (asset_id, user_name, note)
+                VALUES (?, ?, ?)
+            `).run(asset_id, userName, `[STOK SAYIM BİLDİRİMİ - ${status === 'DATA_ERROR' ? 'HATALI BİLGİ' : 'NOT'}] ${noteText}`);
+        }
+
+        res.json({
+            success: true,
+            message: status === 'COUNTED' 
+                ? 'Cihaz başarıyla sayıldı ve tescillendi.' 
+                : 'Cihaz bilgileri uyuşmazlık notuyla birlikte sayıma kaydedildi.'
+        });
+    } catch (err) {
+        console.error('submitAuditItemResult error:', err);
+        res.status(500).json({ error: 'Sayım kaydı işlenirken veritabanı hatası oluştu.' });
+    }
+};
+
+// 3. Sayım Kampanyası Oluşturma
+exports.createAuditCampaign = (req, res) => {
+    try {
+        const { title, audit_type, target_id, notes } = req.body;
+        const userId = req.session?.user?.id || null;
+
+        if (!title || !title.trim()) {
+            return res.status(400).json({ error: 'Lütfen sayım görevi / kampanyası başlığını yazınız.' });
+        }
+
+        const info = db.prepare(`
+            INSERT INTO audit_campaigns (title, audit_type, target_id, notes, created_by)
+            VALUES (?, ?, ?, ?, ?)
+        `).run(title.trim(), audit_type || 'GENERAL', target_id || null, notes || null, userId);
+
+        res.json({ success: true, id: info.lastInsertRowid, title });
+    } catch (err) {
+        console.error('createAuditCampaign error:', err);
+        res.status(500).json({ error: 'Sayım görevi oluşturulamadı.' });
+    }
+};
+
+// 4. Sayım Kampanyaları Listesi ve İlerleme Raporu
+exports.getAuditCampaigns = (req, res) => {
+    try {
+        const campaigns = db.prepare(`
+            SELECT 
+                ac.*,
+                u.name as creator_name,
+                (SELECT COUNT(DISTINCT asset_id) FROM audit_session_items WHERE campaign_id = ac.id AND status = 'COUNTED') as counted_count,
+                (SELECT COUNT(DISTINCT asset_id) FROM audit_session_items WHERE campaign_id = ac.id AND status = 'DATA_ERROR') as error_count,
+                (SELECT COUNT(*) FROM assets WHERE status_id NOT IN (SELECT id FROM asset_statuses WHERE name LIKE '%Hurda%' OR name LIKE '%Kayıp%')) as total_assets
+            FROM audit_campaigns ac
+            LEFT JOIN users u ON ac.created_by = u.id
+            ORDER BY ac.id DESC
+        `).all();
+
+        res.json(campaigns);
+    } catch (err) {
+        console.error('getAuditCampaigns error:', err);
+        res.status(500).json({ error: 'Sayım görevleri listelenemedi.' });
+    }
+};
+
+// 5. Aktif Sayım Durum Özeti & Şerh Listesi
+exports.getAuditLiveStats = (req, res) => {
+    try {
+        const { campaign_id } = req.query;
+        let whereClause = campaign_id ? "WHERE campaign_id = ?" : "";
+        let params = campaign_id ? [campaign_id] : [];
+
+        const countedItems = db.prepare(`
+            SELECT COUNT(DISTINCT asset_id) as count FROM audit_session_items ${whereClause} ${campaign_id ? "AND" : "WHERE"} status = 'COUNTED'
+        `).get(...params);
+
+        const errorItems = db.prepare(`
+            SELECT COUNT(DISTINCT asset_id) as count FROM audit_session_items ${whereClause} ${campaign_id ? "AND" : "WHERE"} status = 'DATA_ERROR'
+        `).get(...params);
+
+        const totalAssets = db.prepare(`
+            SELECT COUNT(*) as count FROM assets
+        `).get();
+
+        const recentScans = db.prepare(`
+            SELECT 
+                asi.*,
+                a.serial_no,
+                a.barcode,
+                am.name as model_name,
+                ab.name as brand_name,
+                p.first_name || ' ' || p.last_name as personnel_name,
+                u.name as scanned_by_name
+            FROM audit_session_items asi
+            JOIN assets a ON asi.asset_id = a.id
+            LEFT JOIN asset_models am ON a.model_id = am.id
+            LEFT JOIN asset_brands ab ON am.brand_id = ab.id
+            LEFT JOIN personnel p ON a.personnel_id = p.id
+            LEFT JOIN users u ON asi.scanned_by = u.id
+            ${whereClause}
+            ORDER BY asi.scanned_at DESC
+            LIMIT 50
+        `).all(...params);
+
+        res.json({
+            counted: countedItems?.count || 0,
+            data_errors: errorItems?.count || 0,
+            total_assets: totalAssets?.count || 0,
+            recent_scans: recentScans
+        });
+    } catch (err) {
+        console.error('getAuditLiveStats error:', err);
+        res.status(500).json({ error: 'Sayım canlı istatistikleri alınamadı.' });
+    }
+};
+
+

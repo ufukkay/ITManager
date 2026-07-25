@@ -59,6 +59,11 @@ router.post('/', hasPermission('asset:edit'), upload.fields([
 ]), assetController.addAsset);
 
 // Audit Session & Periodicity Compliance Routes
+router.post('/audit/lookup', assetController.lookupAssetForAudit);
+router.post('/audit/item-result', assetController.submitAuditItemResult);
+router.get('/audit/campaigns', assetController.getAuditCampaigns);
+router.post('/audit/campaigns', hasPermission('asset:edit'), assetController.createAuditCampaign);
+router.get('/audit/live-stats', assetController.getAuditLiveStats);
 router.get('/audit/summary', assetController.getAuditSummary);
 router.get('/audit/personnel-session/:personnelId', assetController.getPersonnelAuditSession);
 router.post('/audit/personnel-submit', assetController.submitPersonnelAuditSession);

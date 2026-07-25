@@ -828,9 +828,38 @@ const initDb = () => {
     CREATE TABLE IF NOT EXISTS asset_notes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         asset_id INTEGER NOT NULL,
-        user_name TEXT,
+        user_name TEXT NOT NULL,
         note TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE
+    )
+  `).run();
+
+  // Audit Campaigns table (Resmi Stok Sayım Görevleri)
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS audit_campaigns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        audit_type TEXT NOT NULL DEFAULT 'GENERAL', -- GENERAL, PERSONNEL, LOCATION
+        target_id INTEGER,
+        status TEXT NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, COMPLETED, CANCELLED
+        notes TEXT,
+        created_by INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        completed_at DATETIME
+    )
+  `).run();
+
+  // Audit Session Items table (Okutulan/Sayılan ve Şerh Düşülen Cihaz Kayıtları)
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS audit_session_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        campaign_id INTEGER,
+        asset_id INTEGER NOT NULL,
+        status TEXT NOT NULL, -- COUNTED, DATA_ERROR, MISSING
+        discrepancy_note TEXT,
+        scanned_by INTEGER,
+        scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(asset_id) REFERENCES assets(id) ON DELETE CASCADE
     )
   `).run();
