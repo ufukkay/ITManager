@@ -1152,6 +1152,39 @@ const openAddModal = () => {
   assetDialog.value.showModal()
 }
 
+const closeAssetModal = () => {
+  assetDialog.value?.close()
+}
+
+const openCheckoutModal = (asset) => {
+  selectedAsset.value = asset
+  checkoutForm.value = {
+    target_type: 'PERSONNEL',
+    target_id: '',
+    notes: ''
+  }
+  checkoutDialog.value?.showModal()
+}
+
+const closeCheckoutModal = () => {
+  checkoutDialog.value?.close()
+}
+
+const showLogs = async (asset) => {
+  selectedAsset.value = asset
+  try {
+    const res = await api.get(`/assets/${asset.id}/logs`)
+    assetLogs.value = res.data
+  } catch (e) {
+    assetLogs.value = []
+  }
+  logsDialog.value?.showModal()
+}
+
+const closeLogsModal = () => {
+  logsDialog.value?.close()
+}
+
 const openEditModal = (asset) => {
   isEditMode.value = true
   invoiceFile.value = null
