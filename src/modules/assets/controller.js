@@ -42,6 +42,19 @@ exports.addAsset = (req, res) => {
             return res.status(400).json({ error: 'Lütfen zorunlu alanları (Seri No, Model, Durum, Şirket) doldurun.' });
         }
 
+        // Seri No ve Barkod çakışma kontrolü
+        const existingSerial = db.prepare('SELECT id FROM assets WHERE serial_no = ?').get(serial_no.trim());
+        if (existingSerial) {
+            return res.status(400).json({ error: `"${serial_no}" seri numarasına sahip başka bir varlık zaten mevcut!` });
+        }
+
+        if (barcode && barcode.trim()) {
+            const existingBarcode = db.prepare('SELECT id FROM assets WHERE barcode = ?').get(barcode.trim());
+            if (existingBarcode) {
+                return res.status(400).json({ error: `"${barcode}" barkod numarasına sahip başka bir varlık zaten mevcut!` });
+            }
+        }
+
         const invoice_path = req.files && req.files.invoice ? '/uploads/assets/' + req.files.invoice[0].filename : null;
         const warranty_path = req.files && req.files.warranty ? '/uploads/assets/' + req.files.warranty[0].filename : null;
         const formattedSpecs = typeof specs_json === 'object' ? JSON.stringify(specs_json) : (specs_json || null);
@@ -50,7 +63,7 @@ exports.addAsset = (req, res) => {
             INSERT INTO assets (serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, invoice_path, warranty_path, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version, specs_json)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
-            serial_no, barcode || null, model_id, status_id, company_id, purchase_price || 0, purchase_date || null, lifetime_months || 60, invoice_path, warranty_path, notes || null,
+            serial_no.trim(), barcode ? barcode.trim() : null, model_id, status_id, company_id, purchase_price || 0, purchase_date || null, lifetime_months || 60, invoice_path, warranty_path, notes || null,
             mac_address || null, ip_address || null, cpu_model || null, ram_gb ? Number(ram_gb) : null, disk_gb ? Number(disk_gb) : null, os_version || null, formattedSpecs
         );
 
