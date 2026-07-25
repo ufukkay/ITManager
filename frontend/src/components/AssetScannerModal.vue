@@ -341,6 +341,14 @@ let html5QrCode = null
 // ── Kamerayı başlat ──────────────────────────────────────
 const requestAndStart = async (facing) => {
   currentFacing.value = facing
+  
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    // Mobil tarayıcılarda HTTP uyarısı: Canlı yayın API'si kapalıysa otomatik fotoğraf çekimini tetikle
+    stage.value = 'permission'
+    triggerPhotoCapture()
+    return
+  }
+
   stage.value = 'scanning'
   await nextTick()
 
