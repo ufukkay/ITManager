@@ -307,6 +307,33 @@ const isSecure = computed(() => {
   return window.isSecureContext || ['localhost', '127.0.0.1'].includes(window.location.hostname)
 })
 
+// ── URL ve QR içerik ayrıştırma yardımcısı ──────────────
+const extractAssetCode = (rawText) => {
+  let code = String(rawText).trim()
+  // 1. JSON formatı
+  try {
+    const parsed = JSON.parse(code)
+    if (parsed && (parsed.serial_no || parsed.barcode || parsed.id)) {
+      return parsed.serial_no || parsed.barcode || String(parsed.id)
+    }
+  } catch {}
+  // 2. URL formatı: .../scan/asset/123 veya .../assets/123
+  const scanMatch = code.match(/\/scan\/asset\/(\d+)/i)
+  if (scanMatch) return scanMatch[1]
+  const assetsMatch = code.match(/\/assets\/(\d+)/i)
+  if (assetsMatch) return assetsMatch[1]
+  // 3. URL query parametresi: ?id=123 veya ?asset_id=123
+  if (code.startsWith('http://') || code.startsWith('https://')) {
+    try {
+      const u = new URL(code)
+      const idParam = u.searchParams.get('id') || u.searchParams.get('asset_id') || u.searchParams.get('code')
+      if (idParam) return idParam
+    } catch {}
+  }
+  // 4. Ham metin olarak döndür
+  return code
+}
+
 const triggerPhotoCapture = () => {
   fileInput.value?.click()
 }
@@ -318,13 +345,7 @@ const handleFileUpload = async (e) => {
   try {
     const html5Qr = new Html5Qrcode('qr-reader-file', false)
     const decodedText = await html5Qr.scanFile(file, true)
-    let code = decodedText.trim()
-    try {
-      const parsed = JSON.parse(decodedText)
-      if (parsed && (parsed.serial_no || parsed.barcode || parsed.id)) {
-        code = parsed.serial_no || parsed.barcode || String(parsed.id)
-      }
-    } catch {}
+    const code = extractAssetCode(decodedText)
     await stopScanner()
     emit('scan-result', code)
     emit('close')
@@ -372,16 +393,7 @@ const requestAndStart = async (facing) => {
         aspectRatio: 1.0
       },
       (decodedText) => {
-        // QR içeriğini parse et
-        let code = decodedText.trim()
-        try {
-          const parsed = JSON.parse(decodedText)
-          if (parsed && (parsed.serial_no || parsed.barcode || parsed.id)) {
-            code = parsed.serial_no || parsed.barcode || String(parsed.id)
-          }
-        } catch {
-          // Raw string ise olduğu gibi kullan
-        }
+        const code = extractAssetCode(decodedText)
         stopScanner()
         emit('scan-result', code)
         emit('close')
