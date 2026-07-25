@@ -870,11 +870,6 @@ const openBatchStickerModal = () => {
   showStickerModal.value = true
 }
 
-const handleScanResult = (scannedCode) => {
-  searchQuery.value = scannedCode
-  showToast(`Taranan kod arandı: ${scannedCode}`, 'info')
-}
-
 // Forms & States
 const isEditMode = ref(false)
 const selectedAsset = ref(null)
@@ -1338,6 +1333,33 @@ const handleCheckin = async (asset) => {
     } catch (err) {
       alert(err)
     }
+  }
+}
+
+const handleScanResult = async (scannedCode) => {
+  if (!scannedCode) return
+  const q = String(scannedCode).trim().toLowerCase()
+  const matched = (assetStore.assets || []).find(a => 
+    (a.serial_no || '').toLowerCase() === q ||
+    (a.barcode || '').toLowerCase() === q ||
+    String(a.id) === q
+  )
+  if (matched) {
+    searchQuery.value = matched.serial_no
+    openEditModal(matched)
+    showToast(`✓ "${matched.serial_no}" seri numaralı varlık bulundu.`, 'success')
+  } else {
+    try {
+      const res = await api.post('/assets/audit/lookup', { code: scannedCode })
+      if (res.data?.asset) {
+        searchQuery.value = res.data.asset.serial_no
+        openEditModal(res.data.asset)
+        showToast(`✓ "${res.data.asset.serial_no}" envanter cihazı açıldı.`, 'success')
+        return
+      }
+    } catch (e) {}
+    searchQuery.value = scannedCode
+    showToast(`⚠️ "${scannedCode}" koduna ait varlık bulunamadı.`, 'warning')
   }
 }
 

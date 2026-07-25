@@ -639,6 +639,7 @@ const handleScanResult = async (scannedCode) => {
   try {
     const res = await api.post('/assets/audit/lookup', { code: scannedCode })
     lookupAsset.value = res.data.asset
+    await nextTick()
     verifyModal.value?.showModal()
   } catch (err) {
     showToast(err.response?.data?.error || `"${scannedCode}" kodlu envanter veritabanında bulunamadı.`, 'error')
