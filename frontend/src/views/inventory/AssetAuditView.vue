@@ -391,7 +391,7 @@
     <!-- ══════════════════════════════════════════════════════ -->
     <!-- 🔍 KONTROL ET MODALI (QR SCAN AUDIT VERIFICATION)       -->
     <!-- ══════════════════════════════════════════════════════ -->
-    <dialog ref="verifyModal" class="modal">
+    <dialog :class="['modal', { 'modal-open': showVerifyModal }]">
       <div v-if="lookupAsset" class="modal-box max-w-lg w-full bg-white p-0 rounded-3xl shadow-2xl overflow-hidden mx-3 sm:mx-auto">
         <!-- Header -->
         <div class="bg-indigo-600 text-white px-5 py-4 flex items-center justify-between">
@@ -485,7 +485,7 @@
     <!-- ══════════════════════════════════════════════════════ -->
     <!-- 📝 ZORUNLU NOT / UYUMSUZLUK BİLDİRİM MODALI            -->
     <!-- ══════════════════════════════════════════════════════ -->
-    <dialog ref="discrepancyModal" class="modal">
+    <dialog :class="['modal', { 'modal-open': showDiscrepancyModal }]">
       <div class="modal-box max-w-md w-full bg-white p-6 rounded-3xl shadow-2xl mx-3 sm:mx-auto">
         <div class="flex items-center gap-3 text-amber-600 mb-3">
           <div class="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center text-xl shrink-0">
@@ -628,8 +628,8 @@ const openPersonnelSession = async (person) => {
   }
 }
 
-const verifyModal = ref(null)
-const discrepancyModal = ref(null)
+const showVerifyModal = ref(false)
+const showDiscrepancyModal = ref(false)
 const lookupAsset = ref(null)
 const discrepancyNote = ref('')
 const isSubmittingAudit = ref(false)
@@ -639,25 +639,24 @@ const handleScanResult = async (scannedCode) => {
   try {
     const res = await api.post('/assets/audit/lookup', { code: scannedCode })
     lookupAsset.value = res.data.asset
-    await nextTick()
-    verifyModal.value?.showModal()
+    showVerifyModal.value = true
   } catch (err) {
     showToast(err.response?.data?.error || `"${scannedCode}" kodlu envanter veritabanında bulunamadı.`, 'error')
   }
 }
 
 const closeVerifyModal = () => {
-  verifyModal.value?.close()
+  showVerifyModal.value = false
   lookupAsset.value = null
 }
 
 const openDiscrepancyModal = () => {
   discrepancyNote.value = ''
-  discrepancyModal.value?.showModal()
+  showDiscrepancyModal.value = true
 }
 
 const closeDiscrepancyModal = () => {
-  discrepancyModal.value?.close()
+  showDiscrepancyModal.value = false
   discrepancyNote.value = ''
 }
 

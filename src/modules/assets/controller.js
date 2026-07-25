@@ -1041,7 +1041,22 @@ exports.lookupAssetForAudit = (req, res) => {
             return res.status(400).json({ error: 'Lütfen taranan QR veya barkod kodunu giriniz.' });
         }
 
-        const queryCode = String(code).trim();
+        let queryCode = String(code).trim();
+        // Smart URL & QR code parser
+        if (queryCode.includes('/scan/asset/')) {
+            const match = queryCode.match(/\/scan\/asset\/(\d+)/i);
+            if (match) queryCode = match[1];
+        } else if (queryCode.includes('/assets/')) {
+            const match = queryCode.match(/\/assets\/(\d+)/i);
+            if (match) queryCode = match[1];
+        } else if (queryCode.startsWith('http://') || queryCode.startsWith('https://')) {
+            try {
+                const u = new URL(queryCode);
+                const idParam = u.searchParams.get('id') || u.searchParams.get('asset_id') || u.searchParams.get('code');
+                if (idParam) queryCode = idParam;
+            } catch (e) {}
+        }
+
         const asset = db.prepare(`
             SELECT 
                 a.*,
