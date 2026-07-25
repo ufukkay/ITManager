@@ -142,7 +142,11 @@ exports.updateAsset = (req, res) => {
         res.json({ message: 'Varlık başarıyla güncellendi.' });
     } catch (err) {
         console.error('updateAsset error:', err);
-        res.s// Delete asset
+        res.status(500).json({ error: 'Varlık güncellenirken veritabanı hatası oluştu.' });
+    }
+};
+
+// Delete asset
 exports.deleteAsset = (req, res) => {
     try {
         const { id } = req.params;
@@ -232,7 +236,7 @@ exports.checkoutAsset = (req, res) => {
         }
 
         // Zimmetli durumunu bul ya da varsayılan Zimmetli durumunu ayarla
-        let statusInUse = db.prepare("SELECT id FROM asset_statuses WHERE name LIKE '%Zimmet%' OR name LIKE '%Kullanım%' LIMIT 1").get();
+        let statusInUse = db.prepare("SELECT id FROM asset_statuses WHERE (name LIKE '%Zimmet%' OR name LIKE '%Kullanımda%') AND name NOT LIKE '%Kullanım Dışı%' AND name NOT LIKE '%Arşiv%' LIMIT 1").get();
         if (!statusInUse) {
             const ins = db.prepare("INSERT INTO asset_statuses (name) VALUES ('Zimmetli (Kullanımda)')").run();
             statusInUse = { id: ins.lastInsertRowid };
