@@ -281,7 +281,7 @@
                       <button @click="openStickerModal(asset)" class="btn-actions" title="QR & Barkod Etiketi Yazdır">
                         <i class="fas fa-qrcode text-blue-600"></i>
                       </button>
-                      <RouterLink v-if="asset.personnel_id" to="/inventory/personnel" class="btn-actions" title="Zimmet Formu / Tutanağı Yazdır">
+                      <RouterLink v-if="asset.personnel_id" :to="{ path: '/inventory/personnel', query: { print_personnel_id: asset.personnel_id } }" class="btn-actions" title="Zimmet Formu / Tutanağı Yazdır">
                         <i class="fas fa-file-contract text-purple-600"></i>
                       </RouterLink>
                       <button @click="showLogs(asset)" class="btn-actions" title="İşlem Geçmişi">
@@ -552,23 +552,11 @@
               </div>
             </div>
 
-            <!-- Phone / Tablet Specs -->
-            <div v-if="isPhoneCategory" class="grid grid-cols-4 gap-3 bg-amber-50/50 p-3 rounded-lg border border-amber-100">
-              <div>
-                <label class="form-label text-amber-900">IMEI 1 *</label>
-                <input v-model="phoneSpecs.imei" type="text" placeholder="358291829..." class="form-input font-mono" />
-              </div>
-              <div>
-                <label class="form-label text-amber-900">IMEI 2 (Opsiyonel)</label>
-                <input v-model="phoneSpecs.imei2" type="text" placeholder="358291829..." class="form-input font-mono" />
-              </div>
-              <div>
-                <label class="form-label text-amber-900">Depolama (GB)</label>
-                <input v-model="phoneSpecs.storage_gb" type="text" placeholder="128 GB" class="form-input" />
-              </div>
-              <div>
-                <label class="form-label text-amber-900">Renk</label>
-                <input v-model="phoneSpecs.color" type="text" placeholder="Uzay Grisi" class="form-input" />
+            <!-- Category-Defined Custom Dynamic Fields -->
+            <div v-if="currentCategoryFields.length > 0" class="grid grid-cols-2 gap-3 bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+              <div v-for="fieldName in currentCategoryFields" :key="fieldName">
+                <label class="form-label text-blue-900 font-bold text-[11px]">{{ fieldName }}</label>
+                <input v-model="categoryDynamicInputs[fieldName]" type="text" :placeholder="`${fieldName} giriniz...`" class="form-input" />
               </div>
             </div>
 
@@ -1121,6 +1109,20 @@ const isComputerCategory = computed(() => {
   return name.includes('bilgisayar') || name.includes('pc') || name.includes('laptop') || name.includes('notebook') || name.includes('sunucu') || name.includes('server') || !name
 })
 
+const categoryDynamicInputs = ref({})
+
+const currentCategoryFields = computed(() => {
+  let catId = selectedCategoryId.value
+  const models = assetStore.metadata?.models || []
+  const categories = assetStore.metadata?.categories || []
+  if (!catId && assetForm.value.model_id) {
+    const m = models.find(mod => mod.id === Number(assetForm.value.model_id))
+    if (m) catId = m.category_id
+  }
+  const cat = categories.find(c => c.id === Number(catId))
+  return cat?.custom_fields || []
+})
+
 const openAddModal = () => {
   isEditMode.value = false
   invoiceFile.value = null
@@ -1129,6 +1131,7 @@ const openAddModal = () => {
   selectedBrandId.value = ''
   customSpecsList.value = []
   phoneSpecs.value = { imei: '', imei2: '', storage_gb: '', color: '' }
+  categoryDynamicInputs.value = {}
   assetForm.value = {
     id: null,
     serial_no: '',
@@ -1203,6 +1206,7 @@ const openEditModal = (asset) => {
 
   phoneSpecs.value = { imei: '', imei2: '', storage_gb: '', color: '' }
   customSpecsList.value = []
+  categoryDynamicInputs.value = {}
 
   if (asset.specs_json) {
     try {
@@ -1213,7 +1217,10 @@ const openEditModal = (asset) => {
       if (parsed.color) phoneSpecs.value.color = parsed.color
 
       for (const [k, v] of Object.entries(parsed)) {
-        if (!['imei', 'imei2', 'storage_gb', 'color'].includes(k)) {
+        if (['imei', 'imei2', 'storage_gb', 'color'].includes(k)) continue
+        if (currentCategoryFields.value.includes(k)) {
+          categoryDynamicInputs.value[k] = String(v)
+        } else {
           customSpecsList.value.push({ key: k, value: String(v) })
         }
       }
@@ -1224,6 +1231,22 @@ const openEditModal = (asset) => {
 }
 
 const saveAsset = async () => {
+  // Amortisman süresi geçmediyse alış bedeli 0 olamaz kontrolü
+  const pPrice = parseFloat(assetForm.value.purchase_price) || 0
+  const pLifetime = parseInt(assetForm.value.lifetime_months) || 60
+  if (assetForm.value.purchase_date) {
+    const pDate = new Date(assetForm.value.purchase_date)
+    const now = new Date()
+    const diffMonths = (now.getFullYear() - pDate.getFullYear()) * 12 + (now.getMonth() - pDate.getMonth())
+    if (diffMonths < pLifetime && pPrice <= 0) {
+      alert('Faydalı ömrü (amortisman süresi) henüz dolmamış varlıklar için alış bedeli 0 girilemez! Lütfen geçerli bir tutar yazınız.')
+      return
+    }
+  } else if (pPrice <= 0) {
+    alert('Varlık için alış/amortisman bedeli 0 girilemez! Lütfen geçerli bir bedel yazınız.')
+    return
+  }
+
   try {
     const formData = new FormData()
     formData.append('serial_no', assetForm.value.serial_no)
@@ -1231,9 +1254,9 @@ const saveAsset = async () => {
     formData.append('model_id', assetForm.value.model_id)
     formData.append('status_id', assetForm.value.status_id)
     formData.append('company_id', assetForm.value.company_id)
-    formData.append('purchase_price', assetForm.value.purchase_price || 0)
+    formData.append('purchase_price', pPrice)
     formData.append('purchase_date', assetForm.value.purchase_date || '')
-    formData.append('lifetime_months', assetForm.value.lifetime_months || 60)
+    formData.append('lifetime_months', pLifetime)
     formData.append('notes', assetForm.value.notes || '')
     formData.append('mac_address', assetForm.value.mac_address || '')
     formData.append('ip_address', assetForm.value.ip_address || '')
@@ -1243,7 +1266,7 @@ const saveAsset = async () => {
     formData.append('os_version', assetForm.value.os_version || '')
 
     // Dynamic Specs Object
-    const specsObj = {}
+    const specsObj = { ...categoryDynamicInputs.value }
     if (phoneSpecs.value.imei) specsObj.imei = phoneSpecs.value.imei
     if (phoneSpecs.value.imei2) specsObj.imei2 = phoneSpecs.value.imei2
     if (phoneSpecs.value.storage_gb) specsObj.storage_gb = phoneSpecs.value.storage_gb
@@ -1276,11 +1299,20 @@ const saveAsset = async () => {
 }
 
 const handleDelete = async (asset) => {
-  if (confirm(`"${asset.serial_no}" seri numaralı varlığı silmek istediğinize emin misiniz?`)) {
+  if (asset.personnel_id || asset.location_id) {
+    alert(`"${asset.serial_no}" varlığı şu an zimmetlidir! Silme işleminden önce zimmeti depoya iade almalısınız.`)
+    return
+  }
+  const notes = prompt(`"${asset.serial_no}" seri numaralı varlığı silmek istediğinize emin misiniz?\nLütfen silme nedenini / açıklamasını yazınız (Zorunlu):`)
+  if (notes !== null) {
+    if (!notes.trim()) {
+      alert('Silme açıklaması girmeden varlık silinemez.')
+      return
+    }
     try {
-      await assetStore.deleteAsset(asset.id)
+      await assetStore.deleteAsset(asset.id, notes.trim())
     } catch (err) {
-      alert(err)
+      alert(err.response?.data?.error || err.toString())
     }
   }
 }

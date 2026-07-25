@@ -675,11 +675,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import axios from 'axios'
 import { useAssetStore } from '../../stores/assetStore'
 import { useMasterDataStore } from '../../stores/masterData'
 
+const route = useRoute()
 const assetStore = useAssetStore()
 const masterData = useMasterDataStore()
 
@@ -1120,6 +1121,17 @@ onMounted(async () => {
       fetchAuditSummary()
     ])
     await preloadBadges()
+
+    if (route.query.print_personnel_id) {
+      const pId = Number(route.query.print_personnel_id)
+      const person = masterData.personnel.find(p => p.id === pId)
+      if (person) {
+        if (!personnelAssets.value[pId]) {
+          await loadPersonnelAssets(pId)
+        }
+        openPrintModal(person)
+      }
+    }
   } catch (err) {
     console.error('onMounted load error:', err)
   } finally {

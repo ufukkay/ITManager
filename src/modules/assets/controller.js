@@ -55,22 +55,37 @@ exports.addAsset = (req, res) => {
             }
         }
 
+        // Amortisman süresi geçmediyse alış bedeli 0 girilemez
+        const pPrice = parseFloat(purchase_price) || 0;
+        const pLifetime = parseInt(lifetime_months) || 60;
+        if (purchase_date) {
+            const pDate = new Date(purchase_date);
+            const now = new Date();
+            const diffMonths = (now.getFullYear() - pDate.getFullYear()) * 12 + (now.getMonth() - pDate.getMonth());
+            if (diffMonths < pLifetime && pPrice <= 0) {
+                return res.status(400).json({ error: 'Faydalı ömrü (amortisman süresi) henüz dolmamış varlıklar için alış bedeli 0 olarak girilemez! Lütfen geçerli bir bedel yazınız.' });
+            }
+        } else if (pPrice <= 0) {
+            return res.status(400).json({ error: 'Varlık için alış/amortisman bedeli 0 girilemez! Lütfen geçerli bir bedel yazınız.' });
+        }
+
         const invoice_path = req.files && req.files.invoice ? '/uploads/assets/' + req.files.invoice[0].filename : null;
         const warranty_path = req.files && req.files.warranty ? '/uploads/assets/' + req.files.warranty[0].filename : null;
         const formattedSpecs = typeof specs_json === 'object' ? JSON.stringify(specs_json) : (specs_json || null);
+        const userId = req.session?.user?.id || null;
 
         const info = db.prepare(`
             INSERT INTO assets (serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, invoice_path, warranty_path, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version, specs_json)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
-            serial_no.trim(), barcode ? barcode.trim() : null, model_id, status_id, company_id, purchase_price || 0, purchase_date || null, lifetime_months || 60, invoice_path, warranty_path, notes || null,
+            serial_no.trim(), barcode ? barcode.trim() : null, model_id, status_id, company_id, pPrice, purchase_date || null, pLifetime, invoice_path, warranty_path, notes || null,
             mac_address || null, ip_address || null, cpu_model || null, ram_gb ? Number(ram_gb) : null, disk_gb ? Number(disk_gb) : null, os_version || null, formattedSpecs
         );
 
         db.prepare(`
-            INSERT INTO asset_logs (asset_id, action, target_type, notes)
-            VALUES (?, 'CREATE', 'NONE', 'Varlık oluşturuldu.')
-        `).run(info.lastInsertRowid);
+            INSERT INTO asset_logs (asset_id, action, target_type, notes, created_by)
+            VALUES (?, 'CREATE', 'NONE', 'Varlık oluşturuldu.', ?)
+        `).run(info.lastInsertRowid, userId);
 
         res.json({ id: info.lastInsertRowid, serial_no, message: 'Varlık başarıyla oluşturuldu.' });
     } catch (err) {
@@ -90,38 +105,87 @@ exports.updateAsset = (req, res) => {
             return res.status(404).json({ error: 'Varlık bulunamadı.' });
         }
 
+        // Amortisman süresi geçmediyse alış bedeli 0 girilemez
+        const pPrice = parseFloat(purchase_price) || 0;
+        const pLifetime = parseInt(lifetime_months) || 60;
+        if (purchase_date) {
+            const pDate = new Date(purchase_date);
+            const now = new Date();
+            const diffMonths = (now.getFullYear() - pDate.getFullYear()) * 12 + (now.getMonth() - pDate.getMonth());
+            if (diffMonths < pLifetime && pPrice <= 0) {
+                return res.status(400).json({ error: 'Faydalı ömrü (amortisman süresi) henüz dolmamış varlıklar için alış bedeli 0 olarak girilemez! Lütfen geçerli bir bedel yazınız.' });
+            }
+        } else if (pPrice <= 0) {
+            return res.status(400).json({ error: 'Varlık için alış/amortisman bedeli 0 girilemez! Lütfen geçerli bir bedel yazınız.' });
+        }
+
         const invoice_path = req.files && req.files.invoice ? '/uploads/assets/' + req.files.invoice[0].filename : currentAsset.invoice_path;
         const warranty_path = req.files && req.files.warranty ? '/uploads/assets/' + req.files.warranty[0].filename : currentAsset.warranty_path;
         const formattedSpecs = typeof specs_json === 'object' ? JSON.stringify(specs_json) : (specs_json || null);
+        const userId = req.session?.user?.id || null;
 
         db.prepare(`
             UPDATE assets
-            SET serial_no = ?, barcode = ?, model_id = ?, status_id = ?, company_id = ?, purchase_price = ?, purchase_date = ?, lifetime_months = ?, invoice_path = ?, warranty_path = ?, notes = ?, mac_address = ?, ip_address = ?, cpu_model = ?, ram_gb = ?, disk_gb = ?, os_version = ?, specs_json = ?
+            SET serial_no = ?, barcode = ?, model_id = ?, status_id = ?, company_id = ?, purchase_price = ?, purchase_date = ?, lifetime_months = ?, invoice_path = ?, warranty_path = ?, notes = ?, mac_address = ?, ip_address = ?, cpu_model = ?, ram_gb = ?, disk_gb = ?, os_version = ?, specs_json = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `).run(
-            serial_no, barcode || null, model_id, status_id, company_id, purchase_price || 0, purchase_date || null, lifetime_months || 60, invoice_path, warranty_path, notes || null,
+            serial_no, barcode || null, model_id, status_id, company_id, pPrice, purchase_date || null, pLifetime, invoice_path, warranty_path, notes || null,
             mac_address || null, ip_address || null, cpu_model || null, ram_gb ? Number(ram_gb) : null, disk_gb ? Number(disk_gb) : null, os_version || null, formattedSpecs,
             id
         );
 
         db.prepare(`
-            INSERT INTO asset_logs (asset_id, action, target_type, notes)
-            VALUES (?, 'UPDATE', 'NONE', 'Varlık bilgileri güncellendi.')
-        `).run(id);
+            INSERT INTO asset_logs (asset_id, action, target_type, notes, created_by)
+            VALUES (?, 'UPDATE', 'NONE', 'Varlık bilgileri güncellendi.', ?)
+        `).run(id, userId);
 
         res.json({ message: 'Varlık başarıyla güncellendi.' });
     } catch (err) {
         console.error('updateAsset error:', err);
-        res.status(500).json({ error: 'Varlık güncellenirken veritabanı hatası oluştu.' });
-    }
-};
-
-// Delete asset
+        res.s// Delete asset
 exports.deleteAsset = (req, res) => {
     try {
         const { id } = req.params;
+        const notes = (req.body?.notes || req.query?.notes || '').trim();
+
+        const asset = db.prepare(`
+            SELECT a.*, ast.name as status_name 
+            FROM assets a 
+            JOIN asset_statuses ast ON a.status_id = ast.id 
+            WHERE a.id = ?
+        `).get(id);
+
+        if (!asset) {
+            return res.status(404).json({ error: 'Varlık bulunamadı.' });
+        }
+
+        // Zimmet / Kullanım durumu kontrolü
+        if (asset.personnel_id || asset.location_id) {
+            return res.status(400).json({ error: 'Bu cihaz zimmetlidir! Silme işleminden önce zimmeti depoya iade almalısınız.' });
+        }
+
+        const statusLower = (asset.status_name || '').toLowerCase();
+        if (statusLower.includes('zimmet') || statusLower.includes('kullanım')) {
+            return res.status(400).json({ error: 'Kullanımda/Zimmette görünen varlıklar silinemez. Lütfen önce durumunu Depo/Boşta olarak değiştirin.' });
+        }
+
+        if (!notes) {
+            return res.status(400).json({ error: 'Varlığı silmek için geçerli bir silme açıklaması / nedeni belirtmelisiniz.' });
+        }
+
+        const userId = req.session?.user?.id || null;
+        const userName = req.session?.user?.full_name || req.session?.user?.username || 'Sistem';
+
+        // Audit log kaydı (Silinmeden önceki arşiv için)
+        db.prepare(`
+            INSERT INTO audit_logs (user_id, module, action, resource_id, details)
+            VALUES (?, 'ENVANTER', 'DELETE', ?, ?)
+        `).run(userId, String(id), JSON.stringify({ serial_no: asset.serial_no, barcode: asset.barcode, deletion_note: notes, deleted_by: userName }));
+
         db.prepare('DELETE FROM asset_logs WHERE asset_id = ?').run(id);
+        db.prepare('DELETE FROM asset_notes WHERE asset_id = ?').run(id);
         db.prepare('DELETE FROM assets WHERE id = ?').run(id);
+
         res.json({ message: 'Varlık başarıyla silindi.' });
     } catch (err) {
         console.error('deleteAsset error:', err);
@@ -167,27 +231,33 @@ exports.checkoutAsset = (req, res) => {
             return res.status(400).json({ error: 'Geçersiz zimmet türü.' });
         }
 
-        const statusInUse = db.prepare("SELECT id FROM asset_statuses WHERE name LIKE '%Zimmet%' OR name LIKE '%Kullanım%' LIMIT 1").get();
-        const statusId = statusInUse ? statusInUse.id : 2;
+        // Zimmetli durumunu bul ya da varsayılan Zimmetli durumunu ayarla
+        let statusInUse = db.prepare("SELECT id FROM asset_statuses WHERE name LIKE '%Zimmet%' OR name LIKE '%Kullanım%' LIMIT 1").get();
+        if (!statusInUse) {
+            const ins = db.prepare("INSERT INTO asset_statuses (name) VALUES ('Zimmetli (Kullanımda)')").run();
+            statusInUse = { id: ins.lastInsertRowid };
+        }
+        const statusId = statusInUse.id;
+        const userId = req.session?.user?.id || null;
 
         db.prepare(`
             UPDATE assets 
-            SET personnel_id = ?, location_id = ?, status_id = ?
+            SET personnel_id = ?, location_id = ?, status_id = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `).run(personnel_id, location_id, statusId, id);
 
         db.prepare(`
-            INSERT INTO asset_logs (asset_id, action, target_type, target_id, notes)
-            VALUES (?, 'CHECKOUT', ?, ?, ?)
-        `).run(id, target_type, target_id, notes || 'Zimmetlendi.');
+            INSERT INTO asset_logs (asset_id, action, target_type, target_id, notes, created_by)
+            VALUES (?, 'CHECKOUT', ?, ?, ?, ?)
+        `).run(id, target_type, target_id, notes || 'Zimmetlendi.', userId);
 
-        // Eğe not eklenmişse arşiv notlarına da ekle
+        // Eğer not eklenmişse arşiv notlarına da ekle
         if (notes && notes.trim()) {
             const userName = req.session?.user?.full_name || req.session?.user?.username || 'Sistem';
             db.prepare('INSERT INTO asset_notes (asset_id, user_name, note) VALUES (?, ?, ?)').run(id, userName, notes.trim());
         }
 
-        res.json({ message: 'Varlık zimmetlendi.' });
+        res.json({ message: 'Varlık zimmetlendi ve durumu Zimmetli olarak güncellendi.' });
     } catch (err) {
         console.error('checkoutAsset error:', err);
         res.status(500).json({ error: 'Zimmetleme işlemi sırasında hata oluştu.' });
@@ -202,17 +272,18 @@ exports.checkinAsset = (req, res) => {
 
         const statusAvailable = db.prepare("SELECT id FROM asset_statuses WHERE name LIKE '%Depo%' OR name LIKE '%Boşta%' LIMIT 1").get();
         const finalStatusId = status_id || (statusAvailable ? statusAvailable.id : 1);
+        const userId = req.session?.user?.id || null;
 
         db.prepare(`
             UPDATE assets 
-            SET personnel_id = NULL, location_id = NULL, status_id = ?
+            SET personnel_id = NULL, location_id = NULL, status_id = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `).run(finalStatusId, id);
 
         db.prepare(`
-            INSERT INTO asset_logs (asset_id, action, target_type, notes)
-            VALUES (?, 'CHECKIN', 'NONE', ?)
-        `).run(id, notes || 'Depoya iade edildi.');
+            INSERT INTO asset_logs (asset_id, action, target_type, notes, created_by)
+            VALUES (?, 'CHECKIN', 'NONE', ?, ?)
+        `).run(id, notes || 'Depoya iade edildi.', userId);
 
         if (notes && notes.trim()) {
             const userName = req.session?.user?.full_name || req.session?.user?.username || 'Sistem';
@@ -223,6 +294,29 @@ exports.checkinAsset = (req, res) => {
     } catch (err) {
         console.error('checkinAsset error:', err);
         res.status(500).json({ error: 'İade işlemi sırasında hata oluştu.' });
+    }
+};
+
+// Get asset logs / history
+exports.getAssetLogs = (req, res) => {
+    try {
+        const { id } = req.params;
+        const logs = db.prepare(`
+            SELECT l.*, 
+                   u.full_name as user_name,
+                   p.first_name || ' ' || p.last_name as personnel_target_name,
+                   loc.name as location_target_name
+            FROM asset_logs l
+            LEFT JOIN users u ON l.created_by = u.id
+            LEFT JOIN personnel p ON (l.target_type = 'PERSONNEL' AND l.target_id = p.id)
+            LEFT JOIN locations loc ON (l.target_type = 'LOCATION' AND l.target_id = loc.id)
+            WHERE l.asset_id = ?
+            ORDER BY l.created_at DESC
+        `).all(id);
+        res.json(logs);
+    } catch (err) {
+        console.error('getAssetLogs error:', err);
+        res.status(500).json({ error: 'Zimmet geçmişi alınamadı.' });
     }
 };
 
@@ -367,7 +461,32 @@ exports.getPersonnelAssets = (req, res) => {
 // Help-data configurations (Dropdown structures)
 exports.getMetadata = (req, res) => {
     try {
-        const categories = db.prepare('SELECT * FROM asset_categories ORDER BY name').all();
+        const categoriesRaw = db.prepare('SELECT * FROM asset_categories ORDER BY name').all();
+        const defaultComputerFields = ["İşlemci (CPU)", "RAM (GB)", "Disk (GB)", "İşletim Sistemi", "IP Adresi", "MAC Adresi"];
+        const defaultPhoneFields = ["IMEI 1", "IMEI 2", "Depolama (GB)", "Renk"];
+        const defaultMonitorFields = ["Ekran Boyutu (İnç)", "Çözünürlük", "Yenileme Hızı (Hz)", "Bağlantı Portları"];
+        const defaultPrinterFields = ["Baskı Tipi (Lazer/Mürekkepli)", "Toner/Kartuş Modeli", "Baskı Rengi"];
+
+        const categories = categoriesRaw.map(c => {
+            let fields = [];
+            if (c.custom_fields_json) {
+                try { fields = JSON.parse(c.custom_fields_json); } catch (e) {}
+            }
+            if (!fields || fields.length === 0) {
+                const nameLower = (c.name || '').toLowerCase();
+                if (nameLower.includes('telefon') || nameLower.includes('phone') || nameLower.includes('mobil') || nameLower.includes('gsm') || nameLower.includes('tablet')) {
+                    fields = defaultPhoneFields;
+                } else if (nameLower.includes('monitör') || nameLower.includes('ekran') || nameLower.includes('display')) {
+                    fields = defaultMonitorFields;
+                } else if (nameLower.includes('yazıcı') || nameLower.includes('printer')) {
+                    fields = defaultPrinterFields;
+                } else {
+                    fields = defaultComputerFields;
+                }
+            }
+            return { ...c, custom_fields: fields };
+        });
+
         const brands = db.prepare('SELECT * FROM asset_brands ORDER BY name').all();
         const statuses = db.prepare('SELECT * FROM asset_statuses ORDER BY name').all();
         const companies = db.prepare('SELECT id, name FROM companies ORDER BY name').all();
@@ -389,12 +508,30 @@ exports.getMetadata = (req, res) => {
     }
 };
 
+// Update Category Custom Fields
+exports.updateCategoryFields = (req, res) => {
+    try {
+        const { id } = req.params;
+        const { custom_fields } = req.body;
+        if (!Array.isArray(custom_fields)) {
+            return res.status(400).json({ error: 'Geçersiz alan listesi.' });
+        }
+        const jsonStr = JSON.stringify(custom_fields.map(f => String(f).trim()).filter(Boolean));
+        db.prepare('UPDATE asset_categories SET custom_fields_json = ? WHERE id = ?').run(jsonStr, id);
+        res.json({ success: true, custom_fields });
+    } catch (err) {
+        console.error('updateCategoryFields error:', err);
+        res.status(500).json({ error: 'Kategori alanları güncellenemedi.' });
+    }
+};
+
 // Create & Delete Categories, Brands, Models, Statuses
 exports.addCategory = (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, custom_fields } = req.body;
         if (!name) return res.status(400).json({ error: 'Kategori adı gerekli.' });
-        const info = db.prepare('INSERT INTO asset_categories (name) VALUES (?)').run(name);
+        const jsonStr = Array.isArray(custom_fields) ? JSON.stringify(custom_fields) : null;
+        const info = db.prepare('INSERT INTO asset_categories (name, custom_fields_json) VALUES (?, ?)').run(name, jsonStr);
         res.json({ id: info.lastInsertRowid, name });
     } catch (err) {
         res.status(500).json({ error: 'Kategori eklenemedi.' });

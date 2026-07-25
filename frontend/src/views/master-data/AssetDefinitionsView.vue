@@ -128,8 +128,15 @@
             >
               <span>{{ cat.name }}</span>
               <div class="flex items-center gap-2">
+                <button 
+                  @click="openFieldsModal(cat)" 
+                  class="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-[11px] rounded-lg transition-colors flex items-center gap-1"
+                  title="Bu kategoriye özel zorunlu/seçmeli teknik alanları tanımla"
+                >
+                  <i class="fas fa-sliders-h text-[10px]"></i> Özellik Alanları ({{ cat.custom_fields?.length || 0 }})
+                </button>
                 <span class="text-[10px] text-gray-400 font-mono">ID: {{ cat.id }}</span>
-                <button @click="removeCategory(cat.id)" class="text-gray-300 hover:text-red-500 transition-colors ml-2" title="Sil">
+                <button @click="removeCategory(cat.id)" class="text-gray-300 hover:text-red-500 transition-colors ml-1" title="Sil">
                   <i class="fas fa-times"></i>
                 </button>
               </div>
@@ -233,6 +240,61 @@
         </div>
       </div>
     </main>
+
+    <!-- KATEGORİ ÖZEL ALANLARI TANIMLAMA MODALI -->
+    <dialog ref="categoryFieldsDialog" class="modal">
+      <div class="modal-box w-11/12 max-w-lg bg-white p-6 rounded-2xl relative shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b pb-3 border-gray-100">
+          <h3 class="font-extrabold text-[15px] text-gray-900 flex items-center gap-2">
+            <i class="fas fa-sliders-h text-blue-600"></i> Kategori Teknik Özellik Alanları: <span class="text-blue-600">{{ selectedCategoryForFields?.name }}</span>
+          </h3>
+          <button @click="categoryFieldsDialog?.close()" class="text-gray-400 hover:text-gray-600 font-bold text-sm">✕</button>
+        </div>
+
+        <p class="text-xs text-gray-500">
+          Bu kategoriye ait varlıklar eklenirken veya düzenlenirken kullanıcıdan istenecek özel teknik alan başlıklarını belirleyin.
+        </p>
+
+        <!-- New Field Input -->
+        <div class="flex gap-2">
+          <input 
+            v-model="newFieldName" 
+            type="text" 
+            placeholder="Yeni alan başlığı (ör. IMEI 1, Ekran Kartı, Toner Modeli)..." 
+            class="flex-1 h-9 px-3 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium outline-none focus:border-blue-500"
+            @keyup.enter="addFieldToCategory"
+          />
+          <button @click="addFieldToCategory" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1">
+            <i class="fas fa-plus text-[10px]"></i> Ekle
+          </button>
+        </div>
+
+        <!-- Field List -->
+        <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
+          <div v-if="editingCategoryFields.length === 0" class="text-center py-6 text-xs text-gray-400 border border-dashed rounded-xl">
+            Henüz tanımlı özel alan yok.
+          </div>
+          <div 
+            v-for="(field, idx) in editingCategoryFields" 
+            :key="idx" 
+            class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between text-xs font-bold text-gray-800"
+          >
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+              <span>{{ field }}</span>
+            </div>
+            <button @click="removeFieldFromCategory(idx)" class="text-gray-400 hover:text-red-600 transition-colors" title="Alanı Sil">
+              <i class="fas fa-trash-alt text-[11px]"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-action border-t pt-3 flex justify-end gap-2">
+          <button type="button" @click="categoryFieldsDialog?.close()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-lg">İptal</button>
+          <button type="button" @click="saveCategoryFields" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm">Alanları Kaydet</button>
+        </div>
+      </div>
+    </dialog>
   </div>
 </template>
 
@@ -301,6 +363,43 @@ const removeStatus = async (id) => {
 }
 
 // CATEGORY CRUD
+const categoryFieldsDialog = ref(null)
+const selectedCategoryForFields = ref(null)
+const editingCategoryFields = ref([])
+const newFieldName = ref('')
+
+const openFieldsModal = (cat) => {
+  selectedCategoryForFields.value = cat
+  editingCategoryFields.value = [...(cat.custom_fields || [])]
+  newFieldName.value = ''
+  categoryFieldsDialog.value?.showModal()
+}
+
+const addFieldToCategory = () => {
+  if (!newFieldName.value.trim()) return
+  if (editingCategoryFields.value.includes(newFieldName.value.trim())) {
+    showToast('Bu alan zaten ekli', 'warning')
+    return
+  }
+  editingCategoryFields.value.push(newFieldName.value.trim())
+  newFieldName.value = ''
+}
+
+const removeFieldFromCategory = (idx) => {
+  editingCategoryFields.value.splice(idx, 1)
+}
+
+const saveCategoryFields = async () => {
+  if (!selectedCategoryForFields.value) return
+  try {
+    await assetStore.updateCategoryFields(selectedCategoryForFields.value.id, editingCategoryFields.value)
+    showToast('Kategori teknik alanları kaydedildi', 'success')
+    categoryFieldsDialog.value?.close()
+  } catch (err) {
+    showToast(err.toString(), 'error')
+  }
+}
+
 const submitCategory = async () => {
   if (!newCategory.value.trim()) return
   try {

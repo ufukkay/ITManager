@@ -677,10 +677,19 @@ const initDb = () => {
   `).run();
 
   // --- ASSET MANAGEMENT TABLES ---
+  try {
+    const columns = db.prepare("PRAGMA table_info(asset_categories)").all();
+    if (columns.length > 0 && !columns.some(c => c.name === 'custom_fields_json')) {
+        console.log("Adding custom_fields_json to asset_categories table...");
+        db.prepare("ALTER TABLE asset_categories ADD COLUMN custom_fields_json TEXT").run();
+    }
+  } catch (e) { console.log("asset_categories migration skipped:", e.message); }
+
   db.prepare(`
     CREATE TABLE IF NOT EXISTS asset_categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE NOT NULL,
+        custom_fields_json TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `).run();

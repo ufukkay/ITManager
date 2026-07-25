@@ -29,6 +29,7 @@ router.use(requireAuth);
 // Metadata & Help dropdown Lists
 router.get('/metadata', assetController.getMetadata);
 router.post('/categories', hasPermission('asset:edit'), assetController.addCategory);
+router.put('/categories/:id/fields', hasPermission('asset:edit'), assetController.updateCategoryFields);
 router.delete('/categories/:id', hasPermission('asset:edit'), assetController.deleteCategory);
 router.post('/brands', hasPermission('asset:edit'), assetController.addBrand);
 router.delete('/brands/:id', hasPermission('asset:edit'), assetController.deleteBrand);

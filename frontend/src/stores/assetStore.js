@@ -88,10 +88,10 @@ export const useAssetStore = defineStore('asset', {
       }
     },
 
-    async deleteAsset(id) {
+    async deleteAsset(id, notes) {
       this.loading = true
       try {
-        await api.delete(`/assets/${id}`)
+        await api.delete(`/assets/${id}`, { data: { notes } })
         await this.fetchAssets()
         await this.fetchFinancialSummary()
       } catch (err) {
@@ -149,13 +149,23 @@ export const useAssetStore = defineStore('asset', {
       }
     },
 
-    async addCategory(name) {
+    async addCategory(name, custom_fields) {
       try {
-        const response = await api.post('/assets/categories', { name })
+        const response = await api.post('/assets/categories', { name, custom_fields })
         await this.fetchMetadata()
         return response.data
       } catch (err) {
         throw err.response?.data?.error || 'Kategori eklenemedi.'
+      }
+    },
+
+    async updateCategoryFields(id, custom_fields) {
+      try {
+        const response = await api.put(`/assets/categories/${id}/fields`, { custom_fields })
+        await this.fetchMetadata()
+        return response.data
+      } catch (err) {
+        throw err.response?.data?.error || 'Kategori alanları güncellenemedi.'
       }
     },
 
