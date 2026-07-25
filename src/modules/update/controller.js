@@ -74,7 +74,6 @@ const checkForUpdates = async (req, res) => {
   }
 }
 
-// ── DB Backup: Hem İndir hem Sunucuya Kaydet ─────────────
 const downloadDbBackup = async (req, res) => {
   try {
     const currentVersion = getCurrentVersion()
@@ -85,27 +84,35 @@ const downloadDbBackup = async (req, res) => {
     // 1. Sunucuya atomic backup (better-sqlite3)
     await db.backup(backupFilePath)
 
-    // 2. Zip oluştur
-    const zipFileName = backupFileName.replace('.db', '.zip')
-    const zipFilePath = path.join(BACKUP_DIR, zipFileName)
+    // 2. Zip / Gzip veya direkt .db olarak sunucuda sakla ve gönder
+    let archiverFn = null
+    try { archiverFn = require('archiver') } catch (e) {}
 
-    await new Promise((resolve, reject) => {
-      const output = fs.createWriteStream(zipFilePath)
-      const archive = archiver('zip', { zlib: { level: 9 } })
-      output.on('close', resolve)
-      archive.on('error', reject)
-      archive.pipe(output)
-      archive.file(backupFilePath, { name: backupFileName })
-      archive.finalize()
-    })
+    if (archiverFn && typeof archiverFn === 'function') {
+      const zipFileName = backupFileName.replace('.db', '.zip')
+      const zipFilePath = path.join(BACKUP_DIR, zipFileName)
 
-    // 3. Ham .db dosyasını temizle (zip saklı kalır)
-    if (fs.existsSync(backupFilePath)) fs.unlinkSync(backupFilePath)
+      await new Promise((resolve, reject) => {
+        const output = fs.createWriteStream(zipFilePath)
+        const archive = archiverFn('zip', { zlib: { level: 9 } })
+        output.on('close', resolve)
+        archive.on('error', reject)
+        archive.pipe(output)
+        archive.file(backupFilePath, { name: backupFileName })
+        archive.finalize()
+      })
 
-    // 4. Tarayıcıya gönder
-    res.setHeader('Content-Disposition', `attachment; filename="${zipFileName}"`)
-    res.setHeader('Content-Type', 'application/zip')
-    res.download(zipFilePath, zipFileName)
+      if (fs.existsSync(backupFilePath)) fs.unlinkSync(backupFilePath)
+
+      res.setHeader('Content-Disposition', `attachment; filename="${zipFileName}"`)
+      res.setHeader('Content-Type', 'application/zip')
+      return res.download(zipFilePath, zipFileName)
+    } else {
+      // Archiver yoksa veya CJS format farkı varsa ham .db olarak sunucuda sakla ve indir
+      res.setHeader('Content-Disposition', `attachment; filename="${backupFileName}"`)
+      res.setHeader('Content-Type', 'application/x-sqlite3')
+      return res.download(backupFilePath, backupFileName)
+    }
   } catch (err) {
     console.error('DB Backup error:', err)
     res.status(500).json({ error: 'DB yedek alınamadı: ' + (err.message || 'Bilinmeyen hata') })
@@ -117,7 +124,7 @@ const listBackups = async (req, res) => {
   try {
     if (!fs.existsSync(BACKUP_DIR)) return res.json([])
     const files = fs.readdirSync(BACKUP_DIR)
-      .filter(f => f.endsWith('.zip'))
+      .filter(f => f.endsWith('.zip') || f.endsWith('.db'))
       .map(f => {
         const stat = fs.statSync(path.join(BACKUP_DIR, f))
         return { name: f, size: stat.size, createdAt: stat.birthtime || stat.mtime }
@@ -129,11 +136,10 @@ const listBackups = async (req, res) => {
   }
 }
 
-// ── Sunucudaki Yedeği İndir ──────────────────────────────
 const downloadServerBackup = async (req, res) => {
   try {
     const { filename } = req.params
-    if (!filename.endsWith('.zip') || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    if ((!filename.endsWith('.zip') && !filename.endsWith('.db')) || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
       return res.status(400).json({ error: 'Geçersiz dosya adı' })
     }
     const filePath = path.join(BACKUP_DIR, filename)
