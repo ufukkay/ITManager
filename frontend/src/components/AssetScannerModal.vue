@@ -18,31 +18,54 @@
         </button>
       </div>
 
-      <!-- ── AŞAMA 1: İzin İsteme ───────────────────────── -->
+      <!-- Hidden File Input for Native Mobile Camera Photo Scan -->
+      <input ref="fileInput" type="file" accept="image/*" capture="environment" class="hidden" @change="handleFileUpload" />
+      <div id="qr-reader-file" class="hidden"></div>
+
+      <!-- ── AŞAMA 1: İzin İsteme & Tarama Seçimi ───────── -->
       <div v-if="stage === 'permission'" class="px-5 py-6 flex flex-col items-center gap-4 text-center">
 
         <div class="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center">
-          <i class="fas fa-camera text-blue-600 text-2xl"></i>
+          <i class="fas fa-qrcode text-blue-600 text-2xl"></i>
         </div>
         <div>
-          <div class="font-bold text-gray-900 text-base mb-1">Kamera İzni Gerekli</div>
-          <p class="text-sm text-gray-500 leading-relaxed">
-            QR kod ve barkod tarayabilmek için kameranıza erişim gerekiyor.<br>
-            <span class="text-blue-600 font-semibold">Önce arka kamera açılacaktır.</span>
+          <div class="font-bold text-gray-900 text-base mb-1">QR Kod / Barkod Taraması</div>
+          <p class="text-xs text-gray-500 leading-relaxed">
+            Aşağıdaki yöntemlerden biriyle cihaz QR kodunu okutabilirsiniz.
           </p>
         </div>
-        <div class="flex flex-col gap-2 w-full pt-1">
+
+        <!-- Non-HTTPS Notice -->
+        <div v-if="!isSecure" class="w-full bg-amber-50 border border-amber-200 rounded-xl p-3 text-left flex items-start gap-2.5">
+          <i class="fas fa-exclamation-triangle text-amber-600 text-sm mt-0.5 shrink-0"></i>
+          <div class="text-[11px] text-amber-900 leading-normal">
+            <strong>HTTP Yerel Ağ Bağlantısı:</strong> Mobil tarayıcılar (Safari/Chrome) HTTP adresinde canlı video yayını kısıtlar. <strong>'Fotoğraf Çek / QR Oku'</strong> butonuna dokunarak telefonunuzun kendi kamerasıyla 1 saniyede QR okutabilirsiniz!
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2.5 w-full pt-1">
+          <!-- 1. Native Camera Photo Capture Button (Works 100% on HTTP & HTTPS!) -->
+          <button
+            @click="triggerPhotoCapture"
+            :disabled="isScanningFile"
+            class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            <i class="fas fa-camera text-base" :class="{ 'fa-spin fa-spinner': isScanningFile }"></i>
+            <span>{{ isScanningFile ? 'QR İşleniyor...' : '📷 Fotoğraf Çek / QR Oku (Mobil Hızlı)' }}</span>
+          </button>
+
+          <!-- 2. Live Video Stream Camera Button -->
           <button
             @click="requestAndStart('environment')"
-            class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-sm rounded-2xl transition-colors shadow-sm flex items-center justify-center gap-2"
+            class="w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-xs rounded-2xl transition-colors shadow-sm flex items-center justify-center gap-2"
           >
-            <i class="fas fa-camera"></i> Arka Kamerayı Aç
+            <i class="fas fa-video"></i> Canlı Kamera Yayını Başlat
           </button>
 
           <!-- Manuel giriş -->
-          <div class="relative">
+          <div class="relative my-1">
             <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
-            <div class="relative flex justify-center"><span class="bg-white px-3 text-xs text-gray-400 font-medium">veya</span></div>
+            <div class="relative flex justify-center"><span class="bg-white px-3 text-[11px] text-gray-400 font-medium">veya manuel</span></div>
           </div>
           <div class="flex gap-2">
             <input
@@ -62,7 +85,7 @@
 
           <button
             @click="closeModal"
-            class="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-2xl transition-colors"
+            class="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-2xl transition-colors mt-1"
           >
             İptal
           </button>
@@ -263,7 +286,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onUnmounted, nextTick } from 'vue'
 import { Html5Qrcode } from 'html5-qrcode'
 
 const props = defineProps({ show: Boolean })
@@ -276,6 +299,42 @@ const manualCode = ref('')
 const errorMessage = ref('')
 const errorType = ref('') // 'permission-denied' | 'other'
 
+const fileInput = ref(null)
+const isScanningFile = ref(false)
+
+const isSecure = computed(() => {
+  if (typeof window === 'undefined') return true
+  return window.isSecureContext || ['localhost', '127.0.0.1'].includes(window.location.hostname)
+})
+
+const triggerPhotoCapture = () => {
+  fileInput.value?.click()
+}
+
+const handleFileUpload = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  isScanningFile.value = true
+  try {
+    const html5Qr = new Html5Qrcode('qr-reader-file', false)
+    const decodedText = await html5Qr.scanFile(file, true)
+    let code = decodedText.trim()
+    try {
+      const parsed = JSON.parse(decodedText)
+      if (parsed && (parsed.serial_no || parsed.barcode || parsed.id)) {
+        code = parsed.serial_no || parsed.barcode || String(parsed.id)
+      }
+    } catch {}
+    await stopScanner()
+    emit('scan-result', code)
+    emit('close')
+  } catch (err) {
+    alert('Görselde okunabilir bir QR kod veya barkod bulunamadı. Lütfen koda daha yakın net bir fotoğraf çekip tekrar deneyiniz.')
+  } finally {
+    isScanningFile.value = false
+    if (fileInput.value) fileInput.value.value = ''
+  }
+}
 
 let html5QrCode = null
 
