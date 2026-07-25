@@ -741,6 +741,142 @@
       @close="showStickerModal = false"
     />
 
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- 🔍 KONTROL ET MODALI (QR SCAN AUDIT VERIFICATION)       -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <dialog :class="['modal', { 'modal-open': showVerifyModal }]">
+      <div v-if="lookupAsset" class="modal-box max-w-lg w-full bg-white p-0 rounded-3xl shadow-2xl overflow-hidden mx-3 sm:mx-auto">
+        <!-- Header -->
+        <div class="bg-indigo-600 text-white px-5 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+              <i class="fas fa-search text-base"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm leading-tight">🔍 Cihaz Bilgilerini Kontrol Et</h3>
+              <p class="text-[10.5px] text-indigo-100">Fiziksel cihaz ile sistem kayıtlarını karşılaştırın</p>
+            </div>
+          </div>
+          <button @click="closeVerifyModal" class="text-white/80 hover:text-white text-xl font-bold">&times;</button>
+        </div>
+
+        <!-- Asset Information Card Body -->
+        <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+          <!-- Model & Serial Header -->
+          <div class="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex items-start justify-between gap-3">
+            <div>
+              <div class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">{{ lookupAsset.brand_name }}</div>
+              <div class="text-base font-black text-gray-900 leading-snug">{{ lookupAsset.model_name }}</div>
+              <div class="text-xs text-gray-500 font-mono mt-1">Seri No: <strong>{{ lookupAsset.serial_no }}</strong></div>
+              <div v-if="lookupAsset.barcode" class="text-xs text-gray-500 font-mono">Barkod: <strong>{{ lookupAsset.barcode }}</strong></div>
+            </div>
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 shrink-0">
+              {{ lookupAsset.status_name }}
+            </span>
+          </div>
+
+          <!-- Personnel & Location Information -->
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <div class="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Zimmetli Sahibi</div>
+              <div class="font-bold text-gray-900 text-xs truncate">
+                <i class="fas fa-user text-indigo-500 mr-1"></i>
+                {{ lookupAsset.personnel_name || '— (Zimmetsiz)' }}
+              </div>
+              <div v-if="lookupAsset.personnel_department" class="text-[10px] text-gray-500">{{ lookupAsset.personnel_department }}</div>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <div class="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Lokasyon / Konum</div>
+              <div class="font-bold text-gray-900 text-xs truncate">
+                <i class="fas fa-map-marker-alt text-red-500 mr-1"></i>
+                {{ lookupAsset.location_name || '— (Belirtilmemiş)' }}
+              </div>
+              <div class="text-[10px] text-gray-500">{{ lookupAsset.company_name }}</div>
+            </div>
+          </div>
+
+          <!-- Category Dynamic Specs Section -->
+          <div v-if="Object.keys(lookupAsset.specs || {}).length > 0" class="bg-amber-50/60 border border-amber-100 rounded-2xl p-4 space-y-2">
+            <div class="text-[11px] font-bold text-amber-900 flex items-center gap-1.5 border-b border-amber-200/50 pb-1.5">
+              <i class="fas fa-microchip text-amber-600"></i> Kategoriye Özel Teknik Özellikler
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div v-for="(val, key) in lookupAsset.specs" :key="key" class="bg-white p-2 rounded-lg border border-amber-100">
+                <span class="text-[10px] font-bold text-amber-800 block">{{ key }}</span>
+                <span class="font-mono text-gray-800 text-xs">{{ val || '—' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Decision Footer Buttons -->
+        <div class="bg-gray-50 px-5 py-4 border-t border-gray-100 flex flex-col sm:flex-row gap-2">
+          <!-- 1. SAY (Bilgiler Doğru) Button -->
+          <button
+            @click="submitAuditItem('COUNTED')"
+            :disabled="isSubmittingAudit"
+            class="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm rounded-2xl transition-all shadow-md flex items-center justify-center gap-2"
+          >
+            <i class="fas fa-check-circle text-base"></i>
+            <span>✅ Say (Bilgiler Doğru)</span>
+          </button>
+
+          <!-- 2. CİHAZ BİLGİLERİ HATALI Button -->
+          <button
+            @click="openDiscrepancyModal"
+            :disabled="isSubmittingAudit"
+            class="flex-1 py-3.5 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-sm rounded-2xl transition-all shadow-md flex items-center justify-center gap-2"
+          >
+            <i class="fas fa-exclamation-triangle text-base"></i>
+            <span>⚠️ Cihaz Bilgileri Hatalı</span>
+          </button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- 📝 ZORUNLU NOT / UYUMSUZLUK BİLDİRİM MODALI            -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <dialog :class="['modal', { 'modal-open': showDiscrepancyModal }]">
+      <div class="modal-box max-w-md w-full bg-white p-6 rounded-3xl shadow-2xl mx-3 sm:mx-auto">
+        <div class="flex items-center gap-3 text-amber-600 mb-3">
+          <div class="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center text-xl shrink-0">
+            <i class="fas fa-edit"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-base text-gray-900 leading-tight">Hata / Uyumsuzluk Notu</h3>
+            <p class="text-xs text-amber-700 font-medium">Bu cihaz için not düşülmesi zorunludur.</p>
+          </div>
+        </div>
+
+        <p class="text-xs text-gray-500 mb-3">
+          Lütfen cihazdaki teknik farkı, fiziksel durumu veya hatalı bilgiyi detaylıca yazınız:
+        </p>
+
+        <textarea
+          v-model="discrepancyNote"
+          rows="3"
+          placeholder="Örn: Cihazın ekranında kırık var / RAM 16GB yerine 8GB çıktı / Cihaz farklı odada bulundu..."
+          class="w-full p-3 border border-amber-200 rounded-2xl text-xs font-medium focus:border-amber-500 focus:outline-none bg-amber-50/30 mb-4"
+        ></textarea>
+
+        <div class="flex gap-2">
+          <button @click="closeDiscrepancyModal" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl transition-colors">
+            İptal
+          </button>
+          <button
+            @click="submitAuditItem('DATA_ERROR')"
+            :disabled="isSubmittingAudit"
+            class="flex-1 py-3 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold text-xs rounded-xl transition-colors shadow-sm flex items-center justify-center gap-1.5"
+          >
+            <i class="fas fa-save"></i>
+            <span>Kaydet & Şerh Düş</span>
+          </button>
+        </div>
+      </div>
+    </dialog>
+
     <!-- CAMERA SCANNER MODAL -->
     <AssetScannerModal 
       :show="showScannerModal"
@@ -1336,30 +1472,67 @@ const handleCheckin = async (asset) => {
   }
 }
 
+const showVerifyModal = ref(false)
+const showDiscrepancyModal = ref(false)
+const lookupAsset = ref(null)
+const discrepancyNote = ref('')
+const isSubmittingAudit = ref(false)
+
 const handleScanResult = async (scannedCode) => {
   if (!scannedCode) return
-  const q = String(scannedCode).trim().toLowerCase()
-  const matched = (assetStore.assets || []).find(a => 
-    (a.serial_no || '').toLowerCase() === q ||
-    (a.barcode || '').toLowerCase() === q ||
-    String(a.id) === q
-  )
-  if (matched) {
-    searchQuery.value = matched.serial_no
-    openEditModal(matched)
-    showToast(`✓ "${matched.serial_no}" seri numaralı varlık bulundu.`, 'success')
-  } else {
-    try {
-      const res = await api.post('/assets/audit/lookup', { code: scannedCode })
-      if (res.data?.asset) {
-        searchQuery.value = res.data.asset.serial_no
-        openEditModal(res.data.asset)
-        showToast(`✓ "${res.data.asset.serial_no}" envanter cihazı açıldı.`, 'success')
-        return
-      }
-    } catch (e) {}
-    searchQuery.value = scannedCode
-    showToast(`⚠️ "${scannedCode}" koduna ait varlık bulunamadı.`, 'warning')
+  try {
+    const res = await api.post('/assets/audit/lookup', { code: scannedCode })
+    lookupAsset.value = res.data.asset
+    showVerifyModal.value = true
+  } catch (err) {
+    showToast(err.response?.data?.error || `"${scannedCode}" kodlu envanter veritabanında bulunamadı.`, 'error')
+  }
+}
+
+const closeVerifyModal = () => {
+  showVerifyModal.value = false
+  lookupAsset.value = null
+}
+
+const openDiscrepancyModal = () => {
+  discrepancyNote.value = ''
+  showDiscrepancyModal.value = true
+}
+
+const closeDiscrepancyModal = () => {
+  showDiscrepancyModal.value = false
+  discrepancyNote.value = ''
+}
+
+const submitAuditItem = async (status) => {
+  if (!lookupAsset.value) return
+
+  if (status === 'DATA_ERROR' && (!discrepancyNote.value || !discrepancyNote.value.trim())) {
+    alert('Cihaz bilgileri hatalı seçildiğinde açıklama / not girilmesi zorunludur! Lütfen hatayı açıklayınız.')
+    return
+  }
+
+  isSubmittingAudit.value = true
+  try {
+    await api.post('/assets/audit/item-result', {
+      asset_id: lookupAsset.value.id,
+      status: status,
+      discrepancy_note: discrepancyNote.value
+    })
+
+    if (status === 'COUNTED') {
+      showToast(`✓ "${lookupAsset.value.serial_no}" başarıyla sayıldı!`, 'success')
+    } else {
+      showToast(`⚠️ "${lookupAsset.value.serial_no}" için hata/uyumsuzluk kaydı oluşturuldu.`, 'warning')
+      closeDiscrepancyModal()
+    }
+
+    closeVerifyModal()
+    await assetStore.fetchAssets()
+  } catch (err) {
+    alert(err.response?.data?.error || 'Sayım kaydı gönderilirken hata oluştu.')
+  } finally {
+    isSubmittingAudit.value = false
   }
 }
 
