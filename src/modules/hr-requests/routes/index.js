@@ -20,6 +20,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+router.use(hasPermission('hr:view'));
+
 // Tüm talepleri getir
 router.get('/', hasPermission('hr:view'), (req, res) => {
     try {

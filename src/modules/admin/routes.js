@@ -3,6 +3,8 @@ const router = express.Router();
 const { db } = require('../../database/db');
 const { hasPermission } = require('../../middleware/auth');
 
+router.use(hasPermission('system:admin'));
+
 // GET /admin/api/permissions - Yetkileri listele
 router.get('/api/permissions', (req, res) => {
     const roles = db.prepare('SELECT * FROM roles').all();

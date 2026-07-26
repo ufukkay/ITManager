@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const monitoringController = require('./controller');
+const { hasPermission } = require('../../middleware/auth');
+
+router.use(hasPermission('monitoring:view'));
 
 // router.get('/', monitoringController.renderPage); // Removed EJS version
 router.get('/api/servers', monitoringController.getServers);

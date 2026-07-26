@@ -3,7 +3,6 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const { initDb } = require('./database/db');
-const { requireAuth, hasPermission } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -42,16 +41,16 @@ app.use('/auth', require('./modules/auth/routes'));
 app.use('/api/helpdesk', require('./modules/helpdesk/routes'));
 
 // Yönetim Rotaları
-app.use('/admin', hasPermission('system:admin'), require('./modules/admin/routes'));
+app.use('/admin', require('./modules/admin/routes'));
 
 // İzleme (Monitoring) Rotaları
-app.use('/monitoring', hasPermission('monitoring:view'), require('./modules/monitoring/routes'));
+app.use('/monitoring', require('./modules/monitoring/routes'));
 
 // SIM Kart Takip Rotaları
-app.use('/sim-takip', hasPermission('sim:view'), require('./modules/simcardtracking/routes/index'));
+app.use('/sim-takip', require('./modules/simcardtracking/routes/index'));
 
 // HR Bildirim Rotaları (Personel Giriş/Çıkış)
-app.use('/api/hr-requests', hasPermission('hr:view'), require('./modules/hr-requests/routes/index'));
+app.use('/api/hr-requests', require('./modules/hr-requests/routes/index'));
 
 // M365 Lisans Yönetimi Rotaları
 app.use('/api/m365', require('./modules/m365/routes'));
@@ -60,10 +59,16 @@ app.use('/api/m365', require('./modules/m365/routes'));
 app.use('/api/assets', require('./modules/assets/routes'));
 
 // Merkezi Master Data Rotaları
-app.use('/api/master-data', hasPermission('system:admin'), require('./modules/core/routes'));
+app.use('/api/master-data', require('./modules/core/routes'));
 
 // Sistem Güncelleme Rotaları
 app.use('/api/update', require('./modules/update/routes'));
+
+// Global Hata Yakalama Ara Katmanı
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({ message: 'Sunucu tarafında beklenmeyen bir hata oluştu.' });
+});
 
 app.listen(PORT, () => {
     console.log(`ITManager server running at http://localhost:${PORT}`);

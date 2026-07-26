@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { hasPermission } = require('../../../middleware/auth');
 
+router.use(hasPermission('sim:view'));
+
 // Module main page
 // router.get('/', (req, res) => { ... }); // Removed EJS version
 
