@@ -1097,34 +1097,7 @@ const initDb = () => {
     }
   } catch (e) { console.log("Entra settings migration skipped:", e.message); }
 
-  // Entra settings table (ensure it exists)
-  db.prepare(`
-    CREATE TABLE IF NOT EXISTS entra_settings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        tenant_id TEXT,
-        client_id TEXT,
-        client_secret TEXT,
-        is_active INTEGER DEFAULT 0,
-        sync_interval_minutes INTEGER DEFAULT 60,
-        last_sync DATETIME,
-        allowed_domains TEXT DEFAULT '["talay.com"]',
-        domain_company_map TEXT DEFAULT '{}'
-    )
-  `).run();
-
-  // Thermal Label & Zimmet Form Templates
-  db.prepare(`
-    CREATE TABLE IF NOT EXISTS label_templates (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        width_mm REAL DEFAULT 70,
-        height_mm REAL DEFAULT 35,
-        elements_json TEXT NOT NULL,
-        is_default INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `).run();
-
+  // Zimmet Form Templates
   db.prepare(`
     CREATE TABLE IF NOT EXISTS zimmet_form_templates (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
