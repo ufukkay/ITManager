@@ -95,7 +95,7 @@ router.post('/', hasPermission('hr:edit'), upload.single('photo'), async (req, r
         );
 
         try {
-            await MailerService.sendHrNotification('admin@talay.com', req.body);
+            await MailerService.sendHrNotification('admin@itmanager.com', req.body);
         } catch (mailErr) {
             console.error('Mail trigger failed:', mailErr);
         }

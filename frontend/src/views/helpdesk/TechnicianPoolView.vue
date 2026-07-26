@@ -137,6 +137,21 @@
                 <span class="text-[#5f6368] font-normal">{{ getTimeAgo(ticket.created_at) }}</span>
               </div>
             </div>
+
+            <!-- Quick Action Bar (Claim & Reassign) -->
+            <div class="mt-3 pt-2 border-t border-[#f1f3f4] flex items-center justify-between gap-2" @click.stop.prevent>
+              <button @click="claimTicket(ticket.id, $event)" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded text-[11px] font-bold border border-blue-200 transition-colors flex items-center gap-1 shadow-sm">
+                <i class="fas fa-hand-paper text-[10px]"></i> Üzerime Al
+              </button>
+
+              <div class="flex items-center gap-1">
+                <span class="text-[10px] text-gray-400 font-bold">Devret:</span>
+                <select @change="reassignTicket(ticket.id, $event.target.value, $event)" class="h-7 text-[11px] px-1 bg-gray-50 border border-gray-200 rounded font-medium outline-none focus:border-blue-500 max-w-[130px] cursor-pointer">
+                  <option value="">Seçiniz...</option>
+                  <option v-for="tech in technicians" :key="tech.id" :value="tech.id">{{ tech.full_name }}</option>
+                </select>
+              </div>
+            </div>
           </router-link>
         </div>
       </div>
@@ -151,6 +166,7 @@ import api from '../../api'
 const loading = ref(true)
 const tickets = ref([])
 const categories = ref([])
+const technicians = ref([])
 
 const searchQuery = ref('')
 const selectedCategory = ref('')
@@ -231,16 +247,45 @@ const filteredAndSortedTickets = computed(() => {
 const loadPool = async () => {
   loading.value = true
   try {
-    const [ticketsRes, metaRes] = await Promise.all([
+    const [ticketsRes, metaRes, techRes] = await Promise.all([
       api.get('/api/helpdesk/pool'),
-      api.get('/api/helpdesk/metadata')
+      api.get('/api/helpdesk/metadata'),
+      api.get('/api/helpdesk/technicians')
     ])
     tickets.value = ticketsRes.data || []
     categories.value = metaRes.data.categories || []
+    technicians.value = techRes.data.technicians || []
   } catch (err) {
     console.error('Havuz yüklenemedi:', err)
   } finally {
     loading.value = false
+  }
+}
+
+const claimTicket = async (ticketId, event) => {
+  if (event) event.preventDefault()
+  try {
+    const res = await api.put(`/api/helpdesk/tickets/${ticketId}/assign`)
+    if (res.data) {
+      loadPool()
+    }
+  } catch (err) {
+    console.error('Claim error:', err)
+  }
+}
+
+const reassignTicket = async (ticketId, targetTechId, event) => {
+  if (event) event.preventDefault()
+  if (!targetTechId) return
+  try {
+    const res = await api.put(`/api/helpdesk/tickets/${ticketId}/assign`, {
+      assignee_id: parseInt(targetTechId)
+    })
+    if (res.data) {
+      loadPool()
+    }
+  } catch (err) {
+    console.error('Reassign error:', err)
   }
 }
 

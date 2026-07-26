@@ -226,13 +226,18 @@ const seedInitialData = () => {
     // Admin kullanıcısını ekle
     const bcrypt = require('bcryptjs');
     const adminRole = db.prepare('SELECT id FROM roles WHERE name = ?').get('Admin');
-    const adminCheck = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@talay.com');
+
+    try {
+        db.prepare("UPDATE users SET email = 'admin@itmanager.com' WHERE email = 'admin@talay.com'").run();
+    } catch (e) {}
+
+    const adminCheck = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@itmanager.com');
     if (!adminCheck && adminRole) {
         const hashedPass = bcrypt.hashSync('admin123', 10);
         db.prepare(`
             INSERT INTO users (email, username, password, full_name, role_id) 
             VALUES (?, ?, ?, ?, ?)
-        `).run('admin@talay.com', 'admin', hashedPass, 'Sistem Yöneticisi', adminRole.id);
+        `).run('admin@itmanager.com', 'admin', hashedPass, 'Sistem Yöneticisi', adminRole.id);
     }
     console.log("Başlangıç verileri kontrol edildi/eklendi.");
 };

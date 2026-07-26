@@ -59,7 +59,7 @@ const columns = [
   { key: 'company_name',     label: 'Şirket',      sortable: true, width: '160px' },
   { key: 'department_name',  label: 'Departman',   sortable: true, width: '160px' },
   { key: 'cost_center_name', label: 'Masraf Yeri', sortable: true, width: '140px' },
-  { key: 'hire_date',        label: 'Giriş Tarihi',sortable: true, width: '120px' },
+  { key: 'source_display',   label: 'Kaynak',      sortable: true, width: '130px' },
   { key: 'status',           label: 'Durum',       sortable: true, width: '100px' },
   { key: 'account',          label: 'Sistem Erişimi', sortable: false, width: '130px' },
 ]
@@ -68,14 +68,20 @@ const quickFilters = computed(() => [
   { key: 'company_name',     label: 'Şirket',      options: masterData.companies.map(c => c.name) },
   { key: 'department_name',  label: 'Departman',   options: masterData.departments.map(d => d.name) },
   { key: 'cost_center_name', label: 'Masraf Yeri', options: masterData.costCenters.map(c => c.name) },
+  { key: 'source_type',       label: 'Kaynak',      options: [ { value: 'Senkronize (M365)', label: 'Senkronize (M365)' }, { value: 'Manuel Kayıt', label: 'Manuel Kayıt' } ] },
   { key: 'status', label: 'Durum', options: [ { value: 'active', label: 'Aktif' }, { value: 'passive', label: 'Pasif' } ] },
 ])
 
 const personnelRows = computed(() =>
-  masterData.personnel.map(p => ({
-    ...p,
-    full_name: `${p.first_name} ${p.last_name}`,
-  }))
+  masterData.personnel.map(p => {
+    const isAzure = p.source === 'azure' || !!p.entra_id
+    return {
+      ...p,
+      full_name: `${p.first_name} ${p.last_name}`,
+      source_display: isAzure ? 'Senkronize (M365)' : 'Manuel Kayıt',
+      source_type: isAzure ? 'Senkronize (M365)' : 'Manuel Kayıt'
+    }
+  })
 )
 
 // Selection
@@ -434,9 +440,13 @@ onMounted(fetchData)
         <span class="text-[13px] text-gray-600 font-medium truncate block max-w-[170px]" :title="value">{{ value || '—' }}</span>
       </template>
 
-      <!-- Giriş Tarihi -->
-      <template #cell-hire_date="{ value }">
-        <span class="text-[12px] text-gray-500 tabular-nums">{{ value ? new Date(value).toLocaleDateString('tr-TR') : '—' }}</span>
+      <!-- Kaynak -->
+      <template #cell-source_display="{ row }">
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border"
+              :class="row.source === 'azure' || row.entra_id ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-700 border-gray-200'">
+          <i :class="row.source === 'azure' || row.entra_id ? 'fab fa-microsoft text-blue-500' : 'fas fa-user-edit text-gray-500'"></i>
+          {{ row.source === 'azure' || row.entra_id ? 'M365 Senkronize' : 'Manuel Kayıt' }}
+        </span>
       </template>
 
       <!-- Durum badge with dot -->
@@ -635,6 +645,15 @@ onMounted(fetchData)
                           </select>
                           <p class="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
                               Rol seçimi ile personelin temel yetkilerini belirleyebilirsiniz. 'Admin' tüm kısıtlamalardan muaftır.
+                          </p>
+                      </div>
+                      <div>
+                          <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Giriş Şifresi</label>
+                          <input v-model="editingPersonnel.password" type="password" 
+                            :placeholder="editingPersonnel.id ? 'Boş bırakılırsa mevcut şifre kalır' : 'Varsayılan: 123456'"
+                            class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white" />
+                          <p class="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
+                              Kullanıcının sisteme giriş yaparken kullanacağı şifre.
                           </p>
                       </div>
                   </div>

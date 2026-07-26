@@ -10,7 +10,7 @@ const alertCache = {};
 
 const sendAlertEmail = async (serverName, subject, message) => {
     try {
-        const adminEmail = 'admin@talay.com';
+        const adminEmail = 'admin@itmanager.com';
         const html = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #c5221f; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                 <div style="background-color: #c5221f; padding: 18px; color: white; font-weight: bold; text-align: center; font-size: 18px; letter-spacing: 0.5px;">

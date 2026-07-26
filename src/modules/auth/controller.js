@@ -14,6 +14,10 @@ exports.postLogin = (req, res) => {
             return res.status(401).json({ success: false, message: 'Geçersiz e-posta veya şifre.' });
         }
 
+        if (user.is_active === 0) {
+            return res.status(403).json({ success: false, message: 'Hesabınız dondurulmuştur (Pasif). Lütfen yöneticinizle iletişime geçin.' });
+        }
+
         // Rol ismini al
         const role = db.prepare('SELECT name FROM roles WHERE id = ?').get(user.role_id);
         

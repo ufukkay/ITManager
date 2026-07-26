@@ -325,14 +325,28 @@ exports.addMessage = async (req, res) => {
 exports.assignTicket = (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.session.user.id;
+        const currentUserId = req.session.user ? req.session.user.id : 1;
+        const currentUserName = (req.session.user && req.session.user.full_name) ? req.session.user.full_name : 'Teknisyen';
         
-        db.prepare(`UPDATE helpdesk_tickets SET assigned_to = ?, status = 'İşlemde', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(userId, id);
+        const assigneeId = (req.body && req.body.assignee_id) ? parseInt(req.body.assignee_id) : null;
+        const targetUserId = assigneeId || currentUserId;
         
-        db.prepare(`INSERT INTO helpdesk_messages (ticket_id, user_id, message, is_internal) VALUES (?, NULL, 'Talep teknisyen tarafından üzerine alındı.', 0)`).run(id);
+        const targetUser = db.prepare('SELECT id, full_name FROM users WHERE id = ?').get(targetUserId);
+        if (!targetUser) {
+            return res.status(400).json({ error: 'Geçersiz teknisyen seçimi.' });
+        }
 
-        res.json({ message: 'Talep üzerinize alındı.' });
+        db.prepare(`UPDATE helpdesk_tickets SET assigned_to = ?, status = 'İşlemde', updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(targetUserId, id);
+        
+        const msgText = (targetUserId === currentUserId)
+            ? `Talep teknisyen (${currentUserName}) tarafından üzerine alındı.`
+            : `Talep (${currentUserName}) tarafından teknisyen (${targetUser.full_name}) kişisine devredildi.`;
+
+        db.prepare(`INSERT INTO helpdesk_messages (ticket_id, user_id, message, is_internal) VALUES (?, NULL, ?, 0)`).run(id, msgText);
+
+        res.json({ success: true, message: (targetUserId === currentUserId) ? 'Talep üzerinize alındı.' : `Talep ${targetUser.full_name} kullanıcısına atandı.` });
     } catch (err) {
+        console.error('assignTicket error:', err);
         res.status(500).json({ error: 'Atama işlemi başarısız.' });
     }
 };
@@ -920,5 +934,21 @@ exports.getPublicTicketInfo = (req, res) => {
     } catch (err) {
         console.error('getPublicTicketInfo error:', err);
         res.status(500).json({ error: 'Bilgiler alınamadı.' });
+    }
+};
+
+exports.getTechnicians = (req, res) => {
+    try {
+        const technicians = db.prepare(`
+            SELECT u.id, u.email, u.full_name, u.role_id, r.name as role_name
+            FROM users u
+            JOIN roles r ON u.role_id = r.id
+            WHERE u.role_id IN (1, 2) AND u.is_active = 1
+            ORDER BY u.full_name ASC
+        `).all();
+        res.json({ success: true, technicians });
+    } catch (err) {
+        console.error('getTechnicians error:', err);
+        res.status(500).json({ error: 'Teknisyenler yüklenemedi.' });
     }
 };

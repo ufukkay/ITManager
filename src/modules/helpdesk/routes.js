@@ -37,6 +37,7 @@ router.get('/tickets/:id', helpdeskController.getTicketDetails);
 router.post('/tickets/:id/messages', upload.array('attachments', 5), helpdeskController.addMessage);
 
 // Teknisyen / Yönetim İşlemleri
+router.get('/technicians', hasPermission('helpdesk:manage'), helpdeskController.getTechnicians);
 router.get('/pool', hasPermission('helpdesk:manage'), helpdeskController.getTicketPool);
 router.put('/tickets/:id/assign', hasPermission('helpdesk:manage'), helpdeskController.assignTicket);
 router.put('/tickets/:id/status', hasPermission('helpdesk:manage'), helpdeskController.updateStatus);

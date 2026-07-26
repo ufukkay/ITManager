@@ -193,9 +193,8 @@ class MasterDataService {
                 if (existingUser) throw new Error("Bu e-posta ile zaten bir sistem hesabı mevcut.");
                 
                 const bcrypt = require('bcryptjs');
-                const crypto = require('crypto');
-                const randomPassword = crypto.randomBytes(32).toString('hex');
-                const hashedPass = bcrypt.hashSync(randomPassword, 10);
+                const userPass = (data.password && data.password.trim()) ? data.password.trim() : '123456';
+                const hashedPass = bcrypt.hashSync(userPass, 10);
                 const username = email.split('@')[0];
 
                 const userInfo = db.prepare(`
@@ -243,18 +242,22 @@ class MasterDataService {
             if (has_account) {
                 if (!email) throw new Error("Sistem hesabı oluşturmak veya güncellemek için e-posta gereklidir.");
                 
+                const bcrypt = require('bcryptjs');
                 let userId = null;
                 if (user) {
-                    db.prepare("UPDATE users SET email = ?, full_name = ?, role_id = ? WHERE id = ?").run(email, `${first_name} ${last_name}`, role_id || null, user.id);
+                    if (data.password && data.password.trim()) {
+                        const hashedPass = bcrypt.hashSync(data.password.trim(), 10);
+                        db.prepare("UPDATE users SET email = ?, full_name = ?, role_id = ?, password = ? WHERE id = ?").run(email, `${first_name} ${last_name}`, role_id || null, hashedPass, user.id);
+                    } else {
+                        db.prepare("UPDATE users SET email = ?, full_name = ?, role_id = ? WHERE id = ?").run(email, `${first_name} ${last_name}`, role_id || null, user.id);
+                    }
                     userId = user.id;
                 } else {
                     const existingUser = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
                     if (existingUser) throw new Error("Bu e-posta ile zaten bir sistem hesabı mevcut.");
                     
-                    const bcrypt = require('bcryptjs');
-                    const crypto = require('crypto');
-                    const randomPassword = crypto.randomBytes(32).toString('hex');
-                    const hashedPass = bcrypt.hashSync(randomPassword, 10);
+                    const userPass = (data.password && data.password.trim()) ? data.password.trim() : '123456';
+                    const hashedPass = bcrypt.hashSync(userPass, 10);
                     const username = email.split('@')[0];
 
                     const userInfo = db.prepare(`

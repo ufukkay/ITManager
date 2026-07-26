@@ -50,12 +50,17 @@ router.post('/api/permissions/update', (req, res) => {
 router.get('/api/users', (req, res) => {
     try {
         const users = db.prepare(`
-            SELECT u.id, u.email, u.username, u.full_name, u.role_id, r.name as role_name 
+            SELECT u.id, u.email, u.username, u.full_name, u.role_id, u.is_active, u.personnel_id, u.created_at,
+                   r.name as role_name,
+                   p.first_name || ' ' || p.last_name as personnel_name
             FROM users u
             LEFT JOIN roles r ON u.role_id = r.id
+            LEFT JOIN personnel p ON u.personnel_id = p.id
+            ORDER BY u.id DESC
         `).all();
         res.json({ success: true, users });
     } catch (err) {
+        console.error('Users list error:', err);
         res.status(500).json({ message: 'Kullanıcılar yüklenemedi.' });
     }
 });
@@ -166,6 +171,48 @@ router.post('/api/users/update-role', (req, res) => {
         res.json({ success: true, message: 'Kullanıcı rolü güncellendi.' });
     } catch (err) {
         res.status(500).json({ message: 'Güncelleme hatası.' });
+    }
+});
+
+// POST /admin/api/users/:id/toggle-status - Kullanıcı aktif/pasif yap
+router.post('/api/users/:id/toggle-status', (req, res) => {
+    const userId = parseInt(req.params.id);
+    if (!userId) return res.status(400).json({ message: 'Geçersiz kullanıcı ID.' });
+
+    try {
+        const user = db.prepare('SELECT is_active FROM users WHERE id = ?').get(userId);
+        if (!user) return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+
+        const newStatus = user.is_active === 1 ? 0 : 1;
+        db.prepare('UPDATE users SET is_active = ? WHERE id = ?').run(newStatus, userId);
+        res.json({ 
+            success: true, 
+            is_active: newStatus,
+            message: newStatus === 1 ? 'Kullanıcı hesabı aktifleştirildi.' : 'Kullanıcı hesabı donduruldu (Pasif).' 
+        });
+    } catch (err) {
+        console.error('Toggle user status error:', err);
+        res.status(500).json({ message: 'Kullanıcı durumu değiştirilemedi.' });
+    }
+});
+
+// POST /admin/api/users/:id/reset-password - Kullanıcı şifresini admin tarafından belirle
+router.post('/api/users/:id/reset-password', (req, res) => {
+    const userId = parseInt(req.params.id);
+    const { new_password } = req.body;
+    const bcrypt = require('bcryptjs');
+
+    if (!userId || !new_password || new_password.trim().length < 4) {
+        return res.status(400).json({ message: 'Şifre en az 4 karakter olmalıdır.' });
+    }
+
+    try {
+        const hashedPass = bcrypt.hashSync(new_password, 10);
+        db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPass, userId);
+        res.json({ success: true, message: 'Kullanıcı şifresi başarıyla güncellendi.' });
+    } catch (err) {
+        console.error('Reset password error:', err);
+        res.status(500).json({ message: 'Şifre güncellenemedi.' });
     }
 });
 

@@ -20,6 +20,14 @@ const initDb = () => {
         console.log("Adding personnel_id to users table...");
         db.prepare("ALTER TABLE users ADD COLUMN personnel_id INTEGER REFERENCES personnel(id)").run();
     }
+    if (columns.length > 0 && !columns.some(c => c.name === 'is_active')) {
+        console.log("Adding is_active to users table...");
+        db.prepare("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1").run();
+    }
+    if (columns.length > 0 && !columns.some(c => c.name === 'must_change_password')) {
+        console.log("Adding must_change_password to users table...");
+        db.prepare("ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0").run();
+    }
   } catch (e) { console.log("users migration skipped:", e.message); }
 
   // Users table
@@ -1175,7 +1183,15 @@ const seedInitialData = () => {
 
         // Envanter Yönetimi
         { key: 'asset:view', module: 'Envanter Takip', desc: 'Varlık listesini ve zimmet bilgilerini görüntüleme' },
-        { key: 'asset:edit', module: 'Envanter Takip', desc: 'Varlık ekleme, silme, düzenleme ve zimmet işlemlerini yapma' }
+        { key: 'asset:edit', module: 'Envanter Takip', desc: 'Varlık ekleme, silme, düzenleme ve zimmet işlemlerini yapma' },
+
+        // Destek Talepleri (Helpdesk)
+        { key: 'helpdesk:view', module: 'Destek Talepleri', desc: 'Bilet listesini ve detaylarını görüntüleme' },
+        { key: 'helpdesk:edit', module: 'Destek Talepleri', desc: 'Bilet oluşturma, yanıtlama ve durumunu değiştirme' },
+
+        // Master Veri Yönetimi
+        { key: 'masterdata:view', module: 'Master Veri', desc: 'Şirket, departman, personel ve lokasyon bilgilerini görüntüleme' },
+        { key: 'masterdata:edit', module: 'Master Veri', desc: 'Master veri ekleme, düzenleme ve silme yetkisi' }
     ];
 
     permissions.forEach(p => {
@@ -1233,14 +1249,48 @@ const seedInitialData = () => {
     // Admin kullanıcısını ekle
     const bcrypt = require('bcryptjs');
     const adminRole = db.prepare('SELECT id FROM roles WHERE name = ?').get('Admin');
-    const adminCheck = db.prepare('SELECT id FROM users WHERE email = ?').get('admin@talay.com');
-    if (!adminCheck && adminRole) {
+
+    // Varolan admin@talay.com kaydı varsa admin@itmanager.com olarak güncelle
+    try {
+        db.prepare("UPDATE users SET email = 'admin@itmanager.com' WHERE email = 'admin@talay.com'").run();
+    } catch (e) { console.log("admin email update skipped:", e.message); }
+
+    // Admin kullanıcısını ekle ve Personel kartı ile eşleştir
+    let adminUser = db.prepare('SELECT * FROM users WHERE email = ?').get('admin@itmanager.com');
+    if (!adminUser && adminRole) {
         const hashedPass = bcrypt.hashSync('admin123', 10);
-        db.prepare(`
+        const res = db.prepare(`
             INSERT INTO users (email, username, password, full_name, role_id) 
             VALUES (?, ?, ?, ?, ?)
-        `).run('admin@talay.com', 'admin', hashedPass, 'Sistem Yöneticisi', adminRole.id);
+        `).run('admin@itmanager.com', 'admin', hashedPass, 'Sistem Yöneticisi', adminRole.id);
+        adminUser = db.prepare('SELECT * FROM users WHERE id = ?').get(res.lastInsertRowid);
     }
+
+    if (adminUser) {
+        let adminPersonnel = db.prepare('SELECT id FROM personnel WHERE email = ?').get('admin@itmanager.com');
+        if (!adminPersonnel) {
+            try {
+                const pRes = db.prepare(`
+                    INSERT INTO personnel (first_name, last_name, title, email, status)
+                    VALUES ('Sistem', 'Yöneticisi', 'Sistem Yöneticisi', 'admin@itmanager.com', 'active')
+                `).run();
+                adminPersonnel = { id: pRes.lastInsertRowid };
+            } catch (e) {
+                adminPersonnel = db.prepare('SELECT id FROM personnel WHERE email = ?').get('admin@itmanager.com');
+            }
+        }
+        if (adminPersonnel && !adminUser.personnel_id) {
+            db.prepare('UPDATE users SET personnel_id = ? WHERE id = ?').run(adminPersonnel.id, adminUser.id);
+        }
+    }
+
+    try {
+        const admin1User = db.prepare("SELECT id FROM users WHERE email = 'admin1@admin.com'").get();
+        if (admin1User) {
+            db.prepare("UPDATE users SET password = ? WHERE email = 'admin1@admin.com'").run(bcrypt.hashSync('123456', 10));
+        }
+    } catch(e) {}
+
     console.log("Başlangıç verileri kontrol edildi/eklendi.");
 };
 

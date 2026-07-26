@@ -917,7 +917,7 @@ const loadEligibleUsers = async () => {
     if (res.data.success) {
       eligibleUsers.value = res.data.users.filter(u => 
         (u.role_name === 'Teknisyen' || u.role_name === 'Admin') && 
-        u.id !== ticket.value.assigned_to &&
+        ticket.value && u.id !== ticket.value.assigned_to &&
         !collaborators.value.some(col => col.id === u.id)
       )
     }
