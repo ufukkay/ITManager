@@ -21,7 +21,9 @@ src/database/*.db-shm
 src/database/*.db-wal
 src/modules/simcardtracking/uploads/
 uploads/
-/uploads/
+
+# Backups
+backups/
 
 # Agent Build Outputs
 agent/installer/app/
