@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const assetController = require('./controller');
+const assetController = require('./controllers');
 const { requireAuth, hasPermission } = require('../../middleware/auth');
 const multer = require('multer');
 const path = require('path');
