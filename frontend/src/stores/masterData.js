@@ -12,176 +12,94 @@ export const useMasterDataStore = defineStore('masterData', {
     operators: [],
     packages: [],
     licenses: [],
-    servers: [],
-    loading: false,
-    error: null
+    servers: []
   }),
 
   actions: {
     async fetchCompanies() {
-      this.loading = true
       try {
         const response = await api.get('/api/master-data/companies')
         this.companies = response.data
-      } catch (err) {
-        this.error = err.message
-      } finally {
-        this.loading = false
-      }
+      } catch (err) { console.error('Fetch companies error:', err) }
     },
 
     async fetchDepartments(companyId = null) {
-      this.loading = true
       try {
         const url = companyId ? `/api/master-data/departments?companyId=${companyId}` : '/api/master-data/departments'
         const response = await api.get(url)
         this.departments = response.data
-      } catch (err) {
-        this.error = err.message
-      } finally {
-        this.loading = false
-      }
+      } catch (err) { console.error('Fetch departments error:', err) }
     },
 
     async fetchCostCenters(companyId = null) {
-      this.loading = true
       try {
         const url = companyId ? `/api/master-data/cost-centers?companyId=${companyId}` : '/api/master-data/cost-centers'
         const response = await api.get(url)
         this.costCenters = response.data
-      } catch (err) {
-        this.error = err.message
-      } finally {
-        this.loading = false
-      }
+      } catch (err) { console.error('Fetch cost centers error:', err) }
     },
 
     async fetchPersonnel(filters = {}) {
-      this.loading = true
       try {
         const params = new URLSearchParams(filters).toString()
         const response = await api.get(`/api/master-data/personnel?${params}`)
         this.personnel = response.data
-      } catch (err) {
-        this.error = err.message
-      } finally {
-        this.loading = false
-      }
+      } catch (err) { console.error('Fetch personnel error:', err) }
     },
 
     async fetchVehicles() {
-        this.loading = true
-        try {
-          const response = await api.get('/api/master-data/vehicles')
-          this.vehicles = response.data
-        } catch (err) {
-          this.error = err.message
-        } finally {
-          this.loading = false
-        }
+      try {
+        const response = await api.get('/api/master-data/vehicles')
+        this.vehicles = response.data
+      } catch (err) { console.error('Fetch vehicles error:', err) }
     },
 
     async fetchLocations() {
-        this.loading = true
-        try {
-          const response = await api.get('/api/master-data/locations')
-          this.locations = response.data
-        } catch (err) {
-          this.error = err.message
-        } finally {
-          this.loading = false
-        }
+      try {
+        const response = await api.get('/api/master-data/locations')
+        this.locations = response.data
+      } catch (err) { console.error('Fetch locations error:', err) }
     },
 
     async fetchOperators() {
-        this.loading = true
-        try {
-          const response = await api.get('/api/master-data/operators')
-          this.operators = response.data
-        } catch (err) {
-          this.error = err.message
-        } finally {
-          this.loading = false
-        }
+      try {
+        const response = await api.get('/api/master-data/operators')
+        this.operators = response.data
+      } catch (err) { console.error('Fetch operators error:', err) }
     },
 
     async fetchPackages(type = null) {
-        this.loading = true
-        try {
-          const url = type ? `/api/master-data/packages?type=${type}` : '/api/master-data/packages'
-          const response = await api.get(url)
-          this.packages = response.data
-        } catch (err) {
-          this.error = err.message
-        } finally {
-          this.loading = false
-        }
+      try {
+        const url = type ? `/api/master-data/packages?type=${type}` : '/api/master-data/packages'
+        const response = await api.get(url)
+        this.packages = response.data
+      } catch (err) { console.error('Fetch packages error:', err) }
     },
 
     async createPersonnel(data) {
-      this.loading = true
-      try {
-        const response = await api.post('/api/master-data/personnel', data)
-        await this.fetchPersonnel()
-        return response.data
-      } catch (err) {
-        this.error = err.message
-        throw err
-      } finally {
-        this.loading = false
-      }
+      const response = await api.post('/api/master-data/personnel', data)
+      await this.fetchPersonnel()
+      return response.data
     },
 
     async updatePersonnel(id, data) {
-      this.loading = true
-      try {
-        await api.put(`/api/master-data/personnel/${id}`, data)
-        await this.fetchPersonnel()
-      } catch (err) {
-        this.error = err.message
-        throw err
-      } finally {
-        this.loading = false
-      }
+      await api.put(`/api/master-data/personnel/${id}`, data)
+      await this.fetchPersonnel()
     },
 
     async deletePersonnel(id) {
-      this.loading = true
-      try {
-        await api.delete(`/api/master-data/personnel/${id}`)
-        await this.fetchPersonnel()
-      } catch (err) {
-        this.error = err.message
-        throw err
-      } finally {
-        this.loading = false
-      }
+      await api.delete(`/api/master-data/personnel/${id}`)
+      await this.fetchPersonnel()
     },
 
     async bulkDeletePersonnel(ids) {
-      this.loading = true
-      try {
-        await api.post('/api/master-data/personnel/bulk-delete', { ids })
-        await this.fetchPersonnel()
-      } catch (err) {
-        this.error = err.message
-        throw err
-      } finally {
-        this.loading = false
-      }
+      await api.post('/api/master-data/personnel/bulk-delete', { ids })
+      await this.fetchPersonnel()
     },
 
     async bulkUpdatePersonnel(ids, data) {
-      this.loading = true
-      try {
-        await api.post('/api/master-data/personnel/bulk-update', { ids, data })
-        await this.fetchPersonnel()
-      } catch (err) {
-        this.error = err.message
-        throw err
-      } finally {
-        this.loading = false
-      }
+      await api.post('/api/master-data/personnel/bulk-update', { ids, data })
+      await this.fetchPersonnel()
     },
 
     async getPersonnelUser(id) {
@@ -195,82 +113,40 @@ export const useMasterDataStore = defineStore('masterData', {
     },
 
     async createPersonnelUser(id) {
-        this.loading = true
-        try {
-            const response = await api.post(`/api/master-data/personnel/${id}/create-user`)
-            return response.data.userId
-        } catch (err) {
-            this.error = err.response?.data?.message || err.message
-            throw err
-        } finally {
-            this.loading = false
-        }
+        const response = await api.post(`/api/master-data/personnel/${id}/create-user`)
+        return response.data.userId
     },
 
     // Global CRUD helper for other entities
     async createItem(type, data) {
-        this.loading = true
-        try {
-            const response = await api.post(`/api/master-data/${type}`, data)
-            await this.refreshType(type)
-            return response.data
-        } catch (err) {
-            this.error = err.message
-            throw err
-        } finally {
-            this.loading = false
-        }
+        const response = await api.post(`/api/master-data/${type}`, data)
+        await this.refreshType(type)
+        return response.data
     },
 
     async updateItem(type, id, data) {
-        this.loading = true
-        try {
-            await api.put(`/api/master-data/${type}/${id}`, data)
-            await this.refreshType(type)
-        } catch (err) {
-            this.error = err.message
-            throw err
-        } finally {
-            this.loading = false
-        }
+        await api.put(`/api/master-data/${type}/${id}`, data)
+        await this.refreshType(type)
     },
 
     async deleteItem(type, id) {
-        this.loading = true
-        try {
-            await api.delete(`/api/master-data/${type}/${id}`)
-            await this.refreshType(type)
-        } catch (err) {
-            this.error = err.message
-            throw err
-        } finally {
-            this.loading = false
-        }
+        await api.delete(`/api/master-data/${type}/${id}`)
+        await this.refreshType(type)
     },
 
     async fetchLicenses() {
-        this.loading = true
         try {
           const response = await api.get('/api/master-data/licenses')
           this.licenses = response.data
-        } catch (err) {
-          this.error = err.message
-        } finally {
-          this.loading = false
-        }
+        } catch (err) { console.error('Fetch licenses error:', err) }
     },
 
     async fetchServers(type = null) {
-        this.loading = true
         try {
           const url = type ? `/api/master-data/servers?type=${type}` : '/api/master-data/servers'
           const response = await api.get(url)
           this.servers = response.data
-        } catch (err) {
-          this.error = err.message
-        } finally {
-          this.loading = false
-        }
+        } catch (err) { console.error('Fetch servers error:', err) }
     },
 
     async refreshType(type) {
@@ -339,42 +215,24 @@ export const useMasterDataStore = defineStore('masterData', {
     },
 
     async fetchAllocations() {
-      this.loading = true
       try {
         const response = await api.get('/api/master-data/licenses/allocations')
         return response.data
       } catch (err) {
         console.error('Fetch allocations error:', err)
         return []
-      } finally {
-        this.loading = false
       }
     },
 
     async assignLicense(personnelId, licenseId) {
-      this.loading = true
-      try {
-        await api.post('/api/master-data/licenses/assign', { personnelId, licenseId })
-      } finally {
-        this.loading = false
-      }
+      await api.post('/api/master-data/licenses/assign', { personnelId, licenseId })
     },
 
     async unassignLicense(id) {
-      this.loading = true
-      try {
-        await api.delete(`/api/master-data/licenses/unassign/${id}`)
-      } finally {
-        this.loading = false
-      }
+      await api.delete(`/api/master-data/licenses/unassign/${id}`)
     },
     async bulkAssignLicenses(personnelIds, licenseIds) {
-      this.loading = true
-      try {
-        await api.post('/api/master-data/licenses/bulk-assign', { personnelIds, licenseIds })
-      } finally {
-        this.loading = false
-      }
+      await api.post('/api/master-data/licenses/bulk-assign', { personnelIds, licenseIds })
     },
     async fetchDashboardStats() {
       try {

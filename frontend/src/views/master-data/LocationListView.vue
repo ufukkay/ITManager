@@ -1,15 +1,23 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useMasterDataStore } from '../../stores/masterData'
-import { useToast } from '../../composables/useToast'
-import { useConfirm } from '../../composables/useConfirm'
+import { computed, onMounted } from 'vue'
+import { useMasterDataListPage } from '../../composables/useMasterDataListPage'
 import AppTable from '../../components/AppTable.vue'
 import * as XLSX from 'xlsx'
 
-const masterData = useMasterDataStore()
-const { showToast } = useToast()
-const { ask, startLoading, stopLoading } = useConfirm()
-const loading    = ref(false)
+const {
+  masterData, loading, isModalOpen, selectedItem, form,
+  fetchData, openAddModal, openEditModal, saveItem: saveItemBase, handleDelete
+} = useMasterDataListPage({
+  type: 'locations',
+  defaultForm: { name: '', address: '', notes: '' },
+  deleteMessage: {
+    title: 'Lokasyonu Sil',
+    message: (row) => `"${row.name}" isimli lokasyonu silmek istediğinize emin misiniz?`,
+    confirmLabel: 'Evet, Sil'
+  }
+})
+
+const saveItem = () => saveItemBase({ update: 'Lokasyon başarıyla güncellendi', create: 'Yeni lokasyon başarıyla eklendi' })
 
 const columns = [
   { key: 'name',    label: 'Lokasyon Adı', width: '220px', sortable: true },
@@ -18,64 +26,6 @@ const columns = [
 ]
 
 const rows = computed(() => masterData.locations)
-
-const fetchData = async () => {
-  loading.value = true
-  await masterData.fetchLocations()
-  loading.value = false
-}
-
-// ── Modal ─────────────────────────────────────────────────────────────────────
-const isModalOpen  = ref(false)
-const selectedItem = ref(null)
-const form         = ref({ name: '', address: '', notes: '' })
-
-const openAddModal = () => {
-  selectedItem.value = null
-  form.value = { name: '', address: '', notes: '' }
-  isModalOpen.value = true
-}
-
-const openEditModal = (row) => {
-  selectedItem.value = row
-  form.value = { ...row }
-  isModalOpen.value = true
-}
-
-const saveItem = async () => {
-  try {
-    if (selectedItem.value) {
-      await masterData.updateItem('locations', selectedItem.value.id, form.value)
-      showToast('Lokasyon başarıyla güncellendi', 'success')
-    } else {
-      await masterData.createItem('locations', form.value)
-      showToast('Yeni lokasyon başarıyla eklendi', 'success')
-    }
-    isModalOpen.value = false
-  } catch (err) { showToast('Hata: ' + err.message, 'error') }
-}
-
-const handleDelete = async (row) => {
-  const impact = await masterData.getDeleteImpact('locations', row.id)
-  const confirmed = await ask({
-    title: 'Lokasyonu Sil',
-    message: `"${row.name}" isimli lokasyonu silmek istediğinize emin misiniz?`,
-    confirmLabel: 'Evet, Sil',
-    impact: impact
-  })
-
-  if (confirmed) {
-    try {
-      startLoading()
-      await masterData.deleteItem('locations', row.id)
-      showToast('Lokasyon başarıyla silindi', 'success')
-    } catch (err) {
-      showToast('Hata: ' + err.message, 'error')
-    } finally {
-      stopLoading()
-    }
-  }
-}
 
 const downloadTemplate = () => {
   const ws = XLSX.utils.json_to_sheet([

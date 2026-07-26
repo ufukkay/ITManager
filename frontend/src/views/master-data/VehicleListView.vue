@@ -1,15 +1,23 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useMasterDataStore } from '../../stores/masterData'
-import { useToast } from '../../composables/useToast'
-import { useConfirm } from '../../composables/useConfirm'
+import { computed, onMounted } from 'vue'
+import { useMasterDataListPage } from '../../composables/useMasterDataListPage'
 import AppTable from '../../components/AppTable.vue'
 import * as XLSX from 'xlsx'
 
-const masterData = useMasterDataStore()
-const { showToast } = useToast()
-const { ask, startLoading, stopLoading } = useConfirm()
-const loading    = ref(false)
+const {
+  masterData, loading, isModalOpen, selectedItem, form,
+  fetchData, openAddModal, openEditModal, saveItem: saveItemBase, handleDelete
+} = useMasterDataListPage({
+  type: 'vehicles',
+  defaultForm: { plate_no: '', vehicle_type: 'Binek', notes: '' },
+  deleteMessage: {
+    title: 'Aracı Sil',
+    message: (row) => `"${row.plate_no}" plakalı aracı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
+    confirmLabel: 'Evet, Aracı Sil'
+  }
+})
+
+const saveItem = () => saveItemBase({ update: 'Araç başarıyla güncellendi', create: 'Yeni araç başarıyla eklendi' })
 
 const columns = [
   { key: 'plate_no',     label: 'Plaka',     width: '150px', sortable: true },
@@ -22,64 +30,6 @@ const quickFilters = [
 ]
 
 const rows = computed(() => masterData.vehicles)
-
-const fetchData = async () => {
-  loading.value = true
-  await masterData.fetchVehicles()
-  loading.value = false
-}
-
-// ── Modal ─────────────────────────────────────────────────────────────────────
-const isModalOpen  = ref(false)
-const selectedItem = ref(null)
-const form         = ref({ plate_no: '', vehicle_type: 'Binek', notes: '' })
-
-const openAddModal = () => {
-  selectedItem.value = null
-  form.value = { plate_no: '', vehicle_type: 'Binek', notes: '' }
-  isModalOpen.value = true
-}
-
-const openEditModal = (row) => {
-  selectedItem.value = row
-  form.value = { ...row }
-  isModalOpen.value = true
-}
-
-const saveItem = async () => {
-  try {
-    if (selectedItem.value) {
-      await masterData.updateItem('vehicles', selectedItem.value.id, form.value)
-      showToast('Araç başarıyla güncellendi', 'success')
-    } else {
-      await masterData.createItem('vehicles', form.value)
-      showToast('Yeni araç başarıyla eklendi', 'success')
-    }
-    isModalOpen.value = false
-  } catch (err) { showToast('Hata: ' + err.message, 'error') }
-}
-
-const handleDelete = async (row) => {
-  const impact = await masterData.getDeleteImpact('vehicles', row.id)
-  const confirmed = await ask({
-    title: 'Aracı Sil',
-    message: `"${row.plate_no}" plakalı aracı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
-    confirmLabel: 'Evet, Aracı Sil',
-    impact: impact
-  })
-
-  if (confirmed) {
-    try {
-      startLoading()
-      await masterData.deleteItem('vehicles', row.id)
-      showToast('Araç başarıyla silindi', 'success')
-    } catch (err) {
-      showToast('Hata: ' + err.message, 'error')
-    } finally {
-      stopLoading()
-    }
-  }
-}
 
 const downloadTemplate = () => {
   const ws = XLSX.utils.json_to_sheet([
