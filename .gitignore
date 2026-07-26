@@ -38,6 +38,8 @@ server_out.log
 server_err.log
 audit.json
 audit_err.txt
+update-history.json
+iisnode-logs/
 
 # IDEs
 .vscode/

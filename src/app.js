@@ -64,6 +64,19 @@ app.use('/api/master-data', require('./modules/core/routes'));
 // Sistem Güncelleme Rotaları
 app.use('/api/update', require('./modules/update/routes'));
 
+// Frontend (Vue SPA) - production build'i statik olarak sun
+// IIS/iisnode tüm istekleri bu process'e yönlendirir; API route'ları eşleşmeyen
+// her şey burada karşılanır: önce statik dosya (js/css/img) varsa o sunulur,
+// yoksa Vue Router (history mode) için index.html'e düşülür.
+const frontendDist = path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendDist));
+app.get(/^(?!\/api\/|\/auth\/|\/admin\/|\/monitoring\/|\/sim-takip\/|\/uploads\/).*/, (req, res, next) => {
+    if (req.method !== 'GET') return next();
+    res.sendFile(path.join(frontendDist, 'index.html'), (err) => {
+        if (err) next(err);
+    });
+});
+
 // Global Hata Yakalama Ara Katmanı
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);

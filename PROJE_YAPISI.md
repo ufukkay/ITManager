@@ -128,6 +128,21 @@ Tek dosya: `data/itmanager.db` (SQLite, `better-sqlite3` ile). Şema `src/databa
 
 ---
 
+## 🖥️ Üretim Dağıtımı — IIS + iisnode
+
+Uygulama üretimde bir Windows Server üzerinde **IIS + iisnode** ile çalıştırılır. Node/Express tek başına hem API'yi hem statik frontend build'ini sunar; IIS sadece iisnode üzerinden tüm istekleri `src/app.js`'e yönlendirir (bkz. kök dizindeki `web.config`).
+
+**Sunucuda tek seferlik kurulum adımları** (bunlar sunucu erişimi gerektirir, buradan otomatikleştirilemez):
+1. IIS rolü + **URL Rewrite** modülü + **iisnode** modülü kurulu olmalı.
+2. Bu repo bir klasöre çekilir (`git clone` veya zip), `npm install` ve `cd frontend && npm install && npm run build` en az bir kez elle çalıştırılır (`frontend/dist` oluşmalı).
+3. `.env` dosyası oluşturulur (bkz. `.env.example`).
+4. IIS'te bu klasörü gösteren bir site/uygulama tanımlanır; Application Pool **"No Managed Code"** olmalı.
+5. Siteye ilk istek atıldığında iisnode `src/app.js`'i başlatır; loglar `iisnode-logs/` klasöründe oluşur (git'e girmez).
+
+**Kendi kendini güncelleme**: Admin panelindeki "Sistem Güncelleme" ekranından tetiklenen güncelleme akışı otomatik DB yedeği alır, `git reset --hard origin/main` ile kodu günceller, backend+frontend bağımlılıklarını kurar, frontend'i yeniden derler ve `web.config`'in değişiklik zamanını güncelleyerek iisnode'un process'i yeniden başlatmasını (recycle) tetikler. Detaylar için `src/modules/update/controller.js`.
+
+---
+
 ## 📌 Bilinen Sınırlamalar (harita doğruluğu için not edilmeli)
 - `InventoryView.vue`, `TicketDetailView.vue`, `PersonnelAssetsView.vue` hâlâ 1000+ satırlık büyük, bölünmemiş dosyalar.
 - `getAuditCampaigns`/`getAuditLiveStats` (assets/audit) endpoint'lerinde önceden var olan bir sorgu hatası var (`u.name` yerine `u.full_name` olmalı).
