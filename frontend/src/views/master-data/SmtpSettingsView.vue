@@ -11,6 +11,13 @@ const testEmail = ref('')
 const isTestingSmtp = ref(false)
 const { showToast } = useToast()
 
+const notificationSettings = ref({
+    hr_notification_email: '',
+    admin_affairs_notification_email: '',
+    hr_manager_options: ['', '', '']
+})
+const savingNotifications = ref(false)
+
 const loadSettings = async () => {
     loading.value = true
     try {
@@ -19,13 +26,42 @@ const loadSettings = async () => {
         if (resSmtp.data.success && resSmtp.data.settings) {
             smtpSettings.value = { ...smtpSettings.value, ...resSmtp.data.settings }
             smtpSettings.value.secure = resSmtp.data.settings.secure === 1
-            smtpSettings.value.pass = '' 
+            smtpSettings.value.pass = ''
+        }
+
+        const resNotif = await api.get('/admin/api/settings/notifications')
+        if (resNotif.data.success && resNotif.data.settings) {
+            const managerOptions = resNotif.data.settings.hr_manager_options || []
+            notificationSettings.value = {
+                hr_notification_email: resNotif.data.settings.hr_notification_email || '',
+                admin_affairs_notification_email: resNotif.data.settings.admin_affairs_notification_email || '',
+                hr_manager_options: [0, 1, 2].map(i => managerOptions[i] || '')
+            }
         }
     } catch (err) {
         console.error('Ayarlar yüklenemedi:', err)
         showToast('Ayarlar yüklenemedi.', 'error')
     } finally {
         loading.value = false
+    }
+}
+
+const saveNotificationSettings = async () => {
+    savingNotifications.value = true
+    try {
+        const payload = {
+            hr_notification_email: notificationSettings.value.hr_notification_email,
+            admin_affairs_notification_email: notificationSettings.value.admin_affairs_notification_email,
+            hr_manager_options: notificationSettings.value.hr_manager_options.filter(n => n && n.trim())
+        }
+        const res = await api.post('/admin/api/settings/notifications', payload)
+        if (res.data.success) {
+            showToast('Bildirim ayarları başarıyla kaydedildi.', 'success')
+        }
+    } catch (err) {
+        showToast('Bildirim ayarları kaydedilemedi.', 'error')
+    } finally {
+        savingNotifications.value = false
     }
 }
 
@@ -137,6 +173,48 @@ onMounted(() => {
             </form>
         </div>
 
+        <div class="mt-8 mb-8">
+            <h1 class="text-[20px] font-bold text-gray-900 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-500 shadow-sm">
+                    <i class="fas fa-bell"></i>
+                </div>
+                İK Bildirim Ayarları
+            </h1>
+            <p class="text-[13px] text-gray-500 mt-2 ml-[52px]">İK talebi bildirimlerinin gideceği mail grupları ve "Bağlı Yönetici" seçim listesi.</p>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            <form @submit.prevent="saveNotificationSettings" class="p-7 space-y-6">
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">BT Bildirim Mail Grubu</label>
+                    <input v-model="notificationSettings.hr_notification_email" type="email" placeholder="bt-grubu@sirket.com"
+                        class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                    <p class="text-[11px] text-gray-400 mt-1">Yeni bir İK talebi (giriş/çıkış) oluşturulduğunda bilgilendirme maili bu adrese gönderilir.</p>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">İdari İşler Mail Grubu</label>
+                    <input v-model="notificationSettings.admin_affairs_notification_email" type="email" placeholder="idari-isler@sirket.com"
+                        class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                    <p class="text-[11px] text-gray-400 mt-1">Talepte "Şirket Aracı" donanımı seçildiğinde ayrıca bu adrese de bildirim gönderilir.</p>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Bağlı Yönetici Seçenekleri</label>
+                    <div class="space-y-2">
+                        <input v-for="(_, i) in notificationSettings.hr_manager_options" :key="i"
+                            v-model="notificationSettings.hr_manager_options[i]" type="text"
+                            :placeholder="`${i + 1}. Yönetici Adı Soyadı`"
+                            class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                    </div>
+                    <p class="text-[11px] text-gray-400 mt-1">İK talep formundaki "Bağlı Yönetici" seçim listesinde gösterilecek isimler.</p>
+                </div>
+                <div class="pt-6 border-t border-gray-100 flex items-center justify-end">
+                    <button type="submit" :disabled="savingNotifications || loading" class="px-8 py-2 text-[13px] font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                        <i :class="savingNotifications ? 'fas fa-spinner fa-spin' : 'fas fa-save'"></i>
+                        {{ savingNotifications ? 'Kaydediliyor...' : 'Bildirim Ayarlarını Kaydet' }}
+                    </button>
+                </div>
+            </form>
+        </div>
 
     </div>
 

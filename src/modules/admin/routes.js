@@ -404,5 +404,50 @@ router.post('/api/settings/entra/personnel-sync', async (req, res) => {
     }
 });
 
+// GET /admin/api/settings/notifications - IK bildirim ayarlarini getir
+router.get('/api/settings/notifications', (req, res) => {
+    try {
+        const rows = db.prepare(
+            "SELECT key, value FROM system_settings WHERE key IN ('hr_notification_email', 'admin_affairs_notification_email', 'hr_manager_options')"
+        ).all();
+        const settings = {
+            hr_notification_email: '',
+            admin_affairs_notification_email: '',
+            hr_manager_options: []
+        };
+        rows.forEach(r => {
+            if (r.key === 'hr_manager_options') {
+                try { settings.hr_manager_options = JSON.parse(r.value || '[]'); } catch (e) { settings.hr_manager_options = []; }
+            } else {
+                settings[r.key] = r.value;
+            }
+        });
+        res.json({ success: true, settings });
+    } catch (err) {
+        console.error('Get notification settings error:', err);
+        res.status(500).json({ success: false, message: 'Bildirim ayarları alınamadı.' });
+    }
+});
+
+// POST /admin/api/settings/notifications - IK bildirim ayarlarini kaydet
+router.post('/api/settings/notifications', (req, res) => {
+    try {
+        const { hr_notification_email, admin_affairs_notification_email, hr_manager_options } = req.body;
+
+        const upsert = db.prepare(
+            'INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+        );
+
+        upsert.run('hr_notification_email', hr_notification_email || '');
+        upsert.run('admin_affairs_notification_email', admin_affairs_notification_email || '');
+        upsert.run('hr_manager_options', JSON.stringify(Array.isArray(hr_manager_options) ? hr_manager_options.filter(Boolean) : []));
+
+        res.json({ success: true, message: 'Bildirim ayarları kaydedildi.' });
+    } catch (err) {
+        console.error('Save notification settings error:', err);
+        res.status(500).json({ success: false, message: 'Bildirim ayarları kaydedilemedi.' });
+    }
+});
+
 module.exports = router;
 
