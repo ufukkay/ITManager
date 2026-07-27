@@ -242,7 +242,7 @@ onUnmounted(() => stopPolling())
             <div>
               <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">GitHub En Son Sürüm</span>
               <div class="text-2xl font-black mt-1 flex items-center gap-2" :class="updateInfo?.hasUpdate ? 'text-emerald-600' : 'text-gray-800'">
-                v{{ updateInfo?.latestVersion || '...' }}
+                {{ updateInfo?.latestVersion?.startsWith('v') ? updateInfo.latestVersion : 'v' + (updateInfo?.latestVersion || '...') }}
                 <span v-if="updateInfo?.hasUpdate" class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Yeni!</span>
               </div>
             </div>
