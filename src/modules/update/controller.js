@@ -48,23 +48,29 @@ const checkForUpdates = async (req, res) => {
     const https = require('https')
     const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`
 
-    const data = await new Promise((resolve, reject) => {
-      const options = { headers: { 'User-Agent': 'ITManager-UpdateChecker/1.0', 'Accept': 'application/vnd.github.v3+json' } }
-      const request = https.get(url, options, (response) => {
-        let body = ''
-        response.on('data', chunk => body += chunk)
-        response.on('end', () => {
-          try { resolve(JSON.parse(body)) }
-          catch (e) { reject(e) }
+    let data = {}
+    try {
+      data = await new Promise((resolve, reject) => {
+        const options = { headers: { 'User-Agent': 'ITManager-UpdateChecker/1.0', 'Accept': 'application/vnd.github.v3+json' } }
+        const request = https.get(url, options, (response) => {
+          let body = ''
+          response.on('data', chunk => body += chunk)
+          response.on('end', () => {
+            try { resolve(JSON.parse(body)) }
+            catch (e) { reject(e) }
+          })
         })
+        request.on('error', reject)
       })
-      request.on('error', reject)
-    })
+    } catch (e) {
+      console.warn('GitHub releases API error:', e.message)
+    }
 
     const currentVersion = getCurrentVersion()
-    const latestVersion = (data.tag_name || '').replace(/^v/, '')
+    let latestVersion = (data.tag_name || '').replace(/^v/, '')
 
     const compareVersions = (a, b) => {
+      if (!a) return 0
       const pa = a.split('.').map(Number)
       const pb = b.split('.').map(Number)
       for (let i = 0; i < 3; i++) {
@@ -74,18 +80,50 @@ const checkForUpdates = async (req, res) => {
       return 0
     }
 
-    const hasUpdate = compareVersions(latestVersion, currentVersion) > 0
+    let hasUpdate = compareVersions(latestVersion, currentVersion) > 0
+    let releaseName = data.name || ''
+    let releaseNotes = data.body || ''
+
+    if (!latestVersion) {
+      try {
+        const commitData = await new Promise((resolve, reject) => {
+          const options = { headers: { 'User-Agent': 'ITManager-UpdateChecker/1.0', 'Accept': 'application/vnd.github.v3+json' } }
+          https.get(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits/main`, options, (response) => {
+            let body = ''
+            response.on('data', chunk => body += chunk)
+            response.on('end', () => {
+              try { resolve(JSON.parse(body)) }
+              catch (e) { reject(e) }
+            })
+          }).on('error', reject)
+        })
+
+        if (commitData && commitData.sha) {
+          const localCommit = await runCmd('git rev-parse HEAD', ROOT_DIR).catch(() => '')
+          const shortRemote = commitData.sha.substring(0, 7)
+          const shortLocal = (localCommit || '').trim().substring(0, 7)
+          
+          latestVersion = `v${currentVersion} (${shortRemote})`
+          if (shortLocal && shortRemote && shortLocal !== shortRemote) {
+            hasUpdate = true
+            releaseName = `Güncelleme Mevcut (${shortRemote})`
+            releaseNotes = commitData.commit?.message || 'Yeni güncellemeler mevcut.'
+          }
+        }
+      } catch (commitErr) {
+        console.warn('GitHub commit check error:', commitErr.message)
+      }
+    }
 
     res.json({
       currentVersion,
-      latestVersion,
+      latestVersion: latestVersion || currentVersion,
       hasUpdate,
-      releaseName: data.name || '',
-      releaseNotes: data.body || '',
+      releaseName: releaseName || `v${currentVersion}`,
+      releaseNotes: releaseNotes || 'Sisteminiz güncel durumda.',
       publishedAt: data.published_at || null,
-      htmlUrl: data.html_url || '',
-      tagName: data.tag_name || '',
-      note: 'Güncelleme uygulandığında main branch\'in son hali deploy edilir; GitHub release tag\'i sadece bilgilendirme/sürüm numarası amaçlıdır.'
+      htmlUrl: data.html_url || `https://github.com/${REPO_OWNER}/${REPO_NAME}`,
+      tagName: data.tag_name || `v${currentVersion}`
     })
   } catch (err) {
     console.error('Update check error:', err)
