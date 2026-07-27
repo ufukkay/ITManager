@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const { checkForUpdates, downloadDbBackup, listBackups, downloadServerBackup, applyUpdate, getUpdateHistory } = require('./controller')
+const { checkForUpdates, downloadDbBackup, listBackups, downloadServerBackup, applyUpdate, getUpdateHistory, getUpdateStatus } = require('./controller')
 
 const { hasPermission } = require('../../middleware/auth')
 
@@ -12,6 +12,9 @@ router.get('/check', requireAdmin, checkForUpdates)
 
 // Güncelleme geçmişi
 router.get('/history', requireAdmin, getUpdateHistory)
+
+// Devam eden güncellemenin anlık durumu (polling ile takip edilir)
+router.get('/status', requireAdmin, getUpdateStatus)
 
 // DB Backup - hem indir hem sunucuya kaydet
 router.get('/db-backup', requireAdmin, downloadDbBackup)

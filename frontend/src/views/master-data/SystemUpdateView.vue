@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 
 const loading = ref(false)
@@ -87,10 +87,49 @@ const fetchHistory = async () => {
   }
 }
 
+// ── Güncelleme İlerlemesini Takip Et (gerçek zamanlı, polling) ───
+let pollTimer = null
+
+const stopPolling = () => {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+const pollUpdateStatus = () => {
+  stopPolling()
+  pollTimer = setInterval(async () => {
+    try {
+      const res = await axios.get('/api/update/status')
+      const state = res.data
+      logMessages.value = (state.steps || []).map(s => ({
+        time: new Date(s.time).toLocaleTimeString(),
+        msg: s.msg
+      }))
+
+      if (!state.inProgress) {
+        stopPolling()
+        updating.value = false
+        if (state.success) {
+          updateSuccessMessage.value = 'Güncelleme başarıyla tamamlandı! Sayfa birkaç saniye içinde yeniden yüklenecek...'
+          setTimeout(() => window.location.reload(), 3000)
+        } else if (state.success === false) {
+          updateErrorMessage.value = state.error || 'Güncelleme sırasında bir hata oluştu.'
+        }
+      }
+    } catch (err) {
+      // Güncelleme sırasında sunucu bakım modunda olabilir (503) - polling'i durdurmuyoruz,
+      // sunucu geri geldiğinde otomatik olarak devam edecek.
+      console.warn('Durum sorgusu başarısız, tekrar denenecek:', err.message)
+    }
+  }, 1500)
+}
+
 // ── Güncellemeyi Başlat ──────────────────────────────────
 const startUpdate = async () => {
   if (!backupDownloaded.value) {
-    if (!confirm('Henüz veritabanı yedeği indirmediniz! Sunucuda otomatik yedek alındı ama tarayıcıya indirmeniz önerilir. Yine de devam etmek istiyor musunuz?')) {
+    if (!confirm('Henüz veritabanı yedeği indirmediniz! Güncelleme sırasında sunucu otomatik olarak da yedek alacak, ama tarayıcıya indirmeniz önerilir. Yine de devam etmek istiyor musunuz?')) {
       return
     }
   }
@@ -104,20 +143,10 @@ const startUpdate = async () => {
   updateSuccessMessage.value = ''
   logMessages.value = []
 
-  const addLog = (msg) => logMessages.value.push({ time: new Date().toLocaleTimeString(), msg })
-
-  addLog('Güncelleme isteği sunucuya iletiliyor...')
-
   try {
     const res = await axios.post('/api/update/apply', { targetVersion: updateInfo.value.latestVersion })
-    addLog(res.data.message || 'Güncelleme başlatıldı.')
-    addLog('Git pull ve npm install işlemleri yürütülüyor...')
-    addLog('Sunucu 5-10 saniye içinde yeniden başlatılacak.')
-    updateSuccessMessage.value = 'Güncelleme başlatıldı! Sayfa birkaç saniye içinde yeniden yüklenecektir...'
-
-    setTimeout(() => {
-      window.location.reload()
-    }, 10000)
+    logMessages.value = [{ time: new Date().toLocaleTimeString(), msg: res.data.message || 'Güncelleme başlatıldı.' }]
+    pollUpdateStatus()
   } catch (err) {
     updating.value = false
     updateErrorMessage.value = err.response?.data?.error || 'Güncelleme başlatılırken bir hata oluştu.'
@@ -142,6 +171,8 @@ onMounted(() => {
   fetchServerBackups()
   fetchHistory()
 })
+
+onUnmounted(() => stopPolling())
 </script>
 
 <template>
@@ -256,6 +287,9 @@ onMounted(() => {
                 </h3>
                 <p class="text-xs text-gray-500 mt-0.5">
                   {{ updateInfo.hasUpdate ? `Yayınlanma Tarihi: ${formatDate(updateInfo.publishedAt)}` : 'En son sürüm kullanılıyor. Herhangi bir güncellemeye gerek yok.' }}
+                </p>
+                <p v-if="updateInfo.hasUpdate" class="text-[11px] text-gray-400 mt-1">
+                  Güncelleme, GitHub'daki main branch'in son halini indirir (release tag'i bilgilendirme amaçlıdır). Öncesinde otomatik veritabanı yedeği alınır, sonrasında backend ve frontend yeniden kurulup derlenir.
                 </p>
               </div>
             </div>

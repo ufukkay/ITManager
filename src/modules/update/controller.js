@@ -1,18 +1,36 @@
 const { exec } = require('child_process')
 const path = require('path')
 const fs = require('fs')
-const archiver = require('archiver')
+const { ZipArchive } = require('archiver')
 const { db } = require('../../database/db')
 
 const REPO_OWNER = 'ufukkay'
 const REPO_NAME = 'ITManager'
 const ROOT_DIR = path.join(__dirname, '../../../')
 const BACKUP_DIR = path.join(ROOT_DIR, 'backups')
+const FRONTEND_DIR = path.join(ROOT_DIR, 'frontend')
+const WEBCONFIG_PATH = path.join(ROOT_DIR, 'web.config')
 
 // Backup klasörünü oluştur
 if (!fs.existsSync(BACKUP_DIR)) {
   fs.mkdirSync(BACKUP_DIR, { recursive: true })
 }
+
+// ── Güncelleme Durumu ─────────────────────────────────────
+// In-memory durum; GET /api/update/status ile polling edilir ve
+// app.js'teki bakım modu middleware'i tarafından okunur (inProgress === bakımda).
+// iisnode başarılı bir güncelleme sonunda process'i recycle ettiğinde bu state
+// zaten sıfırlanmış (yeni process) olarak yeniden başlar.
+let updateState = {
+  inProgress: false,
+  steps: [],
+  startedAt: null,
+  finishedAt: null,
+  success: null,
+  error: null
+}
+
+const isMaintenanceMode = () => updateState.inProgress
 
 // ── Mevcut Sürümü Getir ──────────────────────────────────
 const getCurrentVersion = () => {
@@ -66,7 +84,8 @@ const checkForUpdates = async (req, res) => {
       releaseNotes: data.body || '',
       publishedAt: data.published_at || null,
       htmlUrl: data.html_url || '',
-      tagName: data.tag_name || ''
+      tagName: data.tag_name || '',
+      note: 'Güncelleme uygulandığında main branch\'in son hali deploy edilir; GitHub release tag\'i sadece bilgilendirme/sürüm numarası amaçlıdır.'
     })
   } catch (err) {
     console.error('Update check error:', err)
@@ -74,45 +93,41 @@ const checkForUpdates = async (req, res) => {
   }
 }
 
+// ── Paylaşılan Veritabanı Yedekleme Yardımcısı ──────────
+// Hem manuel indirme (downloadDbBackup) hem de otomatik güncelleme öncesi (applyUpdate)
+// tarafından kullanılır.
+const createDbBackup = async () => {
+  const currentVersion = getCurrentVersion()
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+  const backupFileName = `itmanager_backup_v${currentVersion}_${timestamp}.db`
+  const backupFilePath = path.join(BACKUP_DIR, backupFileName)
+
+  await db.backup(backupFilePath)
+
+  const zipFileName = backupFileName.replace('.db', '.zip')
+  const zipFilePath = path.join(BACKUP_DIR, zipFileName)
+
+  await new Promise((resolve, reject) => {
+    const output = fs.createWriteStream(zipFilePath)
+    const archive = new ZipArchive({ zlib: { level: 9 } })
+    output.on('close', resolve)
+    archive.on('error', reject)
+    archive.pipe(output)
+    archive.file(backupFilePath, { name: backupFileName })
+    archive.finalize()
+  })
+
+  if (fs.existsSync(backupFilePath)) fs.unlinkSync(backupFilePath)
+
+  return { fileName: zipFileName, filePath: zipFilePath }
+}
+
 const downloadDbBackup = async (req, res) => {
   try {
-    const currentVersion = getCurrentVersion()
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-    const backupFileName = `itmanager_backup_v${currentVersion}_${timestamp}.db`
-    const backupFilePath = path.join(BACKUP_DIR, backupFileName)
-
-    // 1. Sunucuya atomic backup (better-sqlite3)
-    await db.backup(backupFilePath)
-
-    // 2. Zip / Gzip veya direkt .db olarak sunucuda sakla ve gönder
-    let archiverFn = null
-    try { archiverFn = require('archiver') } catch (e) {}
-
-    if (archiverFn && typeof archiverFn === 'function') {
-      const zipFileName = backupFileName.replace('.db', '.zip')
-      const zipFilePath = path.join(BACKUP_DIR, zipFileName)
-
-      await new Promise((resolve, reject) => {
-        const output = fs.createWriteStream(zipFilePath)
-        const archive = archiverFn('zip', { zlib: { level: 9 } })
-        output.on('close', resolve)
-        archive.on('error', reject)
-        archive.pipe(output)
-        archive.file(backupFilePath, { name: backupFileName })
-        archive.finalize()
-      })
-
-      if (fs.existsSync(backupFilePath)) fs.unlinkSync(backupFilePath)
-
-      res.setHeader('Content-Disposition', `attachment; filename="${zipFileName}"`)
-      res.setHeader('Content-Type', 'application/zip')
-      return res.download(zipFilePath, zipFileName)
-    } else {
-      // Archiver yoksa veya CJS format farkı varsa ham .db olarak sunucuda sakla ve indir
-      res.setHeader('Content-Disposition', `attachment; filename="${backupFileName}"`)
-      res.setHeader('Content-Type', 'application/x-sqlite3')
-      return res.download(backupFilePath, backupFileName)
-    }
+    const { fileName, filePath } = await createDbBackup()
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+    res.setHeader('Content-Type', 'application/zip')
+    return res.download(filePath, fileName)
   } catch (err) {
     console.error('DB Backup error:', err)
     res.status(500).json({ error: 'DB yedek alınamadı: ' + (err.message || 'Bilinmeyen hata') })
@@ -162,69 +177,14 @@ const getUpdateHistory = async (req, res) => {
   }
 }
 
-// ── Güncelleme Uygula ────────────────────────────────────
-const applyUpdate = async (req, res) => {
-  const { targetVersion } = req.body || {}
-  const currentVersion = getCurrentVersion()
-
-  const logEntry = {
-    fromVersion: currentVersion,
-    toVersion: targetVersion || 'latest',
-    startedAt: new Date().toISOString(),
-    startedBy: req.session?.user?.name || 'sistem',
-    status: 'started',
-    log: []
-  }
-
-  const addLog = (msg) => {
-    logEntry.log.push({ time: new Date().toISOString(), msg })
-    console.log('[UPDATE]', msg)
-  }
-
-  try {
-    res.json({ success: true, message: 'Güncelleme başlatıldı. Sunucu yakında yeniden başlayacak.', currentVersion })
-
-    setTimeout(async () => {
-      try {
-        addLog('Güncelleme başlatıldı...')
-
-        // 1. git pull
-        addLog('Git: Uzak değişiklikler çekiliyor...')
-        await execCmd('git fetch origin', ROOT_DIR)
-        await execCmd('git pull origin main', ROOT_DIR)
-        addLog('Git: Kod güncellendi.')
-
-        // 2. npm install
-        addLog('NPM: Bağımlılıklar yükleniyor...')
-        await execCmd('npm install --production', ROOT_DIR)
-        addLog('NPM: Bağımlılıklar tamamlandı.')
-
-        // 3. Geçmişi kaydet
-        logEntry.status = 'success'
-        logEntry.completedAt = new Date().toISOString()
-        saveHistory(logEntry)
-        addLog('Güncelleme başarılı! Sunucu yeniden başlatılıyor...')
-
-        // 4. IIS restart
-        restartServer(addLog)
-
-      } catch (err) {
-        addLog('HATA: ' + err.message)
-        logEntry.status = 'failed'
-        logEntry.error = err.message
-        logEntry.completedAt = new Date().toISOString()
-        saveHistory(logEntry)
-      }
-    }, 500)
-
-  } catch (err) {
-    if (!res.headersSent) res.status(500).json({ error: err.message })
-  }
+// ── Güncelleme Anlık Durumu (polling) ────────────────────
+const getUpdateStatus = (req, res) => {
+  res.json(updateState)
 }
 
 // ── Yardımcılar ──────────────────────────────────────────
-const execCmd = (cmd, cwd) => new Promise((resolve, reject) => {
-  exec(cmd, { cwd, timeout: 120000, shell: 'cmd.exe' }, (err, stdout, stderr) => {
+const runCmd = (cmd, cwd, timeoutMs = 300000) => new Promise((resolve, reject) => {
+  exec(cmd, { cwd, timeout: timeoutMs, shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 20 }, (err, stdout, stderr) => {
     if (err) reject(new Error(stderr || err.message))
     else resolve(stdout)
   })
@@ -244,12 +204,11 @@ const saveHistory = (entry) => {
 // IIS: web.config touch → iisnode otomatik restart
 // Yoksa process.exit ile restart
 const restartServer = (addLog) => {
-  const webConfigPath = path.join(ROOT_DIR, 'web.config')
-  if (fs.existsSync(webConfigPath)) {
+  if (fs.existsSync(WEBCONFIG_PATH)) {
     addLog('IIS: web.config yenileniyor (restart tetikleniyor)...')
     try {
       const now = new Date()
-      fs.utimesSync(webConfigPath, now, now)
+      fs.utimesSync(WEBCONFIG_PATH, now, now)
       addLog('IIS: Restart sinyali gönderildi.')
       return
     } catch (e) {
@@ -260,4 +219,130 @@ const restartServer = (addLog) => {
   setTimeout(() => process.exit(0), 1500)
 }
 
-module.exports = { checkForUpdates, downloadDbBackup, listBackups, downloadServerBackup, applyUpdate, getUpdateHistory }
+// ── Güncelleme Uygula ────────────────────────────────────
+const applyUpdate = async (req, res) => {
+  if (updateState.inProgress) {
+    return res.status(409).json({ error: 'Zaten devam eden bir güncelleme var. Lütfen tamamlanmasını bekleyin.' })
+  }
+
+  const currentVersion = getCurrentVersion()
+  updateState = {
+    inProgress: true,
+    steps: [],
+    startedAt: new Date().toISOString(),
+    finishedAt: null,
+    success: null,
+    error: null
+  }
+
+  const addLog = (msg) => {
+    updateState.steps.push({ time: new Date().toISOString(), msg })
+    console.log('[UPDATE]', msg)
+  }
+
+  const historyEntry = {
+    fromVersion: currentVersion,
+    toVersion: (req.body && req.body.targetVersion) || 'main (son hali)',
+    startedAt: updateState.startedAt,
+    startedBy: req.session?.user?.full_name || req.session?.user?.username || 'sistem',
+    status: 'started'
+  }
+
+  // İstek hemen yanıtlanır; gerçek ilerleme GET /api/update/status ile takip edilir.
+  res.json({
+    success: true,
+    message: 'Güncelleme başlatıldı. İlerlemeyi bu ekrandan takip edebilirsiniz.',
+    currentVersion
+  })
+
+  let preUpdateCommit = null
+
+  try {
+    addLog('Güncelleme başlatıldı, bakım modu aktif.')
+
+    addLog('Veritabanı yedeği alınıyor...')
+    const backup = await createDbBackup()
+    addLog(`Veritabanı yedeği alındı: ${backup.fileName}`)
+
+    addLog('Sunucu çalışma dizini temizlik kontrolü yapılıyor...')
+    const gitStatusOut = await runCmd('git status --porcelain', ROOT_DIR)
+    if (gitStatusOut.trim().length > 0) {
+      throw new Error('Sunucuda commit edilmemiş değişiklikler tespit edildi, güncelleme güvenlik nedeniyle iptal edildi. Lütfen sunucudaki değişiklikleri manuel olarak inceleyin.')
+    }
+    addLog('Çalışma dizini temiz, devam ediliyor.')
+
+    preUpdateCommit = (await runCmd('git rev-parse HEAD', ROOT_DIR)).trim()
+    addLog(`Mevcut commit geri dönüş noktası olarak kaydedildi: ${preUpdateCommit.slice(0, 8)}`)
+
+    addLog('Git: uzak değişiklikler çekiliyor...')
+    await runCmd('git fetch origin', ROOT_DIR)
+    await runCmd('git reset --hard origin/main', ROOT_DIR)
+    addLog('Git: kod main branch\'inin son haline güncellendi.')
+
+    addLog('NPM: backend bağımlılıkları yükleniyor...')
+    await runCmd('npm install --production', ROOT_DIR)
+    addLog('NPM: backend bağımlılıkları tamamlandı.')
+
+    addLog('NPM: frontend bağımlılıkları yükleniyor...')
+    await runCmd('npm install', FRONTEND_DIR)
+    addLog('NPM: frontend build alınıyor...')
+    await runCmd('npm run build', FRONTEND_DIR)
+    addLog('Frontend build tamamlandı.')
+
+    historyEntry.status = 'success'
+    historyEntry.completedAt = new Date().toISOString()
+    historyEntry.preUpdateCommit = preUpdateCommit
+    historyEntry.log = updateState.steps
+    saveHistory(historyEntry)
+
+    updateState.success = true
+    updateState.finishedAt = new Date().toISOString()
+
+    addLog('Güncelleme başarılı! Sunucu yeniden başlatılıyor...')
+    restartServer(addLog)
+    // NOT: updateState.inProgress burada bilinçli olarak false yapılmıyor —
+    // restartServer() ya process'i sonlandırıyor ya da iisnode'u recycle ediyor;
+    // her iki durumda da yeni process temiz (inProgress: false) state ile başlayacak.
+
+  } catch (err) {
+    addLog('HATA: ' + err.message)
+
+    // Kod zaten güncellenmiş (git reset tamamlanmış) ama sonraki bir adım
+    // (npm install/build) başarısız olduysa, eski çalışan koda otomatik dön.
+    if (preUpdateCommit) {
+      try {
+        addLog(`Otomatik geri dönüş (rollback) yapılıyor: ${preUpdateCommit.slice(0, 8)}`)
+        await runCmd(`git reset --hard ${preUpdateCommit}`, ROOT_DIR)
+        addLog('Geri dönüş tamamlandı, sunucu eski/çalışan koduyla devam ediyor.')
+        historyEntry.rolledBack = true
+      } catch (rollbackErr) {
+        addLog('KRİTİK: Otomatik geri dönüş de başarısız oldu, manuel müdahale gerekiyor: ' + rollbackErr.message)
+      }
+    }
+
+    historyEntry.status = 'failed'
+    historyEntry.error = err.message
+    historyEntry.completedAt = new Date().toISOString()
+    historyEntry.preUpdateCommit = preUpdateCommit
+    historyEntry.log = updateState.steps
+    saveHistory(historyEntry)
+
+    updateState.success = false
+    updateState.error = err.message
+    updateState.finishedAt = new Date().toISOString()
+    // Restart tetiklenmeyecek (kod ya hiç değişmedi ya da rollback ile eski haline
+    // döndü, mevcut process zaten doğru kodla çalışıyor) — bakım modu açıkça kapatılır.
+    updateState.inProgress = false
+  }
+}
+
+module.exports = {
+  checkForUpdates,
+  downloadDbBackup,
+  listBackups,
+  downloadServerBackup,
+  applyUpdate,
+  getUpdateHistory,
+  getUpdateStatus,
+  isMaintenanceMode
+}
