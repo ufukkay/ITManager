@@ -19,15 +19,20 @@ $WebConfigPath = Join-Path $RootDir "web.config"
 $DbPath = Join-Path $RootDir "data\itmanager.db"
 $StatusFile = Join-Path $RootDir "data\update-status.json"
 
-function Write-StatusLog([string]$msg, [bool]$inProgress = $true, [bool]$success = $null, [string]$errorMsg = $null) {
+function Write-StatusLog([string]$msg, [bool]$inProgress = $true, [object]$success = $null, [string]$errorMsg = $null) {
     Write-Host "[UPDATE] $msg" -ForegroundColor Cyan
     try {
         $status = @{
-            inProgress = $inProgress
+            inProgress  = $inProgress
             lastMessage = $msg
-            time = (Get-Date).ToString("o")
-            success = $success
-            error = $errorMsg
+            time        = (Get-Date).ToString("o")
+            error       = $errorMsg
+        }
+        # success: $null ise JSON'a yazma (güncelleme devam ediyor), yoksa bool olarak yaz
+        if ($null -ne $success) {
+            $status["success"] = [bool]$success
+        } else {
+            $status["success"] = $null
         }
         if (Test-Path $StatusFile) {
             $existing = Get-Content $StatusFile -Raw | ConvertFrom-Json -ErrorAction SilentlyContinue
