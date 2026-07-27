@@ -127,14 +127,15 @@ const pollUpdateStatus = () => {
 }
 
 // ── Güncellemeyi Başlat ──────────────────────────────────
-const startUpdate = async () => {
-  if (!backupDownloaded.value) {
-    if (!confirm('Henüz veritabanı yedeği indirmediniz! Güncelleme sırasında sunucu otomatik olarak da yedek alacak, ama tarayıcıya indirmeniz önerilir. Yine de devam etmek istiyor musunuz?')) {
+const startUpdate = async (force = false) => {
+  if (!force && !backupDownloaded.value) {
+    if (!confirm('Henüz veritabanı yedeği indirmediniz! Güncelleme sırasında sunucu otomatik olarak da yedek alacak. Yine de devam etmek istiyor musunuz?')) {
       return
     }
   }
 
-  if (!confirm(`Sistem v${updateInfo.value.latestVersion} sürümüne güncellenecek. Güncelleme sırasında sunucu yeniden başlayacak. Devam edilsin mi?`)) {
+  const targetVer = updateInfo.value?.latestVersion || 'main'
+  if (!confirm(`Sistem GitHub'daki en son sürüm (${targetVer}) ile güncellenecek ve yeniden başlatılacak. Devam edilsin mi?`)) {
     return
   }
 
@@ -298,7 +299,7 @@ onUnmounted(() => stopPolling())
             </div>
 
             <!-- Aksiyon Butonları -->
-            <div class="flex items-center gap-3 shrink-0">
+            <div class="flex flex-wrap items-center gap-3 shrink-0">
               <button
                 @click="downloadBackup"
                 :disabled="backupLoading"
@@ -309,13 +310,12 @@ onUnmounted(() => stopPolling())
               </button>
 
               <button
-                v-if="updateInfo.hasUpdate"
-                @click="startUpdate"
+                @click="startUpdate(true)"
                 :disabled="updating"
-                class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-200 flex items-center gap-2"
+                class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-200 flex items-center gap-2 cursor-pointer"
               >
                 <i class="fas fa-rocket" :class="{ 'fa-spin': updating }"></i>
-                {{ updating ? 'Güncelleniyor...' : '2. Güncellemeyi Başlat' }}
+                {{ updating ? 'Sistem Güncelleniyor...' : (updateInfo.hasUpdate ? '2. Güncellemeyi Başlat' : '2. Sistemi Şimdi Güncelle (Git Pull)') }}
               </button>
             </div>
           </div>
