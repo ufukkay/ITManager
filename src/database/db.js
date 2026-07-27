@@ -1051,7 +1051,15 @@ const initDb = () => {
         console.log("Adding source to personnel table...");
         db.prepare("ALTER TABLE personnel ADD COLUMN source TEXT DEFAULT 'manual'").run();
       }
-      
+      if (!personnelCols.some(c => c.name === 'source_hr_request_id')) {
+        console.log("Adding source_hr_request_id to personnel table...");
+        db.prepare("ALTER TABLE personnel ADD COLUMN source_hr_request_id INTEGER").run();
+      }
+      if (!personnelCols.some(c => c.name === 'last_photo_reminder_sent_at')) {
+        console.log("Adding last_photo_reminder_sent_at to personnel table...");
+        db.prepare("ALTER TABLE personnel ADD COLUMN last_photo_reminder_sent_at DATETIME").run();
+      }
+
       // Assign employee_id to personnel where it is NULL
       const nullEmp = db.prepare("SELECT id FROM personnel WHERE employee_id IS NULL ORDER BY id").all();
       if (nullEmp.length > 0) {

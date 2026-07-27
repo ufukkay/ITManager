@@ -113,4 +113,8 @@ app.listen(PORT, () => {
     // Start Mail Fetcher Service
     const mailFetcher = require('./services/MailFetcherService');
     mailFetcher.start();
+
+    // Start Photo Reminder Service
+    const photoReminder = require('./services/PhotoReminderService');
+    photoReminder.start();
 });

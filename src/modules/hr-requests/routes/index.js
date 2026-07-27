@@ -214,9 +214,9 @@ router.put('/:id', hasPermission('hr:edit'), upload.single('photo'), (req, res) 
                 const employeeId = Math.max(lastRow.max_id || 999, 999) + 1;
 
                 db.prepare(`
-                    INSERT INTO personnel (employee_id, first_name, last_name, company_id, department_id, cost_center_id, status, notes, photo_path, email, title_tr, title_en, title, hire_date)
+                    INSERT INTO personnel (employee_id, first_name, last_name, company_id, department_id, cost_center_id, status, notes, photo_path, email, title_tr, title_en, title, hire_date, source_hr_request_id)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `).run(employeeId, firstName, lastName, companyId, deptId, costCenterId, 'active', `İK Giriş Talebi (${id}) ile otomatik oluşturuldu.`, request.photo_path, emailVal, titleTr, titleEn, titleTr, requestDate);
+                `).run(employeeId, firstName, lastName, companyId, deptId, costCenterId, 'active', `İK Giriş Talebi (${id}) ile otomatik oluşturuldu.`, request.photo_path, emailVal, titleTr, titleEn, titleTr, requestDate, id);
             }
         }
 
