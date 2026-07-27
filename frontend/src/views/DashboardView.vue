@@ -114,6 +114,14 @@ const modules = [
     permission: 'invoice:view'
   },
   {
+    title: 'Personel Aylık Destekler',
+    desc: 'Telefon, internet, araç/yakıt bütçesi takibi',
+    count: 'Destekler',
+    icon: 'fa-hand-holding-dollar',
+    href: '/cost-management/personnel-benefits',
+    permission: 'invoice:view'
+  },
+  {
     title: 'Raporlar & Analiz',
     desc: 'Merkezi raporlama sistemi',
     count: 'Analiz',

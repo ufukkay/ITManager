@@ -674,6 +674,52 @@ class MasterDataController {
             res.status(500).json({ error: e.message });
         }
     }
+
+    // --- PERSONNEL BENEFITS (Aylik Destekler) ---
+    static async getPersonnelBenefits(req, res) {
+        try {
+            const data = await MasterDataService.getPersonnelBenefits(req.params.id);
+            res.json(data);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async createPersonnelBenefit(req, res) {
+        try {
+            const id = await MasterDataService.createPersonnelBenefit(req.params.id, req.body);
+            res.status(201).json({ id });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async updatePersonnelBenefit(req, res) {
+        try {
+            await MasterDataService.updatePersonnelBenefit(req.params.benefitId, req.body);
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async deletePersonnelBenefit(req, res) {
+        try {
+            await MasterDataService.deletePersonnelBenefit(req.params.benefitId);
+            res.json({ success: true });
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async getPersonnelBenefitsReport(req, res) {
+        try {
+            const data = await MasterDataService.getPersonnelBenefitsReport();
+            res.json(data);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
 }
 
 module.exports = MasterDataController;

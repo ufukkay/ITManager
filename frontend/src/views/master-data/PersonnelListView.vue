@@ -7,6 +7,7 @@ import { useConfirm } from '../../composables/useConfirm'
 import AppTable from '../../components/AppTable.vue'
 import AppFinancialHistory from '../../components/AppFinancialHistory.vue'
 import AppPersonnelAssets from '../../components/AppPersonnelAssets.vue'
+import AppPersonnelBenefits from '../../components/AppPersonnelBenefits.vue'
 import AppPermissionMatrix from '../../components/AppPermissionMatrix.vue'
 import * as XLSX from 'xlsx'
 import api from '../../api'
@@ -682,6 +683,11 @@ onMounted(fetchData)
             <!-- Zimmet Geçmişi Section (Sadece Mevcut Personel İçin) -->
             <div v-if="editingPersonnel.id" class="pt-6 border-t border-gray-100">
                <AppPersonnelAssets :personnel-id="editingPersonnel.id" />
+            </div>
+
+            <!-- Aylık Destekler Section (Sadece Mevcut Personel İçin) -->
+            <div v-if="editingPersonnel.id" class="pt-6 border-t border-gray-100">
+               <AppPersonnelBenefits :personnel-id="editingPersonnel.id" />
             </div>
           </div>
 

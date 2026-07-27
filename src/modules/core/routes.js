@@ -33,6 +33,12 @@ router.delete('/personnel/:id', MasterDataController.deletePersonnel);
 router.post('/personnel/bulk-delete', MasterDataController.bulkDeletePersonnel);
 router.post('/personnel/bulk-update', MasterDataController.bulkUpdatePersonnel);
 
+// Personnel Benefits (Aylık Destekler)
+router.get('/personnel/:id/benefits', MasterDataController.getPersonnelBenefits);
+router.post('/personnel/:id/benefits', MasterDataController.createPersonnelBenefit);
+router.put('/personnel/:id/benefits/:benefitId', MasterDataController.updatePersonnelBenefit);
+router.delete('/personnel/:id/benefits/:benefitId', MasterDataController.deletePersonnelBenefit);
+
 // Personnel User Accounts
 router.get('/personnel/:id/user', MasterDataController.getPersonnelUser);
 router.post('/personnel/:id/create-user', MasterDataController.createPersonnelUser);
@@ -84,6 +90,7 @@ router.get('/reports/financial/stats', MasterDataController.getFinancialStats);
 router.get('/reports/personnel', MasterDataController.getReportByPersonnel);
 router.get('/reports/service', MasterDataController.getReportByService);
 router.get('/reports/company', MasterDataController.getReportByCompany);
+router.get('/reports/personnel-benefits', MasterDataController.getPersonnelBenefitsReport);
 router.post('/reports/financial/upload/m365', upload.array('file'), MasterDataController.uploadM365Invoice);
 
 // Audit Logs

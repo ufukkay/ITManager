@@ -296,6 +296,13 @@ const routes = [
     component: () => import('../views/cost-management/InvoicesView.vue'),
     meta: { layout: 'main', requiresAuth: true, fullBleed: true, permission: 'invoice:view' }
   },
+  // Personel Aylık Destekleri (Teknoloji/Araç-Yakıt Bütçesi)
+  {
+    path: '/cost-management/personnel-benefits',
+    name: 'cost-management-personnel-benefits',
+    component: () => import('../views/cost-management/PersonnelBenefitsView.vue'),
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true, permission: 'invoice:view' }
+  },
   // Raporlar ve Analitik
   {
     path: '/reports',

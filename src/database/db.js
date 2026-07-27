@@ -414,6 +414,19 @@ const initDb = () => {
     )
   `).run();
 
+  // Personel bazinda aylik destekler (teknoloji butcesi, arac kirasi & yakit destegi vb.)
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS personnel_benefits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        personnel_id INTEGER NOT NULL,
+        benefit_type TEXT NOT NULL CHECK(benefit_type IN ('PHONE', 'INTERNET', 'VEHICLE_FUEL')),
+        amount REAL NOT NULL DEFAULT 0,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(personnel_id) REFERENCES personnel(id)
+    )
+  `).run();
+
   // --- SIM TRACKING TABLES ---
   db.prepare(`
     CREATE TABLE IF NOT EXISTS operators (

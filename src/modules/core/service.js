@@ -1187,6 +1187,41 @@ class MasterDataService {
         });
         transaction();
     }
+
+    // --- PERSONNEL BENEFITS (Aylik Destekler) ---
+    static async getPersonnelBenefits(personnelId) {
+        return db.prepare("SELECT * FROM personnel_benefits WHERE personnel_id = ? ORDER BY id ASC").all(personnelId);
+    }
+
+    static async createPersonnelBenefit(personnelId, data) {
+        const { benefit_type, amount, notes } = data;
+        const info = db.prepare("INSERT INTO personnel_benefits (personnel_id, benefit_type, amount, notes) VALUES (?, ?, ?, ?)")
+            .run(personnelId, benefit_type, amount || 0, notes || null);
+        return info.lastInsertRowid;
+    }
+
+    static async updatePersonnelBenefit(id, data) {
+        const { benefit_type, amount, notes } = data;
+        db.prepare("UPDATE personnel_benefits SET benefit_type = ?, amount = ?, notes = ? WHERE id = ?")
+            .run(benefit_type, amount || 0, notes || null, id);
+    }
+
+    static async deletePersonnelBenefit(id) {
+        db.prepare("DELETE FROM personnel_benefits WHERE id = ?").run(id);
+    }
+
+    static async getPersonnelBenefitsReport() {
+        return db.prepare(`
+            SELECT pb.*, p.first_name, p.last_name, p.employee_id,
+                   c.name as company_name, d.name as department_name
+            FROM personnel_benefits pb
+            JOIN personnel p ON pb.personnel_id = p.id
+            LEFT JOIN companies c ON p.company_id = c.id
+            LEFT JOIN departments d ON p.department_id = d.id
+            WHERE p.status = 'active'
+            ORDER BY c.name, p.first_name
+        `).all();
+    }
 }
 
 module.exports = MasterDataService;
