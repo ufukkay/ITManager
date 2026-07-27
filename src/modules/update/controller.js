@@ -217,6 +217,13 @@ const getUpdateHistory = async (req, res) => {
 
 // ── Güncelleme Anlık Durumu (polling) ────────────────────
 const getUpdateStatus = (req, res) => {
+  const statusFile = path.join(ROOT_DIR, 'data', 'update-status.json')
+  if (fs.existsSync(statusFile)) {
+    try {
+      const fileData = JSON.parse(fs.readFileSync(statusFile, 'utf8'))
+      return res.json({ ...updateState, ...fileData })
+    } catch (e) {}
+  }
   res.json(updateState)
 }
 
@@ -240,7 +247,6 @@ const saveHistory = (entry) => {
 }
 
 // IIS: web.config touch → iisnode otomatik restart
-// Yoksa process.exit ile restart
 const restartServer = (addLog) => {
   if (fs.existsSync(WEBCONFIG_PATH)) {
     addLog('IIS: web.config yenileniyor (restart tetikleniyor)...')
@@ -266,11 +272,32 @@ const applyUpdate = async (req, res) => {
   const currentVersion = getCurrentVersion()
   updateState = {
     inProgress: true,
-    steps: [],
+    steps: [{ time: new Date().toISOString(), msg: 'Güncelleme süreci başlatıldı...' }],
     startedAt: new Date().toISOString(),
     finishedAt: null,
     success: null,
     error: null
+  }
+
+  const statusFile = path.join(ROOT_DIR, 'data', 'update-status.json')
+  try {
+    fs.writeFileSync(statusFile, JSON.stringify(updateState, null, 2))
+  } catch (e) {}
+
+  res.json({
+    success: true,
+    message: 'Güncelleme başlatıldı. İlerlemeyi bu ekrandan takip edebilirsiniz.',
+    currentVersion
+  })
+
+  const scriptPath = path.join(ROOT_DIR, 'deploy', 'update.ps1')
+  if (fs.existsSync(scriptPath)) {
+    console.log('[UPDATE] deploy/update.ps1 PowerShell scripti tetikleniyor...')
+    exec(`powershell.exe -ExecutionPolicy Bypass -File "${scriptPath}"`, { cwd: ROOT_DIR }, (err, stdout, stderr) => {
+      if (err) console.error('[UPDATE ERR]', stderr || err.message)
+      else console.log('[UPDATE OUT]', stdout)
+    })
+    return
   }
 
   const addLog = (msg) => {
