@@ -8,8 +8,9 @@ const REPO_OWNER = 'ufukkay'
 const REPO_NAME = 'ITManager'
 const ROOT_DIR = path.join(__dirname, '../../../')
 const BACKUP_DIR = path.join(ROOT_DIR, 'backups')
-const FRONTEND_DIR = path.join(ROOT_DIR, 'frontend')
-const WEBCONFIG_PATH = path.join(ROOT_DIR, 'web.config')
+const DATA_DIR = path.join(ROOT_DIR, 'data')
+const STATUS_FILE = path.join(DATA_DIR, 'update-status.json')
+const UPDATE_SCRIPT = path.join(ROOT_DIR, 'deploy', 'update.ps1')
 
 // Backup klasörünü oluştur
 if (!fs.existsSync(BACKUP_DIR)) {
@@ -17,22 +18,28 @@ if (!fs.existsSync(BACKUP_DIR)) {
 }
 
 // ── Güncelleme Durumu ─────────────────────────────────────
-// In-memory durum; GET /api/update/status ile polling edilir ve
-// app.js'teki bakım modu middleware'i tarafından okunur (inProgress === bakımda).
-// iisnode başarılı bir güncelleme sonunda process'i recycle ettiğinde bu state
-// zaten sıfırlanmış (yeni process) olarak yeniden başlar.
-let updateState = {
-  inProgress: false,
-  steps: [],
-  startedAt: null,
-  finishedAt: null,
-  success: null,
-  error: null
+// Tek gerçek kaynak: deploy/update.ps1 kendi ilerlemesini data/update-status.json'a yazar.
+// Bu dosya, process yeniden başlasa (iisnode recycle) bile ilerlemeyi kaybetmemek için kullanılır.
+// isMaintenanceMode() dosyadaki inProgress alanını okur (bellek içi state DEĞİL - script ayrı bir
+// process olduğu için bellek içi bir state paylaşamıyoruz).
+const readStatusFile = () => {
+  if (!fs.existsSync(STATUS_FILE)) return { inProgress: false, steps: [], success: null, error: null }
+  try {
+    return JSON.parse(fs.readFileSync(STATUS_FILE, 'utf8'))
+  } catch {
+    return { inProgress: false, steps: [], success: null, error: null }
+  }
 }
 
-const isMaintenanceMode = () => updateState.inProgress
+const isMaintenanceMode = () => readStatusFile().inProgress === true
 
-// ── Mevcut Sürümü Getir ──────────────────────────────────
+const runCmd = (cmd, cwd, timeoutMs = 15000) => new Promise((resolve, reject) => {
+  exec(cmd, { cwd, timeout: timeoutMs, shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 10 }, (err, stdout) => {
+    if (err) reject(err)
+    else resolve(stdout.trim())
+  })
+})
+
 const getCurrentVersion = () => {
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, 'package.json'), 'utf8'))
@@ -42,88 +49,51 @@ const getCurrentVersion = () => {
   }
 }
 
-// ── GitHub'dan Güncel Sürümü Kontrol Et ─────────────────
+const githubApiGet = (urlPath) => new Promise((resolve, reject) => {
+  const https = require('https')
+  const options = { headers: { 'User-Agent': 'ITManager-UpdateChecker/1.0', 'Accept': 'application/vnd.github.v3+json' } }
+  https.get(`https://api.github.com${urlPath}`, options, (response) => {
+    let body = ''
+    response.on('data', chunk => body += chunk)
+    response.on('end', () => {
+      try { resolve(JSON.parse(body)) }
+      catch (e) { reject(e) }
+    })
+  }).on('error', reject)
+})
+
+// ── Güncelleme Kontrolü: yerel git HEAD ile GitHub'daki main'in HEAD'ini kıyaslar ──
+// Sürüm etiketi/release GEREKTİRMEZ - "main'in son hali ile aynı mıyız?" sorusuna
+// doğrudan commit SHA'sı üzerinden cevap verir. Basit ve güvenilir.
 const checkForUpdates = async (req, res) => {
   try {
-    const https = require('https')
-    const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`
-
-    let data = {}
-    try {
-      data = await new Promise((resolve, reject) => {
-        const options = { headers: { 'User-Agent': 'ITManager-UpdateChecker/1.0', 'Accept': 'application/vnd.github.v3+json' } }
-        const request = https.get(url, options, (response) => {
-          let body = ''
-          response.on('data', chunk => body += chunk)
-          response.on('end', () => {
-            try { resolve(JSON.parse(body)) }
-            catch (e) { reject(e) }
-          })
-        })
-        request.on('error', reject)
-      })
-    } catch (e) {
-      console.warn('GitHub releases API error:', e.message)
-    }
-
     const currentVersion = getCurrentVersion()
-    let latestVersion = (data.tag_name || '').replace(/^v/, '')
 
-    const compareVersions = (a, b) => {
-      if (!a) return 0
-      const pa = a.split('.').map(Number)
-      const pb = b.split('.').map(Number)
-      for (let i = 0; i < 3; i++) {
-        if ((pa[i] || 0) > (pb[i] || 0)) return 1
-        if ((pa[i] || 0) < (pb[i] || 0)) return -1
-      }
-      return 0
+    let localSha = ''
+    try {
+      localSha = await runCmd('git rev-parse HEAD', ROOT_DIR)
+    } catch (e) {
+      console.warn('Yerel git HEAD okunamadı:', e.message)
     }
 
-    let hasUpdate = compareVersions(latestVersion, currentVersion) > 0
-    let releaseName = data.name || ''
-    let releaseNotes = data.body || ''
-
-    if (!latestVersion) {
-      try {
-        const commitData = await new Promise((resolve, reject) => {
-          const options = { headers: { 'User-Agent': 'ITManager-UpdateChecker/1.0', 'Accept': 'application/vnd.github.v3+json' } }
-          https.get(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits/main`, options, (response) => {
-            let body = ''
-            response.on('data', chunk => body += chunk)
-            response.on('end', () => {
-              try { resolve(JSON.parse(body)) }
-              catch (e) { reject(e) }
-            })
-          }).on('error', reject)
-        })
-
-        if (commitData && commitData.sha) {
-          const localCommit = await runCmd('git rev-parse HEAD', ROOT_DIR).catch(() => '')
-          const shortRemote = commitData.sha.substring(0, 7)
-          const shortLocal = (localCommit || '').trim().substring(0, 7)
-          
-          latestVersion = `v${currentVersion} (${shortRemote})`
-          if (shortLocal && shortRemote && shortLocal !== shortRemote) {
-            hasUpdate = true
-            releaseName = `Güncelleme Mevcut (${shortRemote})`
-            releaseNotes = commitData.commit?.message || 'Yeni güncellemeler mevcut.'
-          }
-        }
-      } catch (commitErr) {
-        console.warn('GitHub commit check error:', commitErr.message)
-      }
+    let remoteData = {}
+    try {
+      remoteData = await githubApiGet(`/repos/${REPO_OWNER}/${REPO_NAME}/commits/main`)
+    } catch (e) {
+      console.warn('GitHub commits API hatası:', e.message)
     }
+
+    const remoteSha = remoteData.sha || ''
+    const hasUpdate = !!(localSha && remoteSha && localSha !== remoteSha)
 
     res.json({
       currentVersion,
-      latestVersion: latestVersion || currentVersion,
+      currentCommit: localSha ? localSha.slice(0, 7) : null,
+      latestCommit: remoteSha ? remoteSha.slice(0, 7) : null,
       hasUpdate,
-      releaseName: releaseName || `v${currentVersion}`,
-      releaseNotes: releaseNotes || 'Sisteminiz güncel durumda.',
-      publishedAt: data.published_at || null,
-      htmlUrl: data.html_url || `https://github.com/${REPO_OWNER}/${REPO_NAME}`,
-      tagName: data.tag_name || `v${currentVersion}`
+      latestCommitMessage: remoteData.commit?.message || '',
+      latestCommitDate: remoteData.commit?.author?.date || null,
+      htmlUrl: remoteData.html_url || `https://github.com/${REPO_OWNER}/${REPO_NAME}`
     })
   } catch (err) {
     console.error('Update check error:', err)
@@ -132,8 +102,8 @@ const checkForUpdates = async (req, res) => {
 }
 
 // ── Paylaşılan Veritabanı Yedekleme Yardımcısı ──────────
-// Hem manuel indirme (downloadDbBackup) hem de otomatik güncelleme öncesi (applyUpdate)
-// tarafından kullanılır.
+// Hem manuel indirme (downloadDbBackup) hem de deploy/update.ps1'in kendi yedeği
+// tarafından değil, sadece manuel indirme akışı tarafından kullanılır.
 const createDbBackup = async () => {
   const currentVersion = getCurrentVersion()
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
@@ -216,189 +186,41 @@ const getUpdateHistory = async (req, res) => {
 }
 
 // ── Güncelleme Anlık Durumu (polling) ────────────────────
+// deploy/update.ps1 ayrı bir process olduğu için tüm durum data/update-status.json'dan okunur.
 const getUpdateStatus = (req, res) => {
-  const statusFile = path.join(ROOT_DIR, 'data', 'update-status.json')
-  if (fs.existsSync(statusFile)) {
-    try {
-      const fileData = JSON.parse(fs.readFileSync(statusFile, 'utf8'))
-      return res.json({ ...updateState, ...fileData })
-    } catch (e) {}
-  }
-  res.json(updateState)
-}
-
-// ── Yardımcılar ──────────────────────────────────────────
-const runCmd = (cmd, cwd, timeoutMs = 300000) => new Promise((resolve, reject) => {
-  exec(cmd, { cwd, timeout: timeoutMs, shell: 'cmd.exe', maxBuffer: 1024 * 1024 * 20 }, (err, stdout, stderr) => {
-    if (err) reject(new Error(stderr || err.message))
-    else resolve(stdout)
-  })
-})
-
-const saveHistory = (entry) => {
-  try {
-    const historyFile = path.join(ROOT_DIR, 'update-history.json')
-    let history = []
-    if (fs.existsSync(historyFile)) history = JSON.parse(fs.readFileSync(historyFile, 'utf8'))
-    history.push(entry)
-    if (history.length > 50) history = history.slice(-50)
-    fs.writeFileSync(historyFile, JSON.stringify(history, null, 2))
-  } catch (e) { console.error('History save error:', e) }
-}
-
-// IIS: web.config touch → iisnode otomatik restart
-const restartServer = (addLog) => {
-  if (fs.existsSync(WEBCONFIG_PATH)) {
-    addLog('IIS: web.config yenileniyor (restart tetikleniyor)...')
-    try {
-      const now = new Date()
-      fs.utimesSync(WEBCONFIG_PATH, now, now)
-      addLog('IIS: Restart sinyali gönderildi.')
-      return
-    } catch (e) {
-      addLog('web.config touch hatası: ' + e.message)
-    }
-  }
-  addLog('Sunucu process.exit(0) ile yeniden başlatılıyor...')
-  setTimeout(() => process.exit(0), 1500)
+  res.json(readStatusFile())
 }
 
 // ── Güncelleme Uygula ────────────────────────────────────
+// Tüm iş mantığı deploy/update.ps1'de yaşıyor (DB yedeği, kirli dizin kontrolü, git reset,
+// npm install/build, hata durumunda rollback, IIS restart sinyali). Burada sadece script
+// tetiklenir ve anlık durum data/update-status.json üzerinden polling ile takip edilir.
 const applyUpdate = async (req, res) => {
-  if (updateState.inProgress) {
+  if (!fs.existsSync(UPDATE_SCRIPT)) {
+    return res.status(500).json({ error: 'Güncelleme script\'i (deploy/update.ps1) bulunamadı.' })
+  }
+
+  const currentStatus = readStatusFile()
+  if (currentStatus.inProgress) {
     return res.status(409).json({ error: 'Zaten devam eden bir güncelleme var. Lütfen tamamlanmasını bekleyin.' })
   }
 
-  const currentVersion = getCurrentVersion()
-  updateState = {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
+  fs.writeFileSync(STATUS_FILE, JSON.stringify({
     inProgress: true,
-    steps: [{ time: new Date().toISOString(), msg: 'Güncelleme süreci başlatıldı...' }],
+    steps: [{ time: new Date().toISOString(), msg: 'Güncelleme başlatıldı, script tetikleniyor...' }],
     startedAt: new Date().toISOString(),
-    finishedAt: null,
+    startedBy: req.session?.user?.full_name || req.session?.user?.username || 'sistem',
     success: null,
     error: null
-  }
+  }, null, 2))
 
-  const statusFile = path.join(ROOT_DIR, 'data', 'update-status.json')
-  try {
-    fs.writeFileSync(statusFile, JSON.stringify(updateState, null, 2))
-  } catch (e) {}
+  res.json({ success: true, message: 'Güncelleme başlatıldı. İlerlemeyi bu ekrandan takip edebilirsiniz.' })
 
-  res.json({
-    success: true,
-    message: 'Güncelleme başlatıldı. İlerlemeyi bu ekrandan takip edebilirsiniz.',
-    currentVersion
+  exec(`powershell.exe -ExecutionPolicy Bypass -File "${UPDATE_SCRIPT}"`, { cwd: ROOT_DIR }, (err, stdout, stderr) => {
+    if (err) console.error('[UPDATE] update.ps1 hata ile sonlandı:', stderr || err.message)
+    else console.log('[UPDATE] update.ps1 tamamlandı.')
   })
-
-  const scriptPath = path.join(ROOT_DIR, 'deploy', 'update.ps1')
-  if (fs.existsSync(scriptPath)) {
-    console.log('[UPDATE] deploy/update.ps1 PowerShell scripti tetikleniyor...')
-    exec(`powershell.exe -ExecutionPolicy Bypass -File "${scriptPath}"`, { cwd: ROOT_DIR }, (err, stdout, stderr) => {
-      if (err) console.error('[UPDATE ERR]', stderr || err.message)
-      else console.log('[UPDATE OUT]', stdout)
-    })
-    return
-  }
-
-  const addLog = (msg) => {
-    updateState.steps.push({ time: new Date().toISOString(), msg })
-    console.log('[UPDATE]', msg)
-  }
-
-  const historyEntry = {
-    fromVersion: currentVersion,
-    toVersion: (req.body && req.body.targetVersion) || 'main (son hali)',
-    startedAt: updateState.startedAt,
-    startedBy: req.session?.user?.full_name || req.session?.user?.username || 'sistem',
-    status: 'started'
-  }
-
-  // İstek hemen yanıtlanır; gerçek ilerleme GET /api/update/status ile takip edilir.
-  res.json({
-    success: true,
-    message: 'Güncelleme başlatıldı. İlerlemeyi bu ekrandan takip edebilirsiniz.',
-    currentVersion
-  })
-
-  let preUpdateCommit = null
-
-  try {
-    addLog('Güncelleme başlatıldı, bakım modu aktif.')
-
-    addLog('Veritabanı yedeği alınıyor...')
-    const backup = await createDbBackup()
-    addLog(`Veritabanı yedeği alındı: ${backup.fileName}`)
-
-    addLog('Sunucu çalışma dizini temizlik kontrolü yapılıyor...')
-    const gitStatusOut = await runCmd('git status --porcelain', ROOT_DIR)
-    if (gitStatusOut.trim().length > 0) {
-      throw new Error('Sunucuda commit edilmemiş değişiklikler tespit edildi, güncelleme güvenlik nedeniyle iptal edildi. Lütfen sunucudaki değişiklikleri manuel olarak inceleyin.')
-    }
-    addLog('Çalışma dizini temiz, devam ediliyor.')
-
-    preUpdateCommit = (await runCmd('git rev-parse HEAD', ROOT_DIR)).trim()
-    addLog(`Mevcut commit geri dönüş noktası olarak kaydedildi: ${preUpdateCommit.slice(0, 8)}`)
-
-    addLog('Git: uzak değişiklikler çekiliyor...')
-    await runCmd('git fetch origin', ROOT_DIR)
-    await runCmd('git reset --hard origin/main', ROOT_DIR)
-    addLog('Git: kod main branch\'inin son haline güncellendi.')
-
-    addLog('NPM: backend bağımlılıkları yükleniyor...')
-    await runCmd('npm install --production', ROOT_DIR)
-    addLog('NPM: backend bağımlılıkları tamamlandı.')
-
-    addLog('NPM: frontend bağımlılıkları yükleniyor...')
-    await runCmd('npm install', FRONTEND_DIR)
-    addLog('NPM: frontend build alınıyor...')
-    await runCmd('npm run build', FRONTEND_DIR)
-    addLog('Frontend build tamamlandı.')
-
-    historyEntry.status = 'success'
-    historyEntry.completedAt = new Date().toISOString()
-    historyEntry.preUpdateCommit = preUpdateCommit
-    historyEntry.log = updateState.steps
-    saveHistory(historyEntry)
-
-    updateState.success = true
-    updateState.finishedAt = new Date().toISOString()
-
-    addLog('Güncelleme başarılı! Sunucu yeniden başlatılıyor...')
-    restartServer(addLog)
-    // NOT: updateState.inProgress burada bilinçli olarak false yapılmıyor —
-    // restartServer() ya process'i sonlandırıyor ya da iisnode'u recycle ediyor;
-    // her iki durumda da yeni process temiz (inProgress: false) state ile başlayacak.
-
-  } catch (err) {
-    addLog('HATA: ' + err.message)
-
-    // Kod zaten güncellenmiş (git reset tamamlanmış) ama sonraki bir adım
-    // (npm install/build) başarısız olduysa, eski çalışan koda otomatik dön.
-    if (preUpdateCommit) {
-      try {
-        addLog(`Otomatik geri dönüş (rollback) yapılıyor: ${preUpdateCommit.slice(0, 8)}`)
-        await runCmd(`git reset --hard ${preUpdateCommit}`, ROOT_DIR)
-        addLog('Geri dönüş tamamlandı, sunucu eski/çalışan koduyla devam ediyor.')
-        historyEntry.rolledBack = true
-      } catch (rollbackErr) {
-        addLog('KRİTİK: Otomatik geri dönüş de başarısız oldu, manuel müdahale gerekiyor: ' + rollbackErr.message)
-      }
-    }
-
-    historyEntry.status = 'failed'
-    historyEntry.error = err.message
-    historyEntry.completedAt = new Date().toISOString()
-    historyEntry.preUpdateCommit = preUpdateCommit
-    historyEntry.log = updateState.steps
-    saveHistory(historyEntry)
-
-    updateState.success = false
-    updateState.error = err.message
-    updateState.finishedAt = new Date().toISOString()
-    // Restart tetiklenmeyecek (kod ya hiç değişmedi ya da rollback ile eski haline
-    // döndü, mevcut process zaten doğru kodla çalışıyor) — bakım modu açıkça kapatılır.
-    updateState.inProgress = false
-  }
 }
 
 module.exports = {

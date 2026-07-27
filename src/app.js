@@ -68,9 +68,15 @@ app.use('/api/master-data', require('./modules/core/routes'));
 app.use('/api/update', require('./modules/update/routes'));
 
 // Frontend (Vue SPA) - production build'i statik olarak sun
+// API/auth route'ları eşleşmeyen (typo'lu/bilinmeyen) istekler burada HTML almasın diye
+// SPA fallback sadece bu önekler DIŞINDAKİ GET isteklerinde devreye giriyor.
+const API_PREFIXES = ['/api/', '/auth/', '/admin/', '/monitoring/', '/sim-takip/', '/uploads/'];
 const frontendDist = path.resolve(__dirname, '../frontend/dist');
 app.use(express.static(frontendDist));
 app.use((req, res, next) => {
+    if (req.method !== 'GET' || API_PREFIXES.some((p) => req.path.startsWith(p))) {
+        return next();
+    }
     const indexPath = path.join(frontendDist, 'index.html');
     if (fs.existsSync(indexPath)) {
         return res.sendFile(indexPath);
@@ -81,7 +87,7 @@ app.use((req, res, next) => {
 // Global Hata Yakalama Ara Katmanı
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
-    res.status(500).json({ message: err.message || 'Sunucu tarafında beklenmeyen bir hata oluştu.', stack: err.stack });
+    res.status(500).json({ message: err.message || 'Sunucu tarafında beklenmeyen bir hata oluştu.' });
 });
 
 app.listen(PORT, () => {

@@ -39,6 +39,7 @@ server_err.log
 audit.json
 audit_err.txt
 update-history.json
+data/update-status.json
 iisnode-logs/
 
 # IDEs

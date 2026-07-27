@@ -13,7 +13,6 @@ const serverBackups = ref([])
 const history = ref([])
 const activeTab = ref('update') // 'update' | 'backups' | 'history'
 
-const backupDownloaded = ref(false)
 const updateSuccessMessage = ref('')
 const updateErrorMessage = ref('')
 const logMessages = ref([])
@@ -50,7 +49,6 @@ const downloadBackup = async () => {
     document.body.appendChild(link)
     link.click()
     link.remove()
-    backupDownloaded.value = true
     await fetchServerBackups()
   } catch (err) {
     alert('Yedek alma sırasında hata oluştu: ' + (err.message || 'Bilinmeyen hata'))
@@ -127,15 +125,9 @@ const pollUpdateStatus = () => {
 }
 
 // ── Güncellemeyi Başlat ──────────────────────────────────
-const startUpdate = async (force = false) => {
-  if (!force && !backupDownloaded.value) {
-    if (!confirm('Henüz veritabanı yedeği indirmediniz! Güncelleme sırasında sunucu otomatik olarak da yedek alacak. Yine de devam etmek istiyor musunuz?')) {
-      return
-    }
-  }
-
-  const targetVer = updateInfo.value?.latestVersion || 'main'
-  if (!confirm(`Sistem GitHub'daki en son sürüm (${targetVer}) ile güncellenecek ve yeniden başlatılacak. Devam edilsin mi?`)) {
+const startUpdate = async () => {
+  const targetCommit = updateInfo.value?.latestCommit || 'main'
+  if (!confirm(`Sistem GitHub'daki main branch'inin son hali (${targetCommit}) ile güncellenecek ve yeniden başlatılacak. Devam edilsin mi?`)) {
     return
   }
 
@@ -145,7 +137,7 @@ const startUpdate = async (force = false) => {
   logMessages.value = []
 
   try {
-    const res = await axios.post('/api/update/apply', { targetVersion: updateInfo.value.latestVersion })
+    const res = await axios.post('/api/update/apply')
     logMessages.value = [{ time: new Date().toLocaleTimeString(), msg: res.data.message || 'Güncelleme başlatıldı.' }]
     pollUpdateStatus()
   } catch (err) {
@@ -186,8 +178,8 @@ onUnmounted(() => stopPolling())
           <h1 class="text-xl font-bold text-gray-900 flex items-center gap-2">
             <i class="fas fa-cloud-download-alt text-blue-600"></i>
             Sistem Güncelleme & Yedekleme
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-              v1.0.3
+            <span v-if="updateInfo?.currentVersion" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+              v{{ updateInfo.currentVersion }}
             </span>
           </h1>
           <p class="text-xs text-gray-500 mt-1">
@@ -229,8 +221,9 @@ onUnmounted(() => stopPolling())
           <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
               <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Mevcut Çalışan Sürüm</span>
-              <div class="text-2xl font-black text-gray-800 mt-1">
+              <div class="text-2xl font-black text-gray-800 mt-1 flex items-center gap-2">
                 v{{ updateInfo?.currentVersion || '...' }}
+                <span v-if="updateInfo?.currentCommit" class="text-xs font-mono font-normal text-gray-400">({{ updateInfo.currentCommit }})</span>
               </div>
             </div>
             <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl font-bold">
@@ -238,13 +231,13 @@ onUnmounted(() => stopPolling())
             </div>
           </div>
 
-          <!-- En Son GitHub Sürümü -->
+          <!-- En Son GitHub Commit'i -->
           <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
             <div>
-              <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">GitHub En Son Sürüm</span>
-              <div class="text-2xl font-black mt-1 flex items-center gap-2" :class="updateInfo?.hasUpdate ? 'text-emerald-600' : 'text-gray-800'">
-                {{ updateInfo?.latestVersion?.startsWith('v') ? updateInfo.latestVersion : 'v' + (updateInfo?.latestVersion || '...') }}
-                <span v-if="updateInfo?.hasUpdate" class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Yeni!</span>
+              <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">GitHub main (son commit)</span>
+              <div class="text-2xl font-black mt-1 flex items-center gap-2 font-mono" :class="updateInfo?.hasUpdate ? 'text-emerald-600' : 'text-gray-800'">
+                {{ updateInfo?.latestCommit || '...' }}
+                <span v-if="updateInfo?.hasUpdate" class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-sans">Yeni!</span>
               </div>
             </div>
             <button 
@@ -287,13 +280,13 @@ onUnmounted(() => stopPolling())
               </div>
               <div>
                 <h3 class="font-bold text-gray-900 text-base">
-                  {{ updateInfo.hasUpdate ? `Yeni Güncelleme Mevcut: ${updateInfo.tagName}` : 'Sisteminiz Güncel!' }}
+                  {{ updateInfo.hasUpdate ? 'Yeni Güncelleme Mevcut' : 'Sisteminiz Güncel!' }}
                 </h3>
                 <p class="text-xs text-gray-500 mt-0.5">
-                  {{ updateInfo.hasUpdate ? `Yayınlanma Tarihi: ${formatDate(updateInfo.publishedAt)}` : 'En son sürüm kullanılıyor. Herhangi bir güncellemeye gerek yok.' }}
+                  {{ updateInfo.hasUpdate ? (updateInfo.latestCommitDate ? `Yayınlanma: ${formatDate(updateInfo.latestCommitDate)}` : '') : 'main branch ile aynı commit\'tesiniz.' }}
                 </p>
-                <p v-if="updateInfo.hasUpdate" class="text-[11px] text-gray-400 mt-1">
-                  Güncelleme, GitHub'daki main branch'in son halini indirir (release tag'i bilgilendirme amaçlıdır). Öncesinde otomatik veritabanı yedeği alınır, sonrasında backend ve frontend yeniden kurulup derlenir.
+                <p class="text-[11px] text-gray-400 mt-1">
+                  Güncelleme, GitHub'daki main branch'in son halini indirir. Öncesinde otomatik veritabanı yedeği alınır, sonrasında backend ve frontend yeniden kurulup derlenir.
                 </p>
               </div>
             </div>
@@ -306,32 +299,32 @@ onUnmounted(() => stopPolling())
                 class="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2"
               >
                 <i class="fas fa-database" :class="{ 'fa-spin': backupLoading }"></i>
-                {{ backupLoading ? 'Yedek Alınıyor...' : '1. Veritabanı Yedeği İndir' }}
+                {{ backupLoading ? 'Yedek Alınıyor...' : 'Veritabanı Yedeği İndir' }}
               </button>
 
               <button
-                @click="startUpdate(true)"
+                @click="startUpdate"
                 :disabled="updating"
                 class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-200 flex items-center gap-2 cursor-pointer"
               >
                 <i class="fas fa-rocket" :class="{ 'fa-spin': updating }"></i>
-                {{ updating ? 'Sistem Güncelleniyor...' : (updateInfo.hasUpdate ? '2. Güncellemeyi Başlat' : '2. Sistemi Şimdi Güncelle (Git Pull)') }}
+                {{ updating ? 'Sistem Güncelleniyor...' : (updateInfo.hasUpdate ? 'Güncellemeyi Başlat' : 'Sistemi Şimdi Güncelle (Git Pull)') }}
               </button>
             </div>
           </div>
 
-          <!-- Sürüm Notları -->
+          <!-- Son Commit Bilgisi -->
           <div class="p-6 space-y-4">
             <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
               <i class="fas fa-file-alt text-blue-500"></i>
-              Sürüm Notları ve Değişiklikler
+              GitHub main - Son Commit Mesajı
             </h4>
 
-            <div v-if="updateInfo.releaseNotes" class="bg-gray-50 p-4 rounded-xl text-xs text-gray-700 font-mono whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto border border-gray-200/60">
-              {{ updateInfo.releaseNotes }}
+            <div v-if="updateInfo.latestCommitMessage" class="bg-gray-50 p-4 rounded-xl text-xs text-gray-700 font-mono whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto border border-gray-200/60">
+              {{ updateInfo.latestCommitMessage }}
             </div>
             <div v-else class="text-xs text-gray-400 italic">
-              Bu sürüm için detaylı not eklenmemiş.
+              Commit mesajı alınamadı.
             </div>
           </div>
         </div>
@@ -415,13 +408,13 @@ onUnmounted(() => stopPolling())
                 <span :class="item.status === 'success' ? 'text-emerald-600' : 'text-rose-600'">
                   <i :class="item.status === 'success' ? 'fas fa-check-circle' : 'fas fa-times-circle'"></i>
                 </span>
-                <span>v{{ item.fromVersion }} → v{{ item.toVersion }}</span>
+                <span class="font-mono">{{ (item.fromCommit || '').slice(0,7) || '?' }} → {{ (item.toCommit || '').slice(0,7) || '?' }}</span>
               </div>
               <span class="text-gray-400">{{ formatDate(item.startedAt) }}</span>
             </div>
 
-            <div v-if="item.log && item.log.length > 0" class="bg-gray-50 p-2.5 rounded-lg text-[11px] font-mono text-gray-600 space-y-1">
-              <div v-for="(l, i) in item.log" :key="i">{{ l.msg }}</div>
+            <div v-if="item.error" class="bg-rose-50 p-2.5 rounded-lg text-[11px] font-mono text-rose-600">
+              {{ item.error }}
             </div>
           </div>
         </div>
