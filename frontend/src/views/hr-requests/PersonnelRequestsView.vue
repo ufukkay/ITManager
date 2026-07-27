@@ -244,10 +244,21 @@ const save = async () => {
   }
 }
 
-const equipmentOptions = ['Dizüstü Bilgisayar', 'Cep Telefonu', 'Monitör', 'Klavye & Mouse', 'Şirket Aracı', 'IP Telefon', 'Kulaklık']
+const equipmentOptions = ['Dizüstü Bilgisayar', 'Cep Telefonu', 'Monitör', 'Klavye & Mouse', 'Şirket Aracı', 'IP Telefon', 'Kulaklık', 'Sim Kart']
+
+const managerOptions = ref([])
+const fetchManagerOptions = async () => {
+  try {
+    const res = await api.get('/api/hr-requests/manager-options')
+    managerOptions.value = res.data.options || []
+  } catch (err) {
+    console.error('Yönetici listesi alınamadı:', err)
+  }
+}
 
 onMounted(() => {
   fetchData()
+  fetchManagerOptions()
   masterData.fetchCompanies()
   masterData.fetchDepartments()
   masterData.fetchCostCenters()
@@ -544,8 +555,11 @@ onMounted(() => {
                 </div>
                 <div class="space-y-1">
                   <label class="text-[11px] font-bold text-gray-400 uppercase">Bağlı Yönetici</label>
-                  <input v-model="form.manager_name" type="text" placeholder="Yönetici Adı Soyadı"
-                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500">
+                  <select v-model="form.manager_name"
+                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                    <option value="">Seçiniz...</option>
+                    <option v-for="m in managerOptions" :key="m" :value="m">{{ m }}</option>
+                  </select>
                 </div>
               </div>
             </div>

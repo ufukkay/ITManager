@@ -22,6 +22,21 @@ const upload = multer({ storage });
 
 router.use(hasPermission('hr:view'));
 
+// Bağlı Yönetici seçim listesi (salt okunur - admin ayarları system:admin ile korunuyor,
+// ama bu liste talep formunu dolduran her hr:view kullanıcısına açık olmalı)
+router.get('/manager-options', (req, res) => {
+    try {
+        const row = db.prepare("SELECT value FROM system_settings WHERE key = 'hr_manager_options'").get();
+        let options = [];
+        if (row) {
+            try { options = JSON.parse(row.value || '[]'); } catch (e) { options = []; }
+        }
+        res.json({ success: true, options });
+    } catch (err) {
+        res.status(500).json({ success: false, options: [] });
+    }
+});
+
 // Tüm talepleri getir
 router.get('/', hasPermission('hr:view'), (req, res) => {
     try {
