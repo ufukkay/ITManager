@@ -4,9 +4,23 @@ Bu rehber, projeyi ayrı bir Windows Server üzerinde IIS + iisnode ile ilk kez 
 
 Bu adımlar sunucuya RDP/konsol erişimi gerektirir — buradan uzaktan yapılamaz, sunucuda sırayla uygulanmalıdır.
 
+## Hızlı Kurulum (Otomatik Script)
+
+Adım adım manuel kuruluma tercih ederseniz, `deploy\setup-iis-server.ps1` script'i Node.js, Git, IIS rolü, URL Rewrite Module, iisnode kurulumunu; projeyi çekmeyi; bağımlılıkları kurup frontend'i build etmeyi; `.env` oluşturmayı; ve IIS Application Pool + Website oluşturmayı **tek seferde** yapar.
+
+```powershell
+# Sunucuda, YÜKSELTİLMİŞ (Administrator) bir PowerShell penceresinde:
+cd C:\path\to\ITManager\deploy
+.\setup-iis-server.ps1
+```
+
+Çalıştırmadan önce script'in başındaki `$RepoUrl`, `$SitePath`, `$SiteName`, `$Port` değişkenlerini gözden geçirin/düzenleyin. Script idempotent'tir — tekrar çalıştırmak zaten kurulu olanları atlar, güvenlidir. Script sistem seviyesinde değişiklik yaptığı için çalıştırmadan önce içeriğini bir kez okumanız önerilir.
+
+Script tamamlandıktan sonra hâlâ elle yapmanız gereken tek şey: `.env` dosyasındaki SMTP/IMAP gibi entegrasyon ayarlarını (varsa) admin panelinden tamamlamak.
+
 ---
 
-## 1. Ön Koşullar (sunucuda, tek seferlik)
+## 1. Manuel Kurulum — Ön Koşullar (sunucuda, tek seferlik)
 
 1. **Node.js** (v18+) kurulu olmalı — [nodejs.org](https://nodejs.org) üzerinden LTS sürümünü indirip kurun. Kurulumdan sonra `node -v` ile doğrulayın.
 2. **Git** kurulu olmalı (kendi kendini güncelleme mekanizması `git fetch`/`git reset` kullanıyor) — [git-scm.com](https://git-scm.com).
