@@ -185,6 +185,9 @@ onUnmounted(() => stopPolling())
           <h1 class="text-xl font-bold text-gray-900 flex items-center gap-2">
             <i class="fas fa-cloud-download-alt text-blue-600"></i>
             Sistem Güncelleme & Yedekleme
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+              v1.0.2
+            </span>
           </h1>
           <p class="text-xs text-gray-500 mt-1">
             GitHub (ufukkay/ITManager) üzerinden otomatik versiyon kontrolü, veritabanı yedeği ve sürüm yükseltme.
