@@ -62,9 +62,6 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
         <i class="fas fa-cube text-white text-[13px]"></i>
       </div>
       <span class="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight">ITManager <span class="text-brand font-black ml-0.5">.</span></span>
-      <span class="px-2 py-0.5 text-[10px] font-bold bg-emerald-500 text-white rounded-md shadow-sm animate-pulse">
-        CANLI GÜNCELLEME TESTİ BAŞARILI! ✅
-      </span>
     </router-link>
     <div class="flex-1"></div>
 
