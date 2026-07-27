@@ -8,8 +8,10 @@ import AuthLayout from './layouts/AuthLayout.vue'
 import AppToastContainer from './components/AppToastContainer.vue'
 import AppConfirmModal from './components/AppConfirmModal.vue'
 import { useConfirm } from './composables/useConfirm'
+import { useMaintenanceMode } from './composables/useMaintenanceMode'
 
 const { show, title, message, confirmLabel, loading, impactData, confirm, cancel } = useConfirm()
+const { isMaintenanceMode } = useMaintenanceMode()
 
 const route = useRoute()
 
@@ -45,6 +47,27 @@ const layout = computed(() => {
     @confirm="confirm"
     @cancel="cancel"
   />
+
+  <!-- Bakım Modu Overlay: sistem güncellenirken tüm ekranı kaplar -->
+  <div
+    v-if="isMaintenanceMode"
+    class="fixed inset-0 z-[9999] bg-white/95 backdrop-blur-sm flex items-center justify-center p-6"
+  >
+    <div class="max-w-md text-center space-y-4">
+      <div class="text-5xl">🛠️</div>
+      <h2 class="text-xl font-bold text-gray-800">Sistem Güncelleniyor</h2>
+      <p class="text-sm text-gray-500 leading-relaxed">
+        ITManager şu anda bir güncelleme nedeniyle kısa süreliğine kullanım dışı. Kısa süre içinde tekrar kullanılabilir olacak.
+      </p>
+      <button
+        type="button"
+        class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors"
+        @click="() => window.location.reload()"
+      >
+        Yeniden Dene
+      </button>
+    </div>
+  </div>
 </template>
 
 <style>

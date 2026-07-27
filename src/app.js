@@ -3,12 +3,36 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const { initDb } = require('./database/db');
+const { isMaintenanceMode } = require('./modules/update/controller');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Veritabanını Başlat
 initDb();
+
+// Bakım Modu Ara Katmanı — her şeyden önce çalışır (body-parser/session'dan bile önce).
+// Bir güncelleme sürerken (src/modules/update/controller.js -> applyUpdate) devreye girer;
+// admin'in ilerlemeyi izleyebilmesi için /api/update/status ve /api/update/history hariç
+// tüm istekleri karşılar.
+const MAINTENANCE_ALLOWLIST = ['/api/update/status', '/api/update/history'];
+app.use((req, res, next) => {
+    if (!isMaintenanceMode()) return next();
+    if (MAINTENANCE_ALLOWLIST.some((p) => req.path.startsWith(p))) return next();
+
+    const wantsJson = req.xhr
+        || (req.headers.accept && req.headers.accept.indexOf('json') > -1)
+        || req.originalUrl.startsWith('/api/')
+        || req.originalUrl.startsWith('/auth/');
+
+    if (wantsJson) {
+        return res.status(503).json({
+            maintenance: true,
+            message: 'Sistem güncelleniyor, lütfen birkaç dakika sonra tekrar deneyin.'
+        });
+    }
+    return res.sendFile(path.join(__dirname, 'public/maintenance.html'));
+});
 
 // Ara Katman (Middleware) Yapılandırması
 app.use(express.json());

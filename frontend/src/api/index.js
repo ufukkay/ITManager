@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useMaintenanceMode } from '../composables/useMaintenanceMode';
 
 const api = axios.create({
   // Since we use proxy in vite.config.js, base URL is just '/'
@@ -19,6 +20,9 @@ api.interceptors.response.use(
       // User is not authenticated, could redirect to login here
       // But we will handle this in the auth store or router guard
       console.warn('Unauthorized access detected');
+    }
+    if (error.response && error.response.status === 503 && error.response.data?.maintenance) {
+      useMaintenanceMode().setMaintenanceMode(true);
     }
     return Promise.reject(error);
   }
