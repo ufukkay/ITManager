@@ -233,6 +233,12 @@ const initDb = () => {
         console.log("Adding cost_center_id to hr_requests table...");
         db.prepare("ALTER TABLE hr_requests ADD COLUMN cost_center_id INTEGER").run();
     }
+    if (columns.length > 0 && !columns.some(c => c.name === 'created_by_user_id')) {
+        console.log("Adding created_by_user_id/created_by_name to hr_requests table...");
+        db.prepare("ALTER TABLE hr_requests ADD COLUMN created_by_user_id INTEGER").run();
+        db.prepare("ALTER TABLE hr_requests ADD COLUMN created_by_name TEXT").run();
+        db.prepare("ALTER TABLE hr_requests ADD COLUMN created_by_email TEXT").run();
+    }
   } catch (e) { console.log("hr_requests migration skipped:", e.message); }
 
   db.prepare(

@@ -115,6 +115,7 @@ class MailerService {
               <tr><td style="padding: 8px 0; font-weight: bold; color: #5f6368;">Unvanı:</td><td style="padding: 8px 0; color: #202124;">${requestData.position || '-'}</td></tr>
               <tr><td style="padding: 8px 0; font-weight: bold; color: #5f6368;">Bağlı Olduğu Yönetici:</td><td style="padding: 8px 0; color: #202124;">${requestData.manager_name || '-'}</td></tr>
               <tr><td style="padding: 8px 0; font-weight: bold; color: #5f6368;">Lokasyon:</td><td style="padding: 8px 0; color: #202124;">${requestData.location || '-'}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; color: #5f6368;">Talebi Açan:</td><td style="padding: 8px 0; color: #202124;">${requestData.created_by_name || '-'}</td></tr>
             </table>
 
             <h3 style="color: ${color}; font-size: 14px; text-transform: uppercase; margin-bottom: 12px; border-bottom: 2px solid #f1f3f4; padding-bottom: 4px;">ŞİRKET DONANIMLARI</h3>

@@ -62,42 +62,63 @@ router.post('/', hasPermission('hr:edit'), upload.single('photo'), async (req, r
             return res.status(400).json({ error: "Talep tipi ve ad-soyad zorunludur." });
         }
 
+        const creator = req.session?.user || {};
+        const creatorName = creator.full_name || creator.username || 'Sistem';
+        const creatorEmail = creator.email || null;
+
         const stmt = db.prepare(`
             INSERT INTO hr_requests (
-                type, first_name, last_name, full_name, position_tr, position_en, position, request_date, 
+                type, first_name, last_name, full_name, position_tr, position_en, position, request_date,
                 department_id, location_id, company_id, cost_center_id,
-                equipment_needed, notes, manager_name, 
+                equipment_needed, notes, manager_name,
                 email_groups, erp_permissions, file_permissions,
-                photo_path, email
+                photo_path, email, created_by_user_id, created_by_name, created_by_email
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
-        
+
         const info = stmt.run(
-            type, 
-            first_name, 
+            type,
+            first_name,
             last_name,
             `${first_name} ${last_name}`,
             position_tr || null,
             position_en || null,
             position_tr || position_en || null,
-            request_date || null, 
-            department_id || null, 
-            location_id || null, 
-            company_id || null, 
+            request_date || null,
+            department_id || null,
+            location_id || null,
+            company_id || null,
             cost_center_id || null,
-            equipment_needed || '[]', 
+            equipment_needed || '[]',
             notes || null,
             manager_name || null,
             email_groups || null,
             erp_permissions || null,
             file_permissions || null,
             photo_path,
-            email || null
+            email || null,
+            creator.id || null,
+            creatorName,
+            creatorEmail
         );
 
         try {
-            await MailerService.sendHrNotification('admin@itmanager.com', req.body);
+            const notifSettings = db.prepare(
+                "SELECT key, value FROM system_settings WHERE key IN ('hr_notification_email', 'admin_affairs_notification_email')"
+            ).all();
+            const settingsMap = Object.fromEntries(notifSettings.map(s => [s.key, s.value]));
+            const hrNotificationEmail = settingsMap.hr_notification_email || 'admin@itmanager.com';
+
+            const notificationData = { ...req.body, created_by_name: creatorName };
+            await MailerService.sendHrNotification(hrNotificationEmail, notificationData);
+
+            // Şirket Aracı talep edildiyse idari işler grubuna da ayrıca bildirim gönder
+            let equipmentList = [];
+            try { equipmentList = typeof equipment_needed === 'string' ? JSON.parse(equipment_needed) : (equipment_needed || []); } catch (e) {}
+            if (equipmentList.includes('Şirket Aracı') && settingsMap.admin_affairs_notification_email) {
+                await MailerService.sendHrNotification(settingsMap.admin_affairs_notification_email, notificationData);
+            }
         } catch (mailErr) {
             console.error('Mail trigger failed:', mailErr);
         }
