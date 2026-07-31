@@ -5,83 +5,83 @@ const { hasPermission } = require('../../middleware/auth');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 
-router.use(hasPermission('system:admin'));
+router.use(hasPermission('masterdata:view'));
 
 // Companies
 router.get('/companies', MasterDataController.getCompanies);
-router.post('/companies', MasterDataController.createCompany);
-router.put('/companies/:id', MasterDataController.updateCompany);
-router.delete('/companies/:id', MasterDataController.deleteCompany);
+router.post('/companies', hasPermission('masterdata:edit'), MasterDataController.createCompany);
+router.put('/companies/:id', hasPermission('masterdata:edit'), MasterDataController.updateCompany);
+router.delete('/companies/:id', hasPermission('masterdata:edit'), MasterDataController.deleteCompany);
 
 // Departments
 router.get('/departments', MasterDataController.getDepartments);
-router.post('/departments', MasterDataController.createDepartment);
-router.put('/departments/:id', MasterDataController.updateDepartment);
-router.delete('/departments/:id', MasterDataController.deleteDepartment);
+router.post('/departments', hasPermission('masterdata:edit'), MasterDataController.createDepartment);
+router.put('/departments/:id', hasPermission('masterdata:edit'), MasterDataController.updateDepartment);
+router.delete('/departments/:id', hasPermission('masterdata:edit'), MasterDataController.deleteDepartment);
 
 // Cost Centers
 router.get('/cost-centers', MasterDataController.getCostCenters);
-router.post('/cost-centers', MasterDataController.createCostCenter);
-router.put('/cost-centers/:id', MasterDataController.updateCostCenter);
-router.delete('/cost-centers/:id', MasterDataController.deleteCostCenter);
+router.post('/cost-centers', hasPermission('masterdata:edit'), MasterDataController.createCostCenter);
+router.put('/cost-centers/:id', hasPermission('masterdata:edit'), MasterDataController.updateCostCenter);
+router.delete('/cost-centers/:id', hasPermission('masterdata:edit'), MasterDataController.deleteCostCenter);
 
 // Personnel
 router.get('/personnel', MasterDataController.getPersonnel);
-router.post('/personnel', MasterDataController.createPersonnel);
-router.put('/personnel/:id', MasterDataController.updatePersonnel);
-router.delete('/personnel/:id', MasterDataController.deletePersonnel);
-router.post('/personnel/bulk-delete', MasterDataController.bulkDeletePersonnel);
-router.post('/personnel/bulk-update', MasterDataController.bulkUpdatePersonnel);
+router.post('/personnel', hasPermission('masterdata:edit'), MasterDataController.createPersonnel);
+router.put('/personnel/:id', hasPermission('masterdata:edit'), MasterDataController.updatePersonnel);
+router.delete('/personnel/:id', hasPermission('masterdata:edit'), MasterDataController.deletePersonnel);
+router.post('/personnel/bulk-delete', hasPermission('masterdata:edit'), MasterDataController.bulkDeletePersonnel);
+router.post('/personnel/bulk-update', hasPermission('masterdata:edit'), MasterDataController.bulkUpdatePersonnel);
 
 // Personnel Benefits (Aylık Destekler)
 router.get('/personnel/:id/benefits', MasterDataController.getPersonnelBenefits);
-router.post('/personnel/:id/benefits', MasterDataController.createPersonnelBenefit);
-router.put('/personnel/:id/benefits/:benefitId', MasterDataController.updatePersonnelBenefit);
-router.delete('/personnel/:id/benefits/:benefitId', MasterDataController.deletePersonnelBenefit);
+router.post('/personnel/:id/benefits', hasPermission('masterdata:edit'), MasterDataController.createPersonnelBenefit);
+router.put('/personnel/:id/benefits/:benefitId', hasPermission('masterdata:edit'), MasterDataController.updatePersonnelBenefit);
+router.delete('/personnel/:id/benefits/:benefitId', hasPermission('masterdata:edit'), MasterDataController.deletePersonnelBenefit);
 
 // Personnel User Accounts
 router.get('/personnel/:id/user', MasterDataController.getPersonnelUser);
-router.post('/personnel/:id/create-user', MasterDataController.createPersonnelUser);
+router.post('/personnel/:id/create-user', hasPermission('masterdata:edit'), MasterDataController.createPersonnelUser);
 
 // Vehicles
 router.get('/vehicles', MasterDataController.getVehicles);
-router.post('/vehicles', MasterDataController.createVehicle);
-router.put('/vehicles/:id', MasterDataController.updateVehicle);
-router.delete('/vehicles/:id', MasterDataController.deleteVehicle);
+router.post('/vehicles', hasPermission('masterdata:edit'), MasterDataController.createVehicle);
+router.put('/vehicles/:id', hasPermission('masterdata:edit'), MasterDataController.updateVehicle);
+router.delete('/vehicles/:id', hasPermission('masterdata:edit'), MasterDataController.deleteVehicle);
 
 // Locations
 router.get('/locations', MasterDataController.getLocations);
-router.post('/locations', MasterDataController.createLocation);
-router.put('/locations/:id', MasterDataController.updateLocation);
-router.delete('/locations/:id', MasterDataController.deleteLocation);
+router.post('/locations', hasPermission('masterdata:edit'), MasterDataController.createLocation);
+router.put('/locations/:id', hasPermission('masterdata:edit'), MasterDataController.updateLocation);
+router.delete('/locations/:id', hasPermission('masterdata:edit'), MasterDataController.deleteLocation);
 
 // Operators
 router.get('/operators', MasterDataController.getOperators);
-router.post('/operators', MasterDataController.createOperator);
-router.put('/operators/:id', MasterDataController.updateOperator);
-router.delete('/operators/:id', MasterDataController.deleteOperator);
+router.post('/operators', hasPermission('masterdata:edit'), MasterDataController.createOperator);
+router.put('/operators/:id', hasPermission('masterdata:edit'), MasterDataController.updateOperator);
+router.delete('/operators/:id', hasPermission('masterdata:edit'), MasterDataController.deleteOperator);
 
 // Packages
 router.get('/packages', MasterDataController.getPackages);
-router.post('/packages', MasterDataController.createPackage);
-router.put('/packages/:id', MasterDataController.updatePackage);
-router.delete('/packages/:id', MasterDataController.deletePackage);
+router.post('/packages', hasPermission('masterdata:edit'), MasterDataController.createPackage);
+router.put('/packages/:id', hasPermission('masterdata:edit'), MasterDataController.updatePackage);
+router.delete('/packages/:id', hasPermission('masterdata:edit'), MasterDataController.deletePackage);
 
 // Licenses (M365 vb.)
 router.get('/licenses', MasterDataController.getLicenses);
-router.post('/licenses', MasterDataController.createLicense);
-router.put('/licenses/:id', MasterDataController.updateLicense);
-router.delete('/licenses/:id', MasterDataController.deleteLicense);
+router.post('/licenses', hasPermission('masterdata:edit'), MasterDataController.createLicense);
+router.put('/licenses/:id', hasPermission('masterdata:edit'), MasterDataController.updateLicense);
+router.delete('/licenses/:id', hasPermission('masterdata:edit'), MasterDataController.deleteLicense);
 router.get('/licenses/allocations', MasterDataController.getAllAllocations);
-router.post('/licenses/assign', MasterDataController.assignLicenseToPersonnel);
-router.delete('/licenses/unassign/:id', MasterDataController.unassignLicense);
-router.post('/licenses/bulk-assign', MasterDataController.bulkAssignLicenses);
+router.post('/licenses/assign', hasPermission('masterdata:edit'), MasterDataController.assignLicenseToPersonnel);
+router.delete('/licenses/unassign/:id', hasPermission('masterdata:edit'), MasterDataController.unassignLicense);
+router.post('/licenses/bulk-assign', hasPermission('masterdata:edit'), MasterDataController.bulkAssignLicenses);
 
 // Servers (Sunucu Envanteri)
 router.get('/servers', MasterDataController.getServers);
-router.post('/servers', MasterDataController.createServer);
-router.put('/servers/:id', MasterDataController.updateServer);
-router.delete('/servers/:id', MasterDataController.deleteServer);
+router.post('/servers', hasPermission('masterdata:edit'), MasterDataController.createServer);
+router.put('/servers/:id', hasPermission('masterdata:edit'), MasterDataController.updateServer);
+router.delete('/servers/:id', hasPermission('masterdata:edit'), MasterDataController.deleteServer);
 
 // Financial Reports
 router.get('/reports/periods', MasterDataController.getAvailablePeriods);
@@ -91,7 +91,7 @@ router.get('/reports/personnel', MasterDataController.getReportByPersonnel);
 router.get('/reports/service', MasterDataController.getReportByService);
 router.get('/reports/company', MasterDataController.getReportByCompany);
 router.get('/reports/personnel-benefits', MasterDataController.getPersonnelBenefitsReport);
-router.post('/reports/financial/upload/m365', upload.array('file'), MasterDataController.uploadM365Invoice);
+router.post('/reports/financial/upload/m365', hasPermission('masterdata:edit'), upload.array('file'), MasterDataController.uploadM365Invoice);
 
 // Audit Logs
 router.get('/audit-logs', MasterDataController.getAuditLogs);

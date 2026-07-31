@@ -207,16 +207,29 @@ router.put('/:id', hasPermission('hr:edit'), upload.single('photo'), (req, res) 
             const requestDate = body.request_date || request.request_date;
 
             // Personel var mı kontrol et
-            const exists = db.prepare('SELECT id FROM personnel WHERE first_name = ? AND last_name = ?').get(firstName, lastName);
-            if (!exists) {
+            let personnelRow = db.prepare('SELECT id FROM personnel WHERE first_name = ? AND last_name = ?').get(firstName, lastName);
+            let createdPersonnelId = personnelRow ? personnelRow.id : null;
+
+            if (!personnelRow) {
                 // --- Sicil No (1000+) Otomatik Atama ---
                 const lastRow = db.prepare("SELECT MAX(employee_id) as max_id FROM personnel").get();
                 const employeeId = Math.max(lastRow.max_id || 999, 999) + 1;
 
-                db.prepare(`
+                const pRes = db.prepare(`
                     INSERT INTO personnel (employee_id, first_name, last_name, company_id, department_id, cost_center_id, status, notes, photo_path, email, title_tr, title_en, title, hire_date, source_hr_request_id)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `).run(employeeId, firstName, lastName, companyId, deptId, costCenterId, 'active', `İK Giriş Talebi (${id}) ile otomatik oluşturuldu.`, request.photo_path, emailVal, titleTr, titleEn, titleTr, requestDate, id);
+                createdPersonnelId = pRes.lastInsertRowid;
+            }
+
+            // Opsiyonel: Kullanıcı hesabı da aç
+            if ((body.create_user || body.create_user === 'true') && createdPersonnelId) {
+                try {
+                    const MasterDataService = require('../../core/service');
+                    MasterDataService.createPersonnelUser(createdPersonnelId);
+                } catch (uErr) {
+                    console.log('HR entry auto user creation skipped/exists:', uErr.message);
+                }
             }
         }
 

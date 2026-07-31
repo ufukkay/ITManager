@@ -1,6 +1,9 @@
-const MasterDataService = require('./service');
-const { parseM365Excel } = require('./services/m365InvoiceParser');
-const AuditService = require('../../services/auditService');
+const handleError = (res, e) => {
+    if (e.message && (e.message.includes('UNIQUE') || e.code === 'SQLITE_CONSTRAINT_UNIQUE')) {
+        return res.status(400).json({ error: 'Bu isim/kod/sicil numarası ile kayıtlı bir veri zaten sistemde mevcuttur.' });
+    }
+    return res.status(500).json({ error: e.message || 'Sunucu hatası oluştu.' });
+};
 
 class MasterDataController {
     // Shirketler
@@ -9,7 +12,7 @@ class MasterDataController {
             const data = await MasterDataService.getAllCompanies();
             res.json(data);
         } catch (e) {
-            res.status(500).json({ error: e.message });
+            handleError(res, e);
         }
     }
 
@@ -26,7 +29,7 @@ class MasterDataController {
             });
             res.status(201).json({ id });
         } catch (e) {
-            res.status(500).json({ error: e.message });
+            handleError(res, e);
         }
     }
 
@@ -43,7 +46,7 @@ class MasterDataController {
             });
             res.json({ success: true });
         } catch (e) {
-            res.status(500).json({ error: e.message });
+            handleError(res, e);
         }
     }
 

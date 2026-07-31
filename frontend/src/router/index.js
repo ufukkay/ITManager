@@ -197,7 +197,7 @@ const routes = [
   {
     path: '/master-data',
     component: () => import('../views/master-data/MasterDataLayout.vue'),
-    meta: { layout: 'main', requiresAuth: true, fullBleed: true, adminOnly: true },
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true, permission: 'masterdata:view' },
     children: [
       {
         path: '',

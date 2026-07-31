@@ -117,11 +117,17 @@ class MailFetcherService {
                     }
 
                     if (!isReply) {
-                        // Yeni bilet oluştur
+                        // Benzersiz yeni bilet numarası oluştur
                         const dt = new Date();
                         const year = dt.getFullYear().toString().substr(-2);
-                        const rand = Math.floor(100000 + Math.random() * 900000); // 6 basamaklı bilet no
-                        const ticketNo = `TCK-${year}${rand}`;
+                        let ticketNo = '';
+                        let exists = true;
+                        while (exists) {
+                            const rand = Math.floor(100000 + Math.random() * 900000);
+                            ticketNo = `TCK-${year}${rand}`;
+                            const check = db.prepare('SELECT id FROM helpdesk_tickets WHERE ticket_no = ?').get(ticketNo);
+                            if (!check) exists = false;
+                        }
 
                         // SLA Tarihi (Varsayılan Normal öncelik için +24 saat)
                         const slaDue = new Date();

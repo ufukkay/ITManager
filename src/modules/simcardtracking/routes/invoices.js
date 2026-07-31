@@ -28,7 +28,7 @@ function fetchInvoices({ period, operator, source_file, isMatched, phoneNo, pers
     FROM invoices i
     LEFT JOIN personnel p ON i.personnel_id = p.id
     LEFT JOIN companies c ON i.company_id = c.id
-    LEFT JOIN departments cc ON i.cost_center_id = cc.id
+    LEFT JOIN cost_centers cc ON i.cost_center_id = cc.id
     WHERE 1=1
   `;
   const params = [];

@@ -163,8 +163,8 @@
                       <input type="checkbox" :value="att.id" v-model="selectedAttachments" class="w-4 h-4 border border-[#dadce0] rounded text-[#1a73e8] outline-none">
                     </td>
                     <td class="px-4 py-3 text-[#1a73e8] font-medium">
-                      <a :href="'http://localhost:3001' + att.file_path" target="_blank" class="hover:underline flex items-center gap-2">
-                        <i class="fas fa-file-alt text-gray-400"></i> {{ att.file_name }}
+                      <a :href="att.file_path" target="_blank" download class="hover:underline flex items-center gap-2">
+                        <i :class="getFileIcon(att.file_name)" class="text-gray-400"></i> {{ att.file_name }}
                       </a>
                     </td>
                     <td class="px-4 py-3 text-[#5f6368] font-mono text-xs">{{ att.file_type || 'Bilinmiyor' }}</td>
@@ -664,6 +664,17 @@ import { useAuthStore } from '../../stores/auth'
 const route = useRoute()
 const { showToast } = useToast()
 const authStore = useAuthStore()
+
+const getFileIcon = (filename) => {
+  if (!filename) return 'fas fa-file-alt'
+  const ext = filename.split('.').pop().toLowerCase()
+  if (['pdf'].includes(ext)) return 'fas fa-file-pdf text-red-500'
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return 'fas fa-file-excel text-emerald-600'
+  if (['doc', 'docx'].includes(ext)) return 'fas fa-file-word text-blue-600'
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'fas fa-file-image text-purple-500'
+  if (['zip', 'rar', '7z'].includes(ext)) return 'fas fa-file-archive text-amber-500'
+  return 'fas fa-file-alt text-gray-400'
+}
 
 const ticket = ref(null)
 const messages = ref([])

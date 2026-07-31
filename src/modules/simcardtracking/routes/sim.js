@@ -6,10 +6,13 @@ const { logActivity } = require('../middleware/logger');
 
 // GET /api/sim/search?q=...
 router.get('/search', hasPermission('sim:view'), (req, res) => {
-  const { q } = req.query;
+  const { q, active_only } = req.query;
   if (!q) return res.status(400).json({ message: 'Arama terimi gerekli.' });
 
   const queryTerm = `%${q}%`;
+  const activeClause = (active_only === 'true' || active_only === '1') ? " AND sim_m2m.status = 'active'" : "";
+  const activeClauseData = (active_only === 'true' || active_only === '1') ? " AND sim_data.status = 'active'" : "";
+  const activeClauseVoice = (active_only === 'true' || active_only === '1') ? " AND sim_voice.status = 'active'" : "";
   
   try {
     const results = [];
@@ -19,7 +22,7 @@ router.get('/search', hasPermission('sim:view'), (req, res) => {
       SELECT 'm2m' as type, sim_m2m.*, v.plate_no 
       FROM sim_m2m 
       LEFT JOIN vehicles v ON sim_m2m.vehicle_id = v.id
-      WHERE phone_no LIKE ? OR iccid LIKE ? OR v.plate_no LIKE ?
+      WHERE (sim_m2m.phone_no LIKE ? OR sim_m2m.iccid LIKE ? OR v.plate_no LIKE ?)${activeClause}
     `).all(queryTerm, queryTerm, queryTerm);
     results.push(...m2m);
 
@@ -28,7 +31,7 @@ router.get('/search', hasPermission('sim:view'), (req, res) => {
       SELECT 'data' as type, sim_data.*, l.name as location_name 
       FROM sim_data 
       LEFT JOIN locations l ON sim_data.location_id = l.id
-      WHERE phone_no LIKE ? OR iccid LIKE ? OR l.name LIKE ?
+      WHERE (sim_data.phone_no LIKE ? OR sim_data.iccid LIKE ? OR l.name LIKE ?)${activeClauseData}
     `).all(queryTerm, queryTerm, queryTerm);
     results.push(...data);
 
@@ -37,7 +40,7 @@ router.get('/search', hasPermission('sim:view'), (req, res) => {
       SELECT 'voice' as type, sim_voice.*, (p.first_name || ' ' || p.last_name) as personnel_name 
       FROM sim_voice 
       LEFT JOIN personnel p ON sim_voice.personnel_id = p.id
-      WHERE phone_no LIKE ? OR iccid LIKE ? OR personnel_name LIKE ?
+      WHERE (sim_voice.phone_no LIKE ? OR sim_voice.iccid LIKE ? OR (p.first_name || ' ' || p.last_name) LIKE ?)${activeClauseVoice}
     `).all(queryTerm, queryTerm, queryTerm);
     results.push(...voice);
 

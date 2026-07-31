@@ -39,14 +39,16 @@ const hasPermission = (permissionKey) => {
         }
         const placeholders = keysToCheck.map(() => '?').join(',');
 
-        // Yetki kontrolü: Rol yetkisi VAR MI ya da Kullanıcıya özel atanmış MI?
+        // Yetki kontrolü: Kullanıcı engeli (granted=0) yoksa ve (Kullanıcı yetkili (granted=1) VEYA Rol yetkili) ise izin ver
         const permission = db.prepare(`
             SELECT p.id 
             FROM permissions p
             LEFT JOIN role_permissions rp ON p.id = rp.permission_id AND rp.role_id = ?
             LEFT JOIN user_permissions up ON p.id = up.permission_id AND up.user_id = ?
             WHERE p.permission_key IN (${placeholders})
-            AND (rp.permission_id IS NOT NULL OR up.granted = 1)
+            AND (
+                up.granted = 1 OR (up.granted IS NULL AND rp.permission_id IS NOT NULL)
+            )
             LIMIT 1
         `).get(userRole, userId, ...keysToCheck);
 

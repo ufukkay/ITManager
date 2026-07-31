@@ -101,7 +101,13 @@
             </thead>
             <tbody class="divide-y divide-gray-50">
               <tr v-if="filteredAssets.length === 0" class="text-center">
-                <td colspan="10" class="py-12 text-gray-400 text-sm">Varlık bulunamadı.</td>
+                <td colspan="10" class="py-16 text-gray-400">
+                  <div class="flex flex-col items-center justify-center gap-2">
+                    <i class="fas fa-chart-pie text-4xl text-gray-200 mb-1"></i>
+                    <span class="text-sm font-semibold text-gray-600">Henüz maliyet/amortisman verisi girilmiş cihaz bulunmamaktadır.</span>
+                    <span class="text-xs text-gray-400">Envanter modülünden cihaz ekleyip alış bedeli ve tarih belirterek rapor oluşturabilirsiniz.</span>
+                  </div>
+                </td>
               </tr>
               <tr
                 v-for="asset in filteredAssets"

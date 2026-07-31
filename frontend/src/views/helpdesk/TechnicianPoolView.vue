@@ -160,7 +160,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import api from '../../api'
 
 const loading = ref(true)
@@ -289,7 +289,16 @@ const reassignTicket = async (ticketId, targetTechId, event) => {
   }
 }
 
+let autoRefreshTimer = null
+
 onMounted(() => {
   loadPool()
+  autoRefreshTimer = setInterval(() => {
+    loadPool()
+  }, 30000)
+})
+
+onUnmounted(() => {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer)
 })
 </script>

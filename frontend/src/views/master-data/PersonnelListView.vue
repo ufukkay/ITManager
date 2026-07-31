@@ -78,6 +78,7 @@ const personnelRows = computed(() =>
     const isAzure = p.source === 'azure' || !!p.entra_id
     return {
       ...p,
+      title: p.title_tr || p.title || p.title_en || '',
       full_name: `${p.first_name} ${p.last_name}`,
       source_display: isAzure ? 'Senkronize (M365)' : 'Manuel Kayıt',
       source_type: isAzure ? 'Senkronize (M365)' : 'Manuel Kayıt'

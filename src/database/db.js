@@ -266,6 +266,9 @@ const initDb = () => {
             file_permissions TEXT,
             photo_path TEXT,
             email TEXT,
+            created_by_user_id INTEGER,
+            created_by_name TEXT,
+            created_by_email TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(department_id) REFERENCES departments(id),
             FOREIGN KEY(location_id) REFERENCES locations(id),
@@ -1188,10 +1191,14 @@ const seedInitialData = () => {
         // Destek Talepleri (Helpdesk)
         { key: 'helpdesk:view', module: 'Destek Talepleri', desc: 'Bilet listesini ve detaylarını görüntüleme' },
         { key: 'helpdesk:edit', module: 'Destek Talepleri', desc: 'Bilet oluşturma, yanıtlama ve durumunu değiştirme' },
+        { key: 'helpdesk:manage', module: 'Destek Talepleri', desc: 'Bilet havuzu yönetimi, teknisyen atama ve raporlama' },
 
         // Master Veri Yönetimi
         { key: 'masterdata:view', module: 'Master Veri', desc: 'Şirket, departman, personel ve lokasyon bilgilerini görüntüleme' },
-        { key: 'masterdata:edit', module: 'Master Veri', desc: 'Master veri ekleme, düzenleme ve silme yetkisi' }
+        { key: 'masterdata:edit', module: 'Master Veri', desc: 'Master veri ekleme, düzenleme ve silme yetkisi' },
+
+        // Ayarlar
+        { key: 'system:settings', module: 'Sistem', desc: 'Sistem ve Modül Ayarlarını yönetme' }
     ];
 
     permissions.forEach(p => {
@@ -1231,7 +1238,7 @@ const seedInitialData = () => {
     const persRole = db.prepare("SELECT id FROM roles WHERE name = 'Personel'").get();
     
     if (techRole) {
-        const techPerms = ['sim:view', 'sim:edit', 'asset:view', 'asset:edit', 'monitoring:view', 'm365:view'];
+        const techPerms = ['sim:view', 'sim:edit', 'asset:view', 'asset:edit', 'monitoring:view', 'm365:view', 'helpdesk:view', 'helpdesk:edit', 'helpdesk:manage'];
         techPerms.forEach(pkey => {
             const p = db.prepare('SELECT id FROM permissions WHERE permission_key = ?').get(pkey);
             if (p) db.prepare('INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)').run(techRole.id, p.id);

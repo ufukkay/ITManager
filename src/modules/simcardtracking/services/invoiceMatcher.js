@@ -22,14 +22,14 @@ function findPersonnelByPhone(phoneNo) {
       SELECT 
         p.id as personnel_id,
         p.first_name || ' ' || p.last_name as name, 
-        dept.id as department_id,
-        dept.name as department_name, 
+        cc.id as cost_center_id,
+        cc.name as cost_center_name, 
         comp.id as company_id,
         comp.name as company_name, 
         pk.name as package_name
       FROM sim_voice sv
       LEFT JOIN personnel p ON sv.personnel_id = p.id
-      LEFT JOIN departments dept ON p.department_id = dept.id
+      LEFT JOIN cost_centers cc ON p.cost_center_id = cc.id
       LEFT JOIN companies comp ON p.company_id = comp.id
       LEFT JOIN packages pk ON sv.package_id = pk.id
       WHERE ${VOICE_PHONE_EXPR} = ? LIMIT 1
@@ -39,9 +39,9 @@ function findPersonnelByPhone(phoneNo) {
       return {
         personnel_id: res.personnel_id,
         company_id: res.company_id,
-        cost_center_id: res.department_id,
+        cost_center_id: res.cost_center_id,
         name: res.name || '',
-        costCenter: res.department_name || '',
+        costCenter: res.cost_center_name || '',
         company: res.company_name || '',
         tariff: res.package_name || '',
         isMatched: true
@@ -102,21 +102,21 @@ function findPersonnelByPhone(phoneNo) {
       SELECT 
         p.id as personnel_id,
         p.first_name || ' ' || p.last_name as name, 
-        dept.id as department_id,
-        dept.name as department_name, 
+        cc.id as cost_center_id,
+        cc.name as cost_center_name, 
         comp.id as company_id,
         comp.name as company_name 
       FROM personnel p 
-      LEFT JOIN departments dept ON p.department_id = dept.id
+      LEFT JOIN cost_centers cc ON p.cost_center_id = cc.id
       LEFT JOIN companies comp ON p.company_id = comp.id
       WHERE ${PERSONNEL_PHONE_EXPR} = ? LIMIT 1
     `).get(cleanPhone);
     if (res) return { 
         personnel_id: res.personnel_id,
         company_id: res.company_id,
-        cost_center_id: res.department_id,
+        cost_center_id: res.cost_center_id,
         name: res.name, 
-        costCenter: res.department_name || '', 
+        costCenter: res.cost_center_name || '', 
         company: res.company_name || '', 
         tariff: '', 
         isMatched: true 
