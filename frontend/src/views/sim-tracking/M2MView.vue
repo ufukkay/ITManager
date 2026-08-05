@@ -3,27 +3,25 @@ import { ref, onMounted, computed } from 'vue'
 import { useSimApi } from '../../composables/useSimApi'
 import { useMasterDataStore } from '../../stores/masterData'
 import { useToast } from '../../composables/useToast'
-import { useConfirm } from '../../composables/useConfirm'
 import AppTable from '../../components/AppTable.vue'
 import HistoryModal from '../../components/HistoryModal.vue'
 import * as XLSX from 'xlsx'
 
-const { dataList, loading, fetchList, deleteItem } = useSimApi('m2m')
+const { dataList, loading, fetchList } = useSimApi('m2m')
 const masterData = useMasterDataStore()
 const { showToast } = useToast()
-const { ask, startLoading, stopLoading } = useConfirm()
 
 const columns = [
-  { key: 'phone_no',      label: 'Telefon',   sortable: true, width: '150px' },
-  { key: 'iccid',         label: 'ICCID',     sortable: true, width: '190px' },
-  { key: 'operator',      label: 'Operatör',  sortable: true, width: '120px' },
-  { key: 'type',          label: 'Tip',       sortable: true, width: '80px' },
-  { key: 'package_name',  label: 'Paket',     sortable: true, width: '160px' },
-  { key: 'plate_no',      label: 'Plaka',     sortable: true, width: '120px' },
-  { key: 'company_name',  label: 'Şirket',    sortable: true, width: '160px' },
-  { key: 'usage',         label: 'Kullanım',  sortable: false, filterable: false, width: '160px' },
-  { key: 'cost_try',      label: 'Maliyet',   sortable: true,  width: '110px', align: 'right' },
-  { key: 'status',        label: 'Durum',     sortable: true,  width: '100px' },
+  { key: 'phone_no',      label: 'Telefon / Hat No',   sortable: true, width: '160px' },
+  { key: 'iccid',         label: 'ICCID Seri No',     sortable: true, width: '200px' },
+  { key: 'operator',      label: 'Operatör',          sortable: true, width: '130px' },
+  { key: 'type',          label: 'Hat Tipi',          sortable: true, width: '90px' },
+  { key: 'package_name',  label: 'Tarife / Paket',    sortable: true, width: '160px' },
+  { key: 'plate_no',      label: 'Plaka / Araç',      sortable: true, width: '130px' },
+  { key: 'company_name',  label: 'Şirket',            sortable: true, width: '160px' },
+  { key: 'usage',         label: 'Veri Kullanımı',    sortable: false, filterable: false, width: '170px' },
+  { key: 'cost_try',      label: 'Maliyet',           sortable: true,  width: '120px', align: 'right' },
+  { key: 'status',        label: 'Durum',             sortable: true,  width: '110px' },
 ]
 
 const quickFilters = computed(() => [
@@ -43,10 +41,17 @@ const getUsage = (item) => {
   const pct  = Math.round((used / item.quota_gb) * 100)
   return { used, quota: item.quota_gb, pct }
 }
+
 const usageBarClass = (pct) => {
-  if (pct > 85) return 'bg-red-500'
+  if (pct > 85) return 'bg-rose-500'
   if (pct > 60) return 'bg-amber-500'
   return 'bg-emerald-500'
+}
+
+const copyToClipboard = (text, label) => {
+  if (!text) return
+  navigator.clipboard.writeText(text)
+  showToast(`${label} kopyalandı`, 'info')
 }
 
 const exportExcel = (customRows = null) => {
@@ -76,23 +81,12 @@ const openHistory = (row) => {
   isHistoryModalOpen.value = true
 }
 
-const handleDelete = async (row) => {
-  const confirmed = await ask({
-    title: 'Kaydı Sil',
-    message: `"${row.phone_no || row.iccid}" numaralı SIM kartı silmek istediğinize emin misiniz?`,
-    confirmLabel: 'Evet, Sil'
-  })
-  if (confirmed) {
-    try {
-      startLoading()
-      await deleteItem(row.id)
-      showToast('Kayıt başarıyla silindi', 'success')
-    } catch (e) {
-      showToast('Hata: ' + e.message, 'error')
-    } finally {
-      stopLoading()
-    }
-  }
+const getOperatorClass = (opName) => {
+  const op = (opName || '').toLowerCase()
+  if (op.includes('vodafone')) return 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'
+  if (op.includes('turkcell')) return 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
+  if (op.includes('telekom')) return 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-500/20'
+  return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
 }
 
 onMounted(() => {
@@ -104,90 +98,130 @@ onMounted(() => {
 
 <template>
   <div class="h-full flex flex-col gap-4">
-    <AppTable
-      :columns="columns"
-      :rows="tableRows"
-      :loading="loading"
-      :quick-filters="quickFilters"
-      :selectable="true"
-      empty-text="Kriterlere uygun kayıt bulunamadı"
-      @selection-change="onSelectionChange"
-    >
-      <template #actions="{ row }">
-        <div class="at-row-actions">
-          <button type="button" class="at-row-btn" title="Geçmişi Göster" @click="openHistory(row)"><i class="fas fa-clock-rotate-left"></i></button>
-          <button type="button" class="at-row-btn at-row-btn-del" title="Sil" @click="handleDelete(row)"><i class="fas fa-trash"></i></button>
-        </div>
-      </template>
+    <!-- View Header Banner -->
+    <div class="flex items-center justify-between shrink-0 px-1 pt-1">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">M2M Hatları Envanteri</h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Araç takip, IoT ve M2M veri hattı cihaz takibi</p>
+      </div>
 
-      <template #toolbar>
-        <template v-if="selectedIds.length > 0">
-          <span class="text-[13px] font-bold text-[#1a73e8] dark:text-blue-400">{{ selectedIds.length }} Seçili</span>
-          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-lg text-[12px] font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
-            @click="exportSelected">
-            <i class="fas fa-file-excel"></i> Seçilenleri İndir
-          </button>
+      <div class="flex items-center gap-2">
+        <button type="button" @click="exportExcel()"
+          class="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-all">
+          <i class="fas fa-file-excel text-emerald-500"></i> Excel Dışa Aktar
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Table Container -->
+    <div class="flex-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm flex flex-col">
+      <AppTable
+        :columns="columns"
+        :rows="tableRows"
+        :loading="loading"
+        :quick-filters="quickFilters"
+        :selectable="true"
+        empty-text="Kriterlere uygun M2M hattı bulunamadı"
+        @selection-change="onSelectionChange"
+      >
+        <template #actions="{ row }">
+          <div class="at-row-actions">
+            <button type="button" class="at-row-btn" title="Geçmişi Göster" @click="openHistory(row)"><i class="fas fa-clock-rotate-left"></i></button>
+          </div>
         </template>
-        <div class="ml-auto flex items-center gap-3">
-          <span class="text-[11px] text-gray-400 dark:text-slate-500 italic">Ekleme/düzenleme için Envanter → Varlık Listesi'ni kullanın</span>
-          <button type="button" @click="exportExcel()"
-            class="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 rounded-lg text-[12px] font-semibold hover:bg-gray-50 dark:hover:bg-slate-700">
-            <i class="fas fa-file-excel text-emerald-500 dark:text-emerald-400"></i> Excel Dışa Aktar
-          </button>
-        </div>
-      </template>
 
-      <!-- Telefon font-mono -->
-      <template #cell-phone_no="{ value }">
-        <span class="font-mono font-semibold text-gray-800 dark:text-slate-100 whitespace-nowrap">{{ value || '—' }}</span>
-      </template>
+        <template #toolbar>
+          <template v-if="selectedIds.length > 0">
+            <span class="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-100 dark:border-blue-500/20">
+              {{ selectedIds.length }} Hat Seçildi
+            </span>
+            <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded-lg text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all"
+              @click="exportSelected">
+              <i class="fas fa-file-excel"></i> Seçilenleri İndir
+            </button>
+          </template>
+        </template>
 
-      <!-- ICCID font-mono -->
-      <template #cell-iccid="{ value }">
-        <span class="font-mono text-[11px] text-gray-400 dark:text-slate-500 block max-w-[170px] truncate" :title="value">{{ value || '—' }}</span>
-      </template>
-
-      <!-- Tip badge -->
-      <template #cell-type="{ value }">
-        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold" :class="value === 'M2M' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400' : value === 'Data' ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400' : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'">{{ value || 'M2M' }}</span>
-      </template>
-
-      <!-- Plaka bold -->
-      <template #cell-plate_no="{ value }">
-        <span class="font-bold text-gray-900 dark:text-slate-100 tracking-tight">{{ value || '—' }}</span>
-      </template>
-
-      <!-- Kullanım bar -->
-      <template #cell-usage="{ row }">
-        <div v-if="row.quota_gb" class="w-[130px]">
-          <div class="flex items-center justify-between text-[10px] font-bold text-gray-400 dark:text-slate-500 mb-1">
-            <span>{{ getUsage(row).used }} / {{ row.quota_gb }} GB</span>
-            <span :class="getUsage(row).pct > 85 ? 'text-red-500 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'">%{{ getUsage(row).pct }}</span>
+        <!-- Telefon font-mono + Copy helper -->
+        <template #cell-phone_no="{ value }">
+          <div class="group/cell flex items-center gap-1.5">
+            <span class="font-mono font-semibold text-slate-800 dark:text-slate-100 text-xs tracking-tight whitespace-nowrap">{{ value || '—' }}</span>
+            <button v-if="value" type="button" @click="copyToClipboard(value, 'Telefon numarası')" title="Kopyala" class="opacity-0 group-hover/cell:opacity-100 text-[10px] text-slate-400 hover:text-blue-500 transition-all">
+              <i class="fas fa-copy"></i>
+            </button>
           </div>
-          <div class="h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-            <div :class="['h-full rounded-full transition-all duration-500', usageBarClass(getUsage(row).pct)]"
-              :style="{ width: getUsage(row).pct + '%' }"></div>
+        </template>
+
+        <!-- ICCID font-mono -->
+        <template #cell-iccid="{ value }">
+          <div class="group/cell flex items-center gap-1.5">
+            <span class="font-mono text-[11px] font-medium text-slate-500 dark:text-slate-400 block max-w-[170px] truncate" :title="value">{{ value || '—' }}</span>
+            <button v-if="value" type="button" @click="copyToClipboard(value, 'ICCID')" title="Kopyala" class="opacity-0 group-hover/cell:opacity-100 text-[10px] text-slate-400 hover:text-blue-500 transition-all">
+              <i class="fas fa-copy"></i>
+            </button>
           </div>
-        </div>
-        <span v-else class="text-gray-300 dark:text-slate-600 text-[12px]">—</span>
-      </template>
+        </template>
 
-      <!-- Maliyet -->
-      <template #cell-cost_try="{ value }">
-        <span class="font-bold text-gray-900 dark:text-slate-100 tabular-nums">{{ (value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) }} ₺</span>
-      </template>
+        <!-- Operatör Badge -->
+        <template #cell-operator="{ value }">
+          <span :class="['inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold border uppercase tracking-wider', getOperatorClass(value)]">
+            <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+            {{ value || '—' }}
+          </span>
+        </template>
 
-      <!-- Durum badge with dot -->
-      <template #cell-status="{ value }">
-        <span :class="[
-          'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold',
-          (value === 'active' || value === 'Aktif') ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300'
-        ]">
-          <span class="w-1.5 h-1.5 rounded-full" :class="(value === 'active' || value === 'Aktif') ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-gray-400 dark:bg-slate-500'"></span>
-          {{ (value === 'active' || value === 'Aktif') ? 'Aktif' : 'Pasif' }}
-        </span>
-      </template>
-    </AppTable>
+        <!-- Tip badge -->
+        <template #cell-type="{ value }">
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20">
+            M2M
+          </span>
+        </template>
+
+        <!-- Plaka bold -->
+        <template #cell-plate_no="{ value }">
+          <div v-if="value" class="flex items-center gap-1.5">
+            <i class="fas fa-car text-[11px] text-slate-400"></i>
+            <span class="font-bold text-slate-900 dark:text-slate-100 tracking-tight text-xs">{{ value }}</span>
+          </div>
+          <span v-else class="text-slate-400 dark:text-slate-600 text-xs">—</span>
+        </template>
+
+        <!-- Kullanım bar -->
+        <template #cell-usage="{ row }">
+          <div v-if="row.quota_gb" class="w-[140px]">
+            <div class="flex items-center justify-between text-[10px] font-medium text-slate-500 dark:text-slate-400 mb-1">
+              <span>{{ getUsage(row).used }} / {{ row.quota_gb }} GB</span>
+              <span :class="getUsage(row).pct > 85 ? 'text-rose-500 font-bold' : 'text-slate-600 dark:text-slate-300'">%{{ getUsage(row).pct }}</span>
+            </div>
+            <div class="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div :class="['h-full rounded-full transition-all duration-300', usageBarClass(getUsage(row).pct)]"
+                :style="{ width: getUsage(row).pct + '%' }"></div>
+            </div>
+          </div>
+          <span v-else class="text-slate-400 dark:text-slate-600 text-xs">—</span>
+        </template>
+
+        <!-- Maliyet -->
+        <template #cell-cost_try="{ value }">
+          <span class="font-bold text-slate-900 dark:text-white tabular-nums text-xs">
+            {{ (value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
+          </span>
+        </template>
+
+        <!-- Durum badge -->
+        <template #cell-status="{ value }">
+          <span :class="[
+            'inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase',
+            (value === 'active' || value === 'Aktif')
+              ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+          ]">
+            <span class="w-1.5 h-1.5 rounded-full" :class="(value === 'active' || value === 'Aktif') ? 'bg-emerald-500' : 'bg-slate-400'"></span>
+            {{ (value === 'active' || value === 'Aktif') ? 'Aktif' : 'Pasif' }}
+          </span>
+        </template>
+      </AppTable>
+    </div>
 
     <!-- History Modal -->
     <HistoryModal
@@ -199,6 +233,8 @@ onMounted(() => {
     />
   </div>
 </template>
+
+
 
 <style scoped>
 </style>

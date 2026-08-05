@@ -175,7 +175,6 @@ onMounted(fetchData)
         <template #actions="{ row }">
           <div class="at-row-actions">
             <button type="button" class="at-row-btn" title="Geçmişi Göster" @click="openHistory(row)"><i class="fas fa-clock-rotate-left"></i></button>
-            <button type="button" class="at-row-btn at-row-btn-del" title="Sil" @click="handleDelete(row)"><i class="fas fa-trash"></i></button>
           </div>
         </template>
 

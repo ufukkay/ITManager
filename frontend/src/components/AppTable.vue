@@ -421,62 +421,64 @@ function resetPanel() {
             </tr>
 
             <!-- Satırlar -->
-            <tr
-              v-else
-              v-for="row in pageRows"
-              :key="rowKey(row)"
-              class="at-row"
-            >
-              <td v-if="selectable" class="at-td at-td-check">
-                <input
-                  type="checkbox"
-                  class="accent-blue-600"
-                  :checked="selectedKeys.includes(rowKey(row))"
-                  @change="e => toggleRow(row, e.target.checked)"
-                >
-              </td>
+            <template v-else-if="pageRows.length > 0">
+              <template v-for="row in pageRows" :key="rowKey(row)">
+                <tr class="at-row">
+                  <td v-if="selectable" class="at-td at-td-check">
+                    <input
+                      type="checkbox"
+                      class="accent-blue-600"
+                      :checked="selectedKeys.includes(rowKey(row))"
+                      @change="e => toggleRow(row, e.target.checked)"
+                    >
+                  </td>
 
-              <td
-                v-for="col in columns"
-                :key="col.key"
-                class="at-td"
-                :class="{
-                  'whitespace-nowrap': col.nowrap !== false,
-                  'text-right': col.align === 'right',
-                }"
-              >
-                <!-- Özel hücre slot'u: #cell-{key}="{ row, value }" -->
-                <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">
-                  {{ row[col.key] ?? '—' }}
-                </slot>
-              </td>
+                  <td
+                    v-for="col in columns"
+                    :key="col.key"
+                    class="at-td"
+                    :class="{
+                      'whitespace-nowrap': col.nowrap !== false,
+                      'text-right': col.align === 'right',
+                    }"
+                  >
+                    <!-- Özel hücre slot'u: #cell-{key}="{ row, value }" -->
+                    <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]">
+                      {{ row[col.key] ?? '—' }}
+                    </slot>
+                  </td>
 
-              <!-- Aksiyon butonları -->
-              <td v-if="actions" class="at-td at-td-actions">
-                <slot name="actions" :row="row">
-                  <div class="at-row-actions">
-                    <button
-                      type="button"
-                      class="at-row-btn"
-                      title="Geçmişi Göster"
-                      @click="emit('row-history', row)"
-                    ><i class="fas fa-clock-rotate-left"></i></button>
-                    <button
-                      type="button"
-                      class="at-row-btn"
-                      title="Düzenle"
-                      @click="emit('row-edit', row)"
-                    ><i class="fas fa-pen"></i></button>
-                    <button
-                      type="button"
-                      class="at-row-btn at-row-btn-del"
-                      title="Sil"
-                      @click="emit('row-delete', row)"
-                    ><i class="fas fa-trash"></i></button>
-                  </div>
-                </slot>
-              </td>
-            </tr>
+                  <!-- Aksiyon butonları -->
+                  <td v-if="actions" class="at-td at-td-actions">
+                    <slot name="actions" :row="row">
+                      <div class="at-row-actions">
+                        <button
+                          type="button"
+                          class="at-row-btn"
+                          title="Geçmişi Göster"
+                          @click="emit('row-history', row)"
+                        ><i class="fas fa-clock-rotate-left"></i></button>
+                        <button
+                          type="button"
+                          class="at-row-btn"
+                          title="Düzenle"
+                          @click="emit('row-edit', row)"
+                        ><i class="fas fa-pen"></i></button>
+                        <button
+                          type="button"
+                          class="at-row-btn at-row-btn-del"
+                          title="Sil"
+                          @click="emit('row-delete', row)"
+                        ><i class="fas fa-trash"></i></button>
+                      </div>
+                    </slot>
+                  </td>
+                </tr>
+
+                <!-- Satır Genişletme Çekmecesi (Row Expansion) -->
+                <slot name="row-expansion" :row="row" :colspan="colSpan"></slot>
+              </template>
+            </template>
           </tbody>
         </table>
       </div>
