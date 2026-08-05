@@ -1,41 +1,41 @@
 <template>
-  <div class="h-full flex flex-col bg-[#f8f9fa] overflow-hidden" v-if="ticket">
+  <div class="h-full flex flex-col bg-[#f8f9fa] dark:bg-slate-900 overflow-hidden" v-if="ticket">
     
     <!-- PREMIUM HEADER (Görsel Referansa Birebir Uygun) -->
-    <div class="bg-white border-b border-[#dadce0] px-6 py-4 flex flex-col gap-4 shrink-0">
+    <div class="bg-white dark:bg-slate-800 border-b border-[#dadce0] dark:border-slate-700 px-6 py-4 flex flex-col gap-4 shrink-0">
       
       <!-- Top Row: Icon, Title & Actions -->
       <div class="flex items-start justify-between gap-4">
         <div class="flex items-center gap-4 min-w-0">
-          <button @click="$router.back()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] text-[#5f6368] transition-colors shrink-0">
+          <button @click="$router.back()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f1f3f4] dark:hover:bg-slate-700 text-[#5f6368] dark:text-slate-400 transition-colors shrink-0">
             <i class="fas fa-arrow-left"></i>
           </button>
           
           <!-- Orange Ticket Badge -->
-          <div class="w-12 h-12 rounded-full bg-[#fef7e0] border border-[#fbbc04]/30 flex items-center justify-center text-[#b06000] shrink-0 text-xl shadow-sm">
+          <div class="w-12 h-12 rounded-full bg-[#fef7e0] dark:bg-amber-500/10 border border-[#fbbc04]/30 flex items-center justify-center text-[#b06000] dark:text-amber-400 shrink-0 text-xl shadow-sm">
             <i class="fas fa-ticket-alt"></i>
           </div>
 
           <div class="min-w-0">
-            <h1 class="text-lg font-semibold text-[#202124] flex items-center gap-3 flex-wrap">
-              <span class="text-[#5f6368] font-mono">#{{ ticket.ticket_no }}</span>
+            <h1 class="text-lg font-semibold text-[#202124] dark:text-slate-100 flex items-center gap-3 flex-wrap">
+              <span class="text-[#5f6368] dark:text-slate-400 font-mono">#{{ ticket.ticket_no }}</span>
               <span>{{ ticket.title }}</span>
               <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-0.5 rounded-full border shadow-sm" :class="getStatusColor(ticket.status).badge">
                 {{ ticket.status }}
               </span>
             </h1>
-            <div class="text-xs text-[#5f6368] mt-1.5 flex items-center gap-2 flex-wrap">
+            <div class="text-xs text-[#5f6368] dark:text-slate-400 mt-1.5 flex items-center gap-2 flex-wrap">
               <span>yapan</span>
-              <span class="font-semibold text-[#1a73e8]">{{ ticket.user_name }}</span>
+              <span class="font-semibold text-[#1a73e8] dark:text-blue-400">{{ ticket.user_name }}</span>
               <span class="text-[#dadce0]">|</span>
-              <span class="font-medium text-[#202124]">{{ ticket.user_company_name || ticket.user_department_name || 'Şirket Belirtilmedi' }}</span>
-              <i class="far fa-comment-dots text-[#1a73e8] ml-1"></i>
+              <span class="font-medium text-[#202124] dark:text-slate-100">{{ ticket.user_company_name || ticket.user_department_name || 'Şirket Belirtilmedi' }}</span>
+              <i class="far fa-comment-dots text-[#1a73e8] dark:text-blue-400 ml-1"></i>
               <span class="text-[#dadce0]">|</span>
               <span>Tarih</span>
-              <span class="font-medium text-[#202124]">{{ fmtDateShort(ticket.created_at) }}</span>
+              <span class="font-medium text-[#202124] dark:text-slate-100">{{ fmtDateShort(ticket.created_at) }}</span>
               <span class="text-[#dadce0]">|</span>
               <span class="font-medium">Öngörülen Çözüm Tarihi :</span>
-              <span class="font-semibold" :class="ticket.sla_due_at ? 'text-[#c5221f]' : 'text-gray-400'">
+              <span class="font-semibold" :class="ticket.sla_due_at ? 'text-[#c5221f] dark:text-red-400' : 'text-gray-400 dark:text-slate-500'">
                 {{ ticket.sla_due_at ? fmtDateShort(ticket.sla_due_at) : 'Yok (Belirtilmedi)' }}
               </span>
             </div>
@@ -48,8 +48,8 @@
             Üzerime Al
           </button>
           <div v-else class="flex items-center gap-2">
-            <span class="text-xs text-[#5f6368] font-medium">Durum:</span>
-            <select :value="ticket.status" @change="handleStatusChange" class="h-9 border border-[#dadce0] px-3 rounded text-sm text-[#202124] bg-white outline-none focus:border-[#1a73e8] transition-colors font-medium shadow-sm">
+            <span class="text-xs text-[#5f6368] dark:text-slate-400 font-medium">Durum:</span>
+            <select :value="ticket.status" @change="handleStatusChange" class="h-9 border border-[#dadce0] dark:border-slate-700 px-3 rounded text-sm text-[#202124] dark:text-slate-100 bg-white dark:bg-slate-800 outline-none focus:border-[#1a73e8] transition-colors font-medium shadow-sm">
               <option value="İşlemde">İşlemde</option>
               <option value="Beklemede">Beklemede</option>
               <option value="Çözüldü">Çözüldü</option>
@@ -60,13 +60,13 @@
       </div>
 
       <!-- Tab Bar Navigation (Görsel Referanstaki Ayrıntılar, Görevler, Kontrol Listesi, vb.) -->
-      <div class="flex border-b border-[#dadce0] -mb-4 overflow-x-auto gap-6 text-sm shrink-0">
+      <div class="flex border-b border-[#dadce0] dark:border-slate-700 -mb-4 overflow-x-auto gap-6 text-sm shrink-0">
         <button 
           v-for="tab in tabs" 
           :key="tab.id"
           @click="activeTab = tab.id"
           class="pb-3 border-b-2 font-medium transition-all whitespace-nowrap"
-          :class="[activeTab === tab.id ? 'border-[#1a73e8] text-[#1a73e8]' : 'border-transparent text-[#5f6368] hover:text-[#202124] hover:border-[#dadce0]']"
+          :class="[activeTab === tab.id ? 'border-[#1a73e8] text-[#1a73e8] dark:text-blue-400' : 'border-transparent text-[#5f6368] dark:text-slate-400 hover:text-[#202124] dark:hover:text-slate-100 hover:border-[#dadce0] dark:hover:border-slate-600']"
         >
           {{ tab.name }}
         </button>
@@ -81,112 +81,112 @@
       <div v-if="activeTab === 'details'" class="flex-1 flex min-h-0 overflow-hidden">
         
         <!-- Left Panel: Form Layout & Documents -->
-        <div class="flex-1 flex flex-col p-6 overflow-y-auto border-r border-[#dadce0] space-y-6">
+        <div class="flex-1 flex flex-col p-6 overflow-y-auto border-r border-[#dadce0] dark:border-slate-700 space-y-6">
           
           <!-- Form Grid -->
-          <div class="bg-white border border-[#dadce0] rounded-md p-6 space-y-4 shadow-sm">
+          <div class="bg-white dark:bg-slate-800 border border-[#dadce0] dark:border-slate-700 rounded-md p-6 space-y-4 shadow-sm">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-medium text-[#5f6368] uppercase tracking-wide mb-1">Talep No:</label>
-                <input type="text" :value="ticket.ticket_no" disabled class="w-full h-9 border border-[#dadce0] px-3 rounded text-sm text-[#5f6368] bg-[#f8f9fa] outline-none">
+                <label class="block text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase tracking-wide mb-1">Talep No:</label>
+                <input type="text" :value="ticket.ticket_no" disabled class="w-full h-9 border border-[#dadce0] dark:border-slate-700 px-3 rounded text-sm text-[#5f6368] dark:text-slate-400 bg-[#f8f9fa] dark:bg-slate-900 outline-none">
               </div>
               <div>
-                <label class="block text-xs font-medium text-[#5f6368] uppercase tracking-wide mb-1">İlgili (Departman):</label>
-                <input type="text" :value="ticket.related_dep_name || 'Belirlenmedi'" disabled class="w-full h-9 border border-[#dadce0] px-3 rounded text-sm text-[#5f6368] bg-[#f8f9fa] outline-none">
+                <label class="block text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase tracking-wide mb-1">İlgili (Departman):</label>
+                <input type="text" :value="ticket.related_dep_name || 'Belirlenmedi'" disabled class="w-full h-9 border border-[#dadce0] dark:border-slate-700 px-3 rounded text-sm text-[#5f6368] dark:text-slate-400 bg-[#f8f9fa] dark:bg-slate-900 outline-none">
               </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-medium text-[#5f6368] uppercase tracking-wide mb-1">Talep Türü:</label>
-                <input type="text" :value="ticket.ticket_type || 'İş Talebi'" disabled class="w-full h-9 border border-[#dadce0] px-3 rounded text-sm text-[#5f6368] bg-[#f8f9fa] outline-none">
+                <label class="block text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase tracking-wide mb-1">Talep Türü:</label>
+                <input type="text" :value="ticket.ticket_type || 'İş Talebi'" disabled class="w-full h-9 border border-[#dadce0] dark:border-slate-700 px-3 rounded text-sm text-[#5f6368] dark:text-slate-400 bg-[#f8f9fa] dark:bg-slate-900 outline-none">
               </div>
               <div>
-                <label class="block text-xs font-medium text-[#5f6368] uppercase tracking-wide mb-1">Öncelik Derecesi:</label>
-                <input type="text" :value="ticket.priority" disabled class="w-full h-9 border border-[#dadce0] px-3 rounded text-sm text-[#5f6368] bg-[#f8f9fa] outline-none">
+                <label class="block text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase tracking-wide mb-1">Öncelik Derecesi:</label>
+                <input type="text" :value="ticket.priority" disabled class="w-full h-9 border border-[#dadce0] dark:border-slate-700 px-3 rounded text-sm text-[#5f6368] dark:text-slate-400 bg-[#f8f9fa] dark:bg-slate-900 outline-none">
               </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-xs font-medium text-[#5f6368] uppercase tracking-wide mb-1">Konu Başlığı:</label>
-                <input type="text" :value="ticket.title" disabled class="w-full h-9 border border-[#dadce0] px-3 rounded text-sm text-[#5f6368] bg-[#f8f9fa] outline-none">
+                <label class="block text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase tracking-wide mb-1">Konu Başlığı:</label>
+                <input type="text" :value="ticket.title" disabled class="w-full h-9 border border-[#dadce0] dark:border-slate-700 px-3 rounded text-sm text-[#5f6368] dark:text-slate-400 bg-[#f8f9fa] dark:bg-slate-900 outline-none">
               </div>
               <div>
-                <label class="block text-xs font-medium text-[#5f6368] uppercase tracking-wide mb-1">Talep Durumu:</label>
-                <input type="text" :value="ticket.status" disabled class="w-full h-9 border border-[#dadce0] px-3 rounded text-sm text-[#5f6368] bg-[#f8f9fa] outline-none">
+                <label class="block text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase tracking-wide mb-1">Talep Durumu:</label>
+                <input type="text" :value="ticket.status" disabled class="w-full h-9 border border-[#dadce0] dark:border-slate-700 px-3 rounded text-sm text-[#5f6368] dark:text-slate-400 bg-[#f8f9fa] dark:bg-slate-900 outline-none">
               </div>
             </div>
 
             <div>
-              <label class="block text-xs font-medium text-[#5f6368] uppercase tracking-wide mb-1">Detay Metni:</label>
-              <textarea :value="ticket.description" disabled rows="5" class="w-full border border-[#dadce0] px-3 py-2 rounded text-sm text-[#5f6368] bg-[#f8f9fa] outline-none resize-none"></textarea>
+              <label class="block text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase tracking-wide mb-1">Detay Metni:</label>
+              <textarea :value="ticket.description" disabled rows="5" class="w-full border border-[#dadce0] dark:border-slate-700 px-3 py-2 rounded text-sm text-[#5f6368] dark:text-slate-400 bg-[#f8f9fa] dark:bg-slate-900 outline-none resize-none"></textarea>
             </div>
           </div>
 
           <!-- Documents Table -->
-          <div class="bg-white border border-[#dadce0] rounded-md p-6 space-y-4 shadow-sm">
-            <h3 class="text-sm font-medium text-[#202124]">Dokümanlar</h3>
+          <div class="bg-white dark:bg-slate-800 border border-[#dadce0] dark:border-slate-700 rounded-md p-6 space-y-4 shadow-sm">
+            <h3 class="text-sm font-medium text-[#202124] dark:text-slate-100">Dokümanlar</h3>
             
-            <div class="border border-dashed border-[#dadce0] rounded p-4 text-center hover:bg-[#f8f9fa] transition-colors cursor-pointer relative" @dragover.prevent @drop.prevent="onFileDrop" @click="triggerFileInput">
-              <p class="text-xs text-[#5f6368]">Doküman eklemek için dokümanı buraya sürükleyin veya <span class="text-[#1a73e8] font-medium">tıklayın...</span></p>
+            <div class="border border-dashed border-[#dadce0] dark:border-slate-700 rounded p-4 text-center hover:bg-[#f8f9fa] dark:hover:bg-slate-700/50 transition-colors cursor-pointer relative" @dragover.prevent @drop.prevent="onFileDrop" @click="triggerFileInput">
+              <p class="text-xs text-[#5f6368] dark:text-slate-400">Doküman eklemek için dokümanı buraya sürükleyin veya <span class="text-[#1a73e8] dark:text-blue-400 font-medium">tıklayın...</span></p>
               <input type="file" ref="fileInputRef" multiple @change="handleFileChange" class="hidden">
             </div>
 
-            <div class="overflow-x-auto border border-[#dadce0] rounded">
+            <div class="overflow-x-auto border border-[#dadce0] dark:border-slate-700 rounded">
               <table class="w-full text-sm border-collapse">
                 <thead>
-                  <tr class="bg-[#f8f9fa] border-b border-[#dadce0]">
+                  <tr class="bg-[#f8f9fa] dark:bg-slate-900 border-b border-[#dadce0] dark:border-slate-700">
                     <th class="px-4 py-3 text-left w-10">
-                      <input type="checkbox" @change="toggleSelectAll" class="w-4 h-4 border border-[#dadce0] rounded text-[#1a73e8] outline-none">
+                      <input type="checkbox" @change="toggleSelectAll" class="w-4 h-4 border border-[#dadce0] dark:border-slate-700 rounded text-[#1a73e8] dark:text-blue-400 outline-none">
                     </th>
-                    <th class="text-left text-xs font-medium text-[#5f6368] uppercase px-4 py-3">Dosya</th>
-                    <th class="text-left text-xs font-medium text-[#5f6368] uppercase px-4 py-3">Doküman Tipi</th>
-                    <th class="text-left text-xs font-medium text-[#5f6368] uppercase px-4 py-3">Boyut</th>
-                    <th class="text-left text-xs font-medium text-[#5f6368] uppercase px-4 py-3">Oluşturan</th>
-                    <th class="text-left text-xs font-medium text-[#5f6368] uppercase px-4 py-3">Oluşturma Tarihi</th>
+                    <th class="text-left text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase px-4 py-3">Dosya</th>
+                    <th class="text-left text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase px-4 py-3">Doküman Tipi</th>
+                    <th class="text-left text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase px-4 py-3">Boyut</th>
+                    <th class="text-left text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase px-4 py-3">Oluşturan</th>
+                    <th class="text-left text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase px-4 py-3">Oluşturma Tarihi</th>
                   </tr>
-                  <tr class="bg-white border-b border-[#dadce0]">
+                  <tr class="bg-white dark:bg-slate-800 border-b border-[#dadce0] dark:border-slate-700">
                     <td></td>
                     <td class="px-2 py-1.5">
-                      <input v-model="fileFilter" type="text" placeholder="Dosya ara..." class="w-full h-7 border border-[#dadce0] px-2 rounded text-xs bg-white outline-none">
+                      <input v-model="fileFilter" type="text" placeholder="Dosya ara..." class="w-full h-7 border border-[#dadce0] dark:border-slate-700 px-2 rounded text-xs bg-white dark:bg-slate-800 outline-none">
                     </td>
                     <td class="px-2 py-1.5">
-                      <input v-model="typeFilter" type="text" placeholder="Tip ara..." class="w-full h-7 border border-[#dadce0] px-2 rounded text-xs bg-white outline-none">
+                      <input v-model="typeFilter" type="text" placeholder="Tip ara..." class="w-full h-7 border border-[#dadce0] dark:border-slate-700 px-2 rounded text-xs bg-white dark:bg-slate-800 outline-none">
                     </td>
                     <td colspan="3"></td>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="att in filteredAttachments" :key="att.id" class="bg-white border-b border-[#f1f3f4] hover:bg-[#f8f9fa] transition-colors">
+                  <tr v-for="att in filteredAttachments" :key="att.id" class="bg-white dark:bg-slate-800 border-b border-[#f1f3f4] dark:border-slate-800 hover:bg-[#f8f9fa] dark:hover:bg-slate-700/50 transition-colors">
                     <td class="px-4 py-3">
-                      <input type="checkbox" :value="att.id" v-model="selectedAttachments" class="w-4 h-4 border border-[#dadce0] rounded text-[#1a73e8] outline-none">
+                      <input type="checkbox" :value="att.id" v-model="selectedAttachments" class="w-4 h-4 border border-[#dadce0] dark:border-slate-700 rounded text-[#1a73e8] dark:text-blue-400 outline-none">
                     </td>
-                    <td class="px-4 py-3 text-[#1a73e8] font-medium">
+                    <td class="px-4 py-3 text-[#1a73e8] dark:text-blue-400 font-medium">
                       <a :href="att.file_path" target="_blank" download class="hover:underline flex items-center gap-2">
-                        <i :class="getFileIcon(att.file_name)" class="text-gray-400"></i> {{ att.file_name }}
+                        <i :class="getFileIcon(att.file_name)" class="text-gray-400 dark:text-slate-500"></i> {{ att.file_name }}
                       </a>
                     </td>
-                    <td class="px-4 py-3 text-[#5f6368] font-mono text-xs">{{ att.file_type || 'Bilinmiyor' }}</td>
-                    <td class="px-4 py-3 text-[#5f6368]">{{ formatBytes(att.file_size) }}</td>
-                    <td class="px-4 py-3 text-[#202124]">{{ att.uploader_name || 'Talep Sahibi' }}</td>
-                    <td class="px-4 py-3 text-[#5f6368]">{{ fmtDateShort(att.created_at) }}</td>
+                    <td class="px-4 py-3 text-[#5f6368] dark:text-slate-400 font-mono text-xs">{{ att.file_type || 'Bilinmiyor' }}</td>
+                    <td class="px-4 py-3 text-[#5f6368] dark:text-slate-400">{{ formatBytes(att.file_size) }}</td>
+                    <td class="px-4 py-3 text-[#202124] dark:text-slate-100">{{ att.uploader_name || 'Talep Sahibi' }}</td>
+                    <td class="px-4 py-3 text-[#5f6368] dark:text-slate-400">{{ fmtDateShort(att.created_at) }}</td>
                   </tr>
                   <tr v-if="filteredAttachments.length === 0">
-                    <td colspan="6" class="text-center py-6 text-xs text-gray-400 italic">Eklenti bulunamadı.</td>
+                    <td colspan="6" class="text-center py-6 text-xs text-gray-400 dark:text-slate-500 italic">Eklenti bulunamadı.</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
             <div class="flex gap-2">
-              <button @click="downloadSelected" :disabled="selectedAttachments.length === 0" class="h-8 px-3 bg-white text-[#1a73e8] border border-[#dadce0] text-xs font-medium rounded hover:bg-[#f1f3f4] transition-colors disabled:opacity-50 flex items-center gap-1.5">
+              <button @click="downloadSelected" :disabled="selectedAttachments.length === 0" class="h-8 px-3 bg-white dark:bg-slate-800 text-[#1a73e8] dark:text-blue-400 border border-[#dadce0] dark:border-slate-700 text-xs font-medium rounded hover:bg-[#f1f3f4] dark:hover:bg-slate-700 transition-colors disabled:opacity-50 flex items-center gap-1.5">
                 <i class="fas fa-download"></i> İndir
               </button>
-              <button @click="deleteSelected" :disabled="selectedAttachments.length === 0" class="h-8 px-3 bg-white text-[#ea4335] border border-[#dadce0] text-xs font-medium rounded hover:bg-[#fce8e6] transition-colors disabled:opacity-50 flex items-center gap-1.5">
+              <button @click="deleteSelected" :disabled="selectedAttachments.length === 0" class="h-8 px-3 bg-white dark:bg-slate-800 text-[#ea4335] dark:text-red-400 border border-[#dadce0] dark:border-slate-700 text-xs font-medium rounded hover:bg-[#fce8e6] dark:hover:bg-red-500/10 transition-colors disabled:opacity-50 flex items-center gap-1.5">
                 <i class="fas fa-trash"></i> Sil
               </button>
-              <button @click="sendEmailSelected" :disabled="selectedAttachments.length === 0 || emailSending" class="h-8 px-3 bg-white text-[#34a853] border border-[#dadce0] text-xs font-medium rounded hover:bg-[#e6f4ea] transition-colors disabled:opacity-50 flex items-center gap-1.5">
+              <button @click="sendEmailSelected" :disabled="selectedAttachments.length === 0 || emailSending" class="h-8 px-3 bg-white dark:bg-slate-800 text-[#34a853] dark:text-green-400 border border-[#dadce0] dark:border-slate-700 text-xs font-medium rounded hover:bg-[#e6f4ea] dark:hover:bg-green-500/10 transition-colors disabled:opacity-50 flex items-center gap-1.5">
                 <i :class="emailSending ? 'fas fa-spinner fa-spin' : 'fas fa-envelope'"></i>
                 Bana E-Posta Gönder
               </button>
@@ -195,15 +195,15 @@
         </div>
 
         <!-- Right Panel: Live timer & WhatsApp-style chat timeline -->
-        <div class="w-96 flex flex-col bg-white border-l border-[#dadce0]">
+        <div class="w-96 flex flex-col bg-white dark:bg-slate-800 border-l border-[#dadce0] dark:border-slate-700">
           <!-- Live work timer and SLA -->
-          <div class="p-4 border-b border-[#dadce0] bg-[#f8f9fa] space-y-3 shrink-0">
+          <div class="p-4 border-b border-[#dadce0] dark:border-slate-700 bg-[#f8f9fa] dark:bg-slate-900 space-y-3 shrink-0">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-medium text-[#5f6368] uppercase tracking-wider">Çalışma Süresi</span>
-              <span class="text-sm font-mono font-medium text-[#202124]">{{ formatSeconds(displayTotalSeconds) }}</span>
+              <span class="text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase tracking-wider">Çalışma Süresi</span>
+              <span class="text-sm font-mono font-medium text-[#202124] dark:text-slate-100">{{ formatSeconds(displayTotalSeconds) }}</span>
             </div>
             
-            <div v-if="activeWorkLog" class="flex items-center justify-center gap-2 text-xs text-[#c5221f] font-medium animate-pulse bg-[#fce8e6] py-1 px-2 rounded border border-[#ea4335]/20">
+            <div v-if="activeWorkLog" class="flex items-center justify-center gap-2 text-xs text-[#c5221f] dark:text-red-400 font-medium animate-pulse bg-[#fce8e6] dark:bg-red-500/10 py-1 px-2 rounded border border-[#ea4335]/20">
               <span class="w-2.5 h-2.5 bg-[#ea4335] rounded-full"></span>
               <span>Aktif Çalışma: {{ formatSeconds(activeSeconds) }}</span>
             </div>
@@ -212,29 +212,29 @@
               <button v-if="!activeWorkLog" @click="startWorkTimer" class="flex-1 h-8 bg-[#1a73e8] text-white text-xs font-medium rounded hover:bg-[#174ea6] transition-colors flex items-center justify-center gap-2">
                 <i class="fas fa-play text-[9px]"></i> Çalışmayı Başlat
               </button>
-              <button v-else @click="stopWorkTimer" class="flex-1 h-8 bg-white text-[#ea4335] text-xs font-medium rounded border border-[#dadce0] hover:bg-[#fce8e6] transition-colors flex items-center justify-center gap-2">
+              <button v-else @click="stopWorkTimer" class="flex-1 h-8 bg-white dark:bg-slate-800 text-[#ea4335] dark:text-red-400 text-xs font-medium rounded border border-[#dadce0] dark:border-slate-700 hover:bg-[#fce8e6] dark:hover:bg-red-500/10 transition-colors flex items-center justify-center gap-2">
                 <i class="fas fa-pause text-[9px]"></i> Çalışmayı Durdur
               </button>
             </div>
           </div>
 
           <!-- Messages Timeline -->
-          <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50" id="messagesContainer">
+          <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 dark:bg-slate-800/50" id="messagesContainer">
             <div v-for="msg in messages" :key="msg.id" class="flex flex-col w-full" :class="[msg.user_id === authStore.userId ? 'items-end' : 'items-start']">
               <div v-if="!msg.user_id" class="self-center my-2">
-                <span class="px-3 py-1 bg-white text-gray-500 text-[11px] font-medium rounded border border-gray-100 shadow-sm">
-                  <i class="fas fa-info-circle mr-1 text-[#1a73e8]"></i> {{ msg.message }}
+                <span class="px-3 py-1 bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 text-[11px] font-medium rounded border border-gray-100 dark:border-slate-800 shadow-sm">
+                  <i class="fas fa-info-circle mr-1 text-[#1a73e8] dark:text-blue-400"></i> {{ msg.message }}
                 </span>
               </div>
               <div v-else class="flex flex-col max-w-[85%]" :class="[msg.user_id === authStore.userId ? 'items-end' : 'items-start']">
-                <div class="text-[10px] text-gray-400 mb-0.5 px-1 font-normal">
+                <div class="text-[10px] text-gray-400 dark:text-slate-500 mb-0.5 px-1 font-normal">
                   {{ msg.user_name }} • {{ fmtTime(msg.created_at) }}
-                  <span v-if="msg.is_internal" class="text-[#b06000] ml-2 font-medium"><i class="fas fa-eye-slash text-[9px]"></i> Gizli</span>
+                  <span v-if="msg.is_internal" class="text-[#b06000] dark:text-amber-400 ml-2 font-medium"><i class="fas fa-eye-slash text-[9px]"></i> Gizli</span>
                 </div>
                 <div class="p-3 rounded border text-xs leading-relaxed break-words"
                      :class="[
-                       msg.is_internal ? 'bg-[#fef7e0] text-[#b06000] border-[#fbbc04]/30 rounded-bl-none' :
-                       msg.user_id === authStore.userId ? 'bg-[#e8f0fe] text-[#1a73e8] border-[#1a73e8]/30 rounded-br-none' : 'bg-white border-[#dadce0] text-[#202124] rounded-bl-none'
+                       msg.is_internal ? 'bg-[#fef7e0] dark:bg-amber-500/10 text-[#b06000] dark:text-amber-400 border-[#fbbc04]/30 rounded-bl-none' :
+                       msg.user_id === authStore.userId ? 'bg-[#e8f0fe] dark:bg-blue-500/10 text-[#1a73e8] dark:text-blue-400 border-[#1a73e8]/30 rounded-br-none' : 'bg-white dark:bg-slate-800 border-[#dadce0] dark:border-slate-700 text-[#202124] dark:text-slate-100 rounded-bl-none'
                      ]">
                   <p class="whitespace-pre-wrap">{{ msg.message }}</p>
                 </div>
@@ -243,20 +243,20 @@
           </div>
 
           <!-- Message Input -->
-          <div class="p-3 bg-white border-t border-[#dadce0] shrink-0">
+          <div class="p-3 bg-white dark:bg-slate-800 border-t border-[#dadce0] dark:border-slate-700 shrink-0">
             <form @submit.prevent="sendMessage" class="flex gap-2 items-end">
-              <div class="flex-1 bg-white border border-[#dadce0] rounded p-1.5 focus-within:border-[#1a73e8] transition-all flex flex-col">
-                <textarea v-model="newMessage" rows="2" class="w-full bg-transparent resize-none outline-none text-xs px-1 placeholder-[#9aa0a6] text-[#202124]" placeholder="Mesajınızı yazın..." @keydown.enter.exact.prevent="sendMessage"></textarea>
-                <div class="flex items-center justify-between mt-1 pt-1.5 border-t border-[#f1f3f4]">
+              <div class="flex-1 bg-white dark:bg-slate-800 border border-[#dadce0] dark:border-slate-700 rounded p-1.5 focus-within:border-[#1a73e8] transition-all flex flex-col">
+                <textarea v-model="newMessage" rows="2" class="w-full bg-transparent resize-none outline-none text-xs px-1 placeholder-[#9aa0a6] text-[#202124] dark:text-slate-100" placeholder="Mesajınızı yazın..." @keydown.enter.exact.prevent="sendMessage"></textarea>
+                <div class="flex items-center justify-between mt-1 pt-1.5 border-t border-[#f1f3f4] dark:border-slate-800">
                   <div v-if="isAdminOrTech" class="flex items-center justify-between w-full">
                     <div class="flex items-center gap-1.5">
                       <label class="flex items-center gap-1 cursor-pointer">
-                        <input type="checkbox" v-model="isInternal" class="w-3.5 h-3.5 border border-[#dadce0] rounded text-[#1a73e8] outline-none">
-                        <span class="text-[10px] font-medium text-[#5f6368] select-none">Gizli Not</span>
+                        <input type="checkbox" v-model="isInternal" class="w-3.5 h-3.5 border border-[#dadce0] dark:border-slate-700 rounded text-[#1a73e8] dark:text-blue-400 outline-none">
+                        <span class="text-[10px] font-medium text-[#5f6368] dark:text-slate-400 select-none">Gizli Not</span>
                       </label>
                     </div>
                     <div>
-                      <select @change="applyCannedResponse" class="h-6 px-1.5 bg-gray-50 border border-[#dadce0] rounded text-[10px] font-medium outline-none focus:border-[#1a73e8] cursor-pointer max-w-[150px] text-gray-700">
+                      <select @change="applyCannedResponse" class="h-6 px-1.5 bg-gray-50 dark:bg-slate-900 border border-[#dadce0] dark:border-slate-700 rounded text-[10px] font-medium outline-none focus:border-[#1a73e8] cursor-pointer max-w-[150px] text-gray-700 dark:text-slate-300">
                         <option value="">Hazır Şablon Seç...</option>
                         <option v-for="(cr, idx) in cannedResponses" :key="idx" :value="cr.text">{{ cr.title }}</option>
                       </select>
@@ -275,14 +275,14 @@
 
       <!-- TAB 2: ÇÖZÜMLEME -->
       <div v-if="activeTab === 'resolve'" class="flex-1 overflow-y-auto p-6 max-w-4xl w-full mx-auto space-y-6">
-        <div class="bg-white border border-[#dadce0] rounded-md p-6 shadow-sm space-y-6">
-          <div class="flex items-center gap-3 border-b border-[#dadce0] pb-4">
-            <div class="w-10 h-10 rounded-full bg-[#e6f4ea] text-[#137333] flex items-center justify-center text-lg">
+        <div class="bg-white dark:bg-slate-800 border border-[#dadce0] dark:border-slate-700 rounded-md p-6 shadow-sm space-y-6">
+          <div class="flex items-center gap-3 border-b border-[#dadce0] dark:border-slate-700 pb-4">
+            <div class="w-10 h-10 rounded-full bg-[#e6f4ea] dark:bg-green-500/10 text-[#137333] dark:text-green-400 flex items-center justify-center text-lg">
               <i class="fas fa-check-circle"></i>
             </div>
             <div>
-              <h2 class="text-base font-semibold text-[#202124]">Talep Çözüm Bilgileri</h2>
-              <p class="text-xs text-[#5f6368]">Bu talebin çözümüne dair ayrıntılı bilgiler.</p>
+              <h2 class="text-base font-semibold text-[#202124] dark:text-slate-100">Talep Çözüm Bilgileri</h2>
+              <p class="text-xs text-[#5f6368] dark:text-slate-400">Bu talebin çözümüne dair ayrıntılı bilgiler.</p>
             </div>
           </div>
 
@@ -290,24 +290,24 @@
           <div v-if="ticket.status === 'Çözüldü' || ticket.status === 'Kapalı'" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <span class="text-xs font-semibold text-[#5f6368] block uppercase">Çözüm Tarihi:</span>
-                <span class="text-sm font-medium text-[#202124]">{{ ticket.resolved_at ? fmtDateShort(ticket.resolved_at) : '-' }}</span>
+                <span class="text-xs font-semibold text-[#5f6368] dark:text-slate-400 block uppercase">Çözüm Tarihi:</span>
+                <span class="text-sm font-medium text-[#202124] dark:text-slate-100">{{ ticket.resolved_at ? fmtDateShort(ticket.resolved_at) : '-' }}</span>
               </div>
               <div>
-                <span class="text-xs font-semibold text-[#5f6368] block uppercase">Kapatılma Tarihi:</span>
-                <span class="text-sm font-medium text-[#202124]">{{ ticket.closed_at ? fmtDateShort(ticket.closed_at) : 'Henüz kapatılmadı' }}</span>
+                <span class="text-xs font-semibold text-[#5f6368] dark:text-slate-400 block uppercase">Kapatılma Tarihi:</span>
+                <span class="text-sm font-medium text-[#202124] dark:text-slate-100">{{ ticket.closed_at ? fmtDateShort(ticket.closed_at) : 'Henüz kapatılmadı' }}</span>
               </div>
             </div>
-            <div class="bg-[#f8f9fa] border border-[#dadce0] rounded p-4">
-              <span class="text-xs font-semibold text-[#5f6368] block uppercase mb-2">Çözüm Açıklaması / Raporu:</span>
-              <p class="text-sm text-[#202124] whitespace-pre-wrap leading-relaxed">{{ ticket.resolution_note || 'Açıklama girilmemiş.' }}</p>
+            <div class="bg-[#f8f9fa] dark:bg-slate-900 border border-[#dadce0] dark:border-slate-700 rounded p-4">
+              <span class="text-xs font-semibold text-[#5f6368] dark:text-slate-400 block uppercase mb-2">Çözüm Açıklaması / Raporu:</span>
+              <p class="text-sm text-[#202124] dark:text-slate-100 whitespace-pre-wrap leading-relaxed">{{ ticket.resolution_note || 'Açıklama girilmemiş.' }}</p>
             </div>
           </div>
 
           <!-- If ticket is not resolved (Inline resolution form) -->
           <div v-else class="space-y-4">
-            <div class="bg-yellow-50 border border-yellow-100 rounded-md p-4 flex gap-3 text-yellow-800 text-xs leading-relaxed">
-              <i class="fas fa-exclamation-triangle text-yellow-600 text-sm"></i>
+            <div class="bg-yellow-50 dark:bg-amber-500/10 border border-yellow-100 dark:border-amber-500/30 rounded-md p-4 flex gap-3 text-yellow-800 dark:text-amber-300 text-xs leading-relaxed">
+              <i class="fas fa-exclamation-triangle text-yellow-600 dark:text-amber-400 text-sm"></i>
               <div>
                 <span class="font-semibold block mb-0.5">Talep Henüz Çözülmedi</span>
                 Bu talebi sonuca ulaştırmak için aşağıdaki çözüm açıklamasını eksiksiz doldurarak bilet durumunu "Çözüldü" olarak işaretleyebilirsiniz. Kullanıcıya otomatik bildirim gönderilecektir.
@@ -315,8 +315,8 @@
             </div>
 
             <div class="space-y-2">
-              <label class="block text-xs font-semibold text-[#5f6368] uppercase">Çözüm Açıklaması (Zorunlu) *</label>
-              <textarea v-model="resolutionNote" rows="6" class="w-full border border-[#dadce0] px-3 py-2 rounded text-sm text-[#202124] bg-white outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] transition-colors resize-none" placeholder="Sorunun nasıl çözüldüğünü açıklayınız..."></textarea>
+              <label class="block text-xs font-semibold text-[#5f6368] dark:text-slate-400 uppercase">Çözüm Açıklaması (Zorunlu) *</label>
+              <textarea v-model="resolutionNote" rows="6" class="w-full border border-[#dadce0] dark:border-slate-700 px-3 py-2 rounded text-sm text-[#202124] dark:text-slate-100 bg-white dark:bg-slate-800 outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] transition-colors resize-none" placeholder="Sorunun nasıl çözüldüğünü açıklayınız..."></textarea>
             </div>
 
             <div class="flex justify-end gap-3 pt-2">
@@ -330,32 +330,32 @@
 
       <!-- TAB 3: GÖREVLER -->
       <div v-if="activeTab === 'tasks'" class="flex-1 overflow-y-auto p-6 max-w-4xl w-full mx-auto space-y-6">
-        <div class="bg-white border border-[#dadce0] rounded-md p-6 shadow-sm space-y-6">
-          <div class="flex items-center justify-between border-b border-[#dadce0] pb-4 flex-wrap gap-4">
+        <div class="bg-white dark:bg-slate-800 border border-[#dadce0] dark:border-slate-700 rounded-md p-6 shadow-sm space-y-6">
+          <div class="flex items-center justify-between border-b border-[#dadce0] dark:border-slate-700 pb-4 flex-wrap gap-4">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-[#e8f0fe] text-[#1a73e8] flex items-center justify-center text-lg">
+              <div class="w-10 h-10 rounded-full bg-[#e8f0fe] dark:bg-blue-500/10 text-[#1a73e8] dark:text-blue-400 flex items-center justify-center text-lg">
                 <i class="fas fa-tasks"></i>
               </div>
               <div>
-                <h2 class="text-base font-semibold text-[#202124]">Talep Alt Görevleri</h2>
-                <p class="text-xs text-[#5f6368]">Bu talebin tamamlanması için oluşturulmuş teknik alt görevler.</p>
+                <h2 class="text-base font-semibold text-[#202124] dark:text-slate-100">Talep Alt Görevleri</h2>
+                <p class="text-xs text-[#5f6368] dark:text-slate-400">Bu talebin tamamlanması için oluşturulmuş teknik alt görevler.</p>
               </div>
             </div>
             
-            <div class="text-xs font-medium text-[#1a73e8] bg-[#e8f0fe] py-1 px-3 rounded-full border border-[#1a73e8]/10">
+            <div class="text-xs font-medium text-[#1a73e8] dark:text-blue-400 bg-[#e8f0fe] dark:bg-blue-500/10 py-1 px-3 rounded-full border border-[#1a73e8]/10">
               {{ tasks.filter(t => t.status === 'Completed').length }} / {{ tasks.length }} Tamamlandı
             </div>
           </div>
 
           <!-- Add Task Form -->
-          <div v-if="isAdminOrTech" class="bg-[#f8f9fa] border border-[#dadce0] rounded p-4 flex gap-3 flex-wrap items-end">
+          <div v-if="isAdminOrTech" class="bg-[#f8f9fa] dark:bg-slate-900 border border-[#dadce0] dark:border-slate-700 rounded p-4 flex gap-3 flex-wrap items-end">
             <div class="flex-1 min-w-[200px] space-y-1">
-              <label class="block text-[11px] font-semibold text-[#5f6368] uppercase">Görev Tanımı</label>
-              <input v-model="newTaskTitle" type="text" placeholder="Yapılacak iş..." class="w-full h-9 border border-[#dadce0] px-3 rounded text-sm bg-white outline-none focus:border-[#1a73e8]">
+              <label class="block text-[11px] font-semibold text-[#5f6368] dark:text-slate-400 uppercase">Görev Tanımı</label>
+              <input v-model="newTaskTitle" type="text" placeholder="Yapılacak iş..." class="w-full h-9 border border-[#dadce0] dark:border-slate-700 px-3 rounded text-sm bg-white dark:bg-slate-800 outline-none focus:border-[#1a73e8]">
             </div>
             <div class="w-48 min-w-[150px] space-y-1">
-              <label class="block text-[11px] font-semibold text-[#5f6368] uppercase">Sorumlu</label>
-              <select v-model="newTaskAssignee" class="w-full h-9 border border-[#dadce0] px-3 rounded text-sm bg-white outline-none focus:border-[#1a73e8]">
+              <label class="block text-[11px] font-semibold text-[#5f6368] dark:text-slate-400 uppercase">Sorumlu</label>
+              <select v-model="newTaskAssignee" class="w-full h-9 border border-[#dadce0] dark:border-slate-700 px-3 rounded text-sm bg-white dark:bg-slate-800 outline-none focus:border-[#1a73e8]">
                 <option value="">Ata (Bilinmeyen)</option>
                 <option v-for="user in eligibleUsers" :key="user.id" :value="user.id">{{ user.full_name }}</option>
               </select>
@@ -366,10 +366,10 @@
           </div>
 
           <!-- Tasks List -->
-          <div class="border border-[#dadce0] rounded overflow-hidden">
+          <div class="border border-[#dadce0] dark:border-slate-700 rounded overflow-hidden">
             <table class="w-full text-sm border-collapse">
               <thead>
-                <tr class="bg-[#f8f9fa] border-b border-[#dadce0] text-xs font-semibold text-[#5f6368] uppercase">
+                <tr class="bg-[#f8f9fa] dark:bg-slate-900 border-b border-[#dadce0] dark:border-slate-700 text-xs font-semibold text-[#5f6368] dark:text-slate-400 uppercase">
                   <th class="px-4 py-3 text-left w-12">Durum</th>
                   <th class="px-4 py-3 text-left">Görev</th>
                   <th class="px-4 py-3 text-left w-48">Sorumlu</th>
@@ -378,27 +378,27 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="task in tasks" :key="task.id" class="bg-white border-b border-[#f1f3f4] hover:bg-[#f8f9fa] transition-colors" :class="{'opacity-60 bg-gray-50/50': task.status === 'Completed'}">
+                <tr v-for="task in tasks" :key="task.id" class="bg-white dark:bg-slate-800 border-b border-[#f1f3f4] dark:border-slate-800 hover:bg-[#f8f9fa] dark:hover:bg-slate-700/50 transition-colors" :class="{'opacity-60 bg-gray-50/50 dark:bg-slate-800/50': task.status === 'Completed'}">
                   <td class="px-4 py-3 text-center">
-                    <input type="checkbox" :checked="task.status === 'Completed'" @change="toggleTaskStatus(task.id)" :disabled="!isAdminOrTech" class="w-4.5 h-4.5 border border-[#dadce0] rounded text-[#1a73e8] outline-none cursor-pointer">
+                    <input type="checkbox" :checked="task.status === 'Completed'" @change="toggleTaskStatus(task.id)" :disabled="!isAdminOrTech" class="w-4.5 h-4.5 border border-[#dadce0] dark:border-slate-700 rounded text-[#1a73e8] dark:text-blue-400 outline-none cursor-pointer">
                   </td>
-                  <td class="px-4 py-3 font-medium" :class="{'line-through text-gray-400': task.status === 'Completed'}">
+                  <td class="px-4 py-3 font-medium" :class="{'line-through text-gray-400 dark:text-slate-500': task.status === 'Completed'}">
                     {{ task.title }}
                   </td>
-                  <td class="px-4 py-3 text-[#202124] font-medium text-xs">
-                    <i class="far fa-user text-gray-400 mr-1.5"></i> {{ task.assigned_name || 'Atanmadı' }}
+                  <td class="px-4 py-3 text-[#202124] dark:text-slate-100 font-medium text-xs">
+                    <i class="far fa-user text-gray-400 dark:text-slate-500 mr-1.5"></i> {{ task.assigned_name || 'Atanmadı' }}
                   </td>
-                  <td class="px-4 py-3 text-[#5f6368] text-xs">
+                  <td class="px-4 py-3 text-[#5f6368] dark:text-slate-400 text-xs">
                     {{ fmtDateShort(task.created_at) }}
                   </td>
                   <td class="px-4 py-3 text-center" v-if="isAdminOrTech">
-                    <button @click="deleteTaskById(task.id)" class="w-7 h-7 flex items-center justify-center rounded text-[#ea4335] hover:bg-[#fce8e6] transition-colors mx-auto">
+                    <button @click="deleteTaskById(task.id)" class="w-7 h-7 flex items-center justify-center rounded text-[#ea4335] dark:text-red-400 hover:bg-[#fce8e6] dark:hover:bg-red-500/10 transition-colors mx-auto">
                       <i class="fas fa-trash-alt text-xs"></i>
                     </button>
                   </td>
                 </tr>
                 <tr v-if="tasks.length === 0">
-                  <td colspan="5" class="text-center py-8 text-xs text-gray-400 italic">Bu bilet için henüz alt görev eklenmedi.</td>
+                  <td colspan="5" class="text-center py-8 text-xs text-gray-400 dark:text-slate-500 italic">Bu bilet için henüz alt görev eklenmedi.</td>
                 </tr>
               </tbody>
             </table>
@@ -408,34 +408,34 @@
 
       <!-- TAB 4: KONTROL LİSTESİ -->
       <div v-if="activeTab === 'checklist'" class="flex-1 overflow-y-auto p-6 max-w-4xl w-full mx-auto space-y-6">
-        <div class="bg-white border border-[#dadce0] rounded-md p-6 shadow-sm space-y-6">
+        <div class="bg-white dark:bg-slate-800 border border-[#dadce0] dark:border-slate-700 rounded-md p-6 shadow-sm space-y-6">
           
-          <div class="flex items-center justify-between border-b border-[#dadce0] pb-4 flex-wrap gap-4">
+          <div class="flex items-center justify-between border-b border-[#dadce0] dark:border-slate-700 pb-4 flex-wrap gap-4">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-[#fef7e0] text-[#b06000] flex items-center justify-center text-lg">
+              <div class="w-10 h-10 rounded-full bg-[#fef7e0] dark:bg-amber-500/10 text-[#b06000] dark:text-amber-400 flex items-center justify-center text-lg">
                 <i class="fas fa-list-ol"></i>
               </div>
               <div>
-                <h2 class="text-base font-semibold text-[#202124]">Kontrol Listesi (Checklist)</h2>
-                <p class="text-xs text-[#5f6368]">Talep tamamlanmadan önce yerine getirilmesi gereken standart prosedür adımları.</p>
+                <h2 class="text-base font-semibold text-[#202124] dark:text-slate-100">Kontrol Listesi (Checklist)</h2>
+                <p class="text-xs text-[#5f6368] dark:text-slate-400">Talep tamamlanmadan önce yerine getirilmesi gereken standart prosedür adımları.</p>
               </div>
             </div>
           </div>
 
           <!-- Progress Bar -->
           <div class="space-y-2" v-if="checklist.length > 0">
-            <div class="flex justify-between text-xs font-medium text-[#202124]">
+            <div class="flex justify-between text-xs font-medium text-[#202124] dark:text-slate-100">
               <span>Tamamlanma Oranı</span>
               <span>{{ Math.round((checklist.filter(c => c.is_checked === 1).length / checklist.length) * 100) }}%</span>
             </div>
-            <div class="w-full bg-[#f1f3f4] h-2 rounded-full overflow-hidden">
+            <div class="w-full bg-[#f1f3f4] dark:bg-slate-700 h-2 rounded-full overflow-hidden">
               <div class="bg-[#34a853] h-full transition-all duration-300" :style="{width: `${(checklist.filter(c => c.is_checked === 1).length / checklist.length) * 100}%`}"></div>
             </div>
           </div>
 
           <!-- Add Item Form -->
           <div v-if="isAdminOrTech" class="flex gap-3">
-            <input v-model="newChecklistTitle" type="text" placeholder="Yeni adım ekle..." class="flex-1 h-9 border border-[#dadce0] px-3 rounded text-sm bg-white outline-none focus:border-[#1a73e8]" @keydown.enter.prevent="addChecklistItem">
+            <input v-model="newChecklistTitle" type="text" placeholder="Yeni adım ekle..." class="flex-1 h-9 border border-[#dadce0] dark:border-slate-700 px-3 rounded text-sm bg-white dark:bg-slate-800 outline-none focus:border-[#1a73e8]" @keydown.enter.prevent="addChecklistItem">
             <button @click="addChecklistItem" :disabled="!newChecklistTitle.trim()" class="h-9 px-4 bg-[#b06000] text-white text-sm font-medium rounded hover:bg-[#8f4f00] transition-colors disabled:opacity-50 shadow-sm shrink-0">
               <i class="fas fa-plus"></i> Ekle
             </button>
@@ -443,17 +443,17 @@
 
           <!-- Checklist Items -->
           <div class="space-y-2.5">
-            <div v-for="item in checklist" :key="item.id" class="flex items-center justify-between p-3.5 bg-white border border-[#dadce0] rounded hover:shadow-sm transition-all" :class="{'bg-[#f8f9fa] border-dashed border-[#dadce0]/60 opacity-70': item.is_checked === 1}">
+            <div v-for="item in checklist" :key="item.id" class="flex items-center justify-between p-3.5 bg-white dark:bg-slate-800 border border-[#dadce0] dark:border-slate-700 rounded hover:shadow-sm transition-all" :class="{'bg-[#f8f9fa] dark:bg-slate-900 border-dashed border-[#dadce0]/60 opacity-70': item.is_checked === 1}">
               <label class="flex items-center gap-3 cursor-pointer flex-1 min-w-0 select-none">
-                <input type="checkbox" :checked="item.is_checked === 1" @change="toggleChecklistItemStatus(item.id)" :disabled="!isAdminOrTech" class="w-4.5 h-4.5 border border-[#dadce0] rounded text-[#1a73e8] outline-none cursor-pointer shrink-0">
-                <span class="text-sm font-medium text-[#202124] break-words" :class="{'line-through text-gray-400': item.is_checked === 1}">{{ item.title }}</span>
+                <input type="checkbox" :checked="item.is_checked === 1" @change="toggleChecklistItemStatus(item.id)" :disabled="!isAdminOrTech" class="w-4.5 h-4.5 border border-[#dadce0] dark:border-slate-700 rounded text-[#1a73e8] dark:text-blue-400 outline-none cursor-pointer shrink-0">
+                <span class="text-sm font-medium text-[#202124] dark:text-slate-100 break-words" :class="{'line-through text-gray-400 dark:text-slate-500': item.is_checked === 1}">{{ item.title }}</span>
               </label>
-              <button v-if="isAdminOrTech" @click="deleteChecklistItemById(item.id)" class="w-7 h-7 flex items-center justify-center text-[#ea4335] hover:bg-[#fce8e6] rounded-full transition-colors shrink-0 ml-2">
+              <button v-if="isAdminOrTech" @click="deleteChecklistItemById(item.id)" class="w-7 h-7 flex items-center justify-center text-[#ea4335] dark:text-red-400 hover:bg-[#fce8e6] dark:hover:bg-red-500/10 rounded-full transition-colors shrink-0 ml-2">
                 <i class="fas fa-times text-sm"></i>
               </button>
             </div>
             
-            <div v-if="checklist.length === 0" class="text-center py-8 text-xs text-gray-400 italic">Kontrol listesi tanımlanmamış.</div>
+            <div v-if="checklist.length === 0" class="text-center py-8 text-xs text-gray-400 dark:text-slate-500 italic">Kontrol listesi tanımlanmamış.</div>
           </div>
 
         </div>
@@ -461,34 +461,34 @@
 
       <!-- TAB 5: İŞ GÜNLÜKLERİ -->
       <div v-if="activeTab === 'worklogs'" class="flex-1 overflow-y-auto p-6 max-w-4xl w-full mx-auto space-y-6">
-        <div class="bg-white border border-[#dadce0] rounded-md p-6 shadow-sm space-y-6">
-          <div class="flex items-center justify-between border-b border-[#dadce0] pb-4 flex-wrap gap-4">
+        <div class="bg-white dark:bg-slate-800 border border-[#dadce0] dark:border-slate-700 rounded-md p-6 shadow-sm space-y-6">
+          <div class="flex items-center justify-between border-b border-[#dadce0] dark:border-slate-700 pb-4 flex-wrap gap-4">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-[#e6f4ea] text-[#137333] flex items-center justify-center text-lg">
+              <div class="w-10 h-10 rounded-full bg-[#e6f4ea] dark:bg-green-500/10 text-[#137333] dark:text-green-400 flex items-center justify-center text-lg">
                 <i class="far fa-clock"></i>
               </div>
               <div>
-                <h2 class="text-base font-semibold text-[#202124]">Zaman Kayıtları (İş Günlükleri)</h2>
-                <p class="text-xs text-[#5f6368]">Teknisyenlerin bu talep üzerinde harcadığı tüm çalışma sürelerinin dökümü.</p>
+                <h2 class="text-base font-semibold text-[#202124] dark:text-slate-100">Zaman Kayıtları (İş Günlükleri)</h2>
+                <p class="text-xs text-[#5f6368] dark:text-slate-400">Teknisyenlerin bu talep üzerinde harcadığı tüm çalışma sürelerinin dökümü.</p>
               </div>
             </div>
             
-            <div class="text-sm font-mono font-medium text-[#202124] bg-gray-100 py-1 px-3.5 rounded border border-gray-200 shadow-sm">
+            <div class="text-sm font-mono font-medium text-[#202124] dark:text-slate-100 bg-gray-100 dark:bg-slate-700 py-1 px-3.5 rounded border border-gray-200 dark:border-slate-700 shadow-sm">
               Toplam Süre: {{ formatSeconds(displayTotalSeconds) }}
             </div>
           </div>
 
           <!-- Active Log Warning -->
-          <div v-if="activeWorkLog" class="bg-[#fce8e6] border border-[#ea4335]/20 rounded p-4 flex items-center gap-3 text-[#c5221f] text-xs font-semibold animate-pulse">
+          <div v-if="activeWorkLog" class="bg-[#fce8e6] dark:bg-red-500/10 border border-[#ea4335]/20 rounded p-4 flex items-center gap-3 text-[#c5221f] dark:text-red-400 text-xs font-semibold animate-pulse">
             <span class="w-2.5 h-2.5 bg-[#ea4335] rounded-full shrink-0"></span>
             <div>Şu anda aktif çalışan bir sayaç bulunuyor: {{ formatSeconds(activeSeconds) }} (Teknisyen tarafından başlatıldı)</div>
           </div>
 
           <!-- Logs Table -->
-          <div class="border border-[#dadce0] rounded overflow-hidden">
+          <div class="border border-[#dadce0] dark:border-slate-700 rounded overflow-hidden">
             <table class="w-full text-sm border-collapse">
               <thead>
-                <tr class="bg-[#f8f9fa] border-b border-[#dadce0] text-xs font-semibold text-[#5f6368] uppercase">
+                <tr class="bg-[#f8f9fa] dark:bg-slate-900 border-b border-[#dadce0] dark:border-slate-700 text-xs font-semibold text-[#5f6368] dark:text-slate-400 uppercase">
                   <th class="px-4 py-3 text-left">Teknisyen</th>
                   <th class="px-4 py-3 text-left">Başlangıç</th>
                   <th class="px-4 py-3 text-left">Bitiş</th>
@@ -497,28 +497,28 @@
               </thead>
               <tbody>
                 <!-- Active Running Work Log if exists -->
-                <tr v-if="activeWorkLog" class="bg-[#fffdf4] border-b border-[#dadce0]/50 italic">
-                  <td class="px-4 py-3 font-semibold text-[#b06000]">
+                <tr v-if="activeWorkLog" class="bg-[#fffdf4] dark:bg-amber-500/5 border-b border-[#dadce0]/50 dark:border-slate-700/50 italic">
+                  <td class="px-4 py-3 font-semibold text-[#b06000] dark:text-amber-400">
                     {{ eligibleUsers.find(u => u.id === activeWorkLog.user_id)?.full_name || authStore.userName || 'Aktif Teknisyen' }}
-                    <span class="text-[10px] bg-[#fef7e0] border border-[#fbbc04]/30 px-1.5 py-0.5 rounded ml-1.5 uppercase font-bold text-[#b06000]">Aktif</span>
+                    <span class="text-[10px] bg-[#fef7e0] dark:bg-amber-500/10 border border-[#fbbc04]/30 px-1.5 py-0.5 rounded ml-1.5 uppercase font-bold text-[#b06000] dark:text-amber-400">Aktif</span>
                   </td>
                   <td class="px-4 py-3 text-xs">{{ fmtDateShort(activeWorkLog.started_at) }}</td>
-                  <td class="px-4 py-3 text-xs text-gray-400 italic">Sürüyor...</td>
-                  <td class="px-4 py-3 text-right font-mono text-xs font-bold text-[#b06000]">{{ formatSeconds(activeSeconds) }}</td>
+                  <td class="px-4 py-3 text-xs text-gray-400 dark:text-slate-500 italic">Sürüyor...</td>
+                  <td class="px-4 py-3 text-right font-mono text-xs font-bold text-[#b06000] dark:text-amber-400">{{ formatSeconds(activeSeconds) }}</td>
                 </tr>
                 
                 <!-- Completed Logs -->
-                <tr v-for="log in workLogs.filter(wl => wl.ended_at)" :key="log.id" class="bg-white border-b border-[#f1f3f4] hover:bg-[#f8f9fa] transition-colors">
-                  <td class="px-4 py-3 font-medium text-[#202124]">{{ log.user_name || 'Bilinmeyen Teknisyen' }}</td>
-                  <td class="px-4 py-3 text-[#5f6368] text-xs">{{ fmtDateShort(log.started_at) }}</td>
-                  <td class="px-4 py-3 text-[#5f6368] text-xs">{{ fmtDateShort(log.ended_at) }}</td>
-                  <td class="px-4 py-3 text-right font-mono text-xs font-medium text-gray-700">
+                <tr v-for="log in workLogs.filter(wl => wl.ended_at)" :key="log.id" class="bg-white dark:bg-slate-800 border-b border-[#f1f3f4] dark:border-slate-800 hover:bg-[#f8f9fa] dark:hover:bg-slate-700/50 transition-colors">
+                  <td class="px-4 py-3 font-medium text-[#202124] dark:text-slate-100">{{ log.user_name || 'Bilinmeyen Teknisyen' }}</td>
+                  <td class="px-4 py-3 text-[#5f6368] dark:text-slate-400 text-xs">{{ fmtDateShort(log.started_at) }}</td>
+                  <td class="px-4 py-3 text-[#5f6368] dark:text-slate-400 text-xs">{{ fmtDateShort(log.ended_at) }}</td>
+                  <td class="px-4 py-3 text-right font-mono text-xs font-medium text-gray-700 dark:text-slate-300">
                     {{ log.duration_seconds }} sn ({{ formatSeconds(log.duration_seconds) }})
                   </td>
                 </tr>
 
                 <tr v-if="workLogs.filter(wl => wl.ended_at).length === 0 && !activeWorkLog">
-                  <td colspan="4" class="text-center py-8 text-xs text-gray-400 italic">Bu talep üzerinde kaydedilmiş çalışma süresi bulunamadı.</td>
+                  <td colspan="4" class="text-center py-8 text-xs text-gray-400 dark:text-slate-500 italic">Bu talep üzerinde kaydedilmiş çalışma süresi bulunamadı.</td>
                 </tr>
               </tbody>
             </table>
@@ -528,61 +528,61 @@
 
       <!-- TAB 6: ZAMAN ANALİZİ -->
       <div v-if="activeTab === 'timeanalysis'" class="flex-1 overflow-y-auto p-6 max-w-4xl w-full mx-auto space-y-6">
-        <div class="bg-white border border-[#dadce0] rounded-md p-6 shadow-sm space-y-6">
-          <div class="flex items-center gap-3 border-b border-[#dadce0] pb-4">
-            <div class="w-10 h-10 rounded-full bg-[#f1f3f4] text-[#5f6368] flex items-center justify-center text-lg">
+        <div class="bg-white dark:bg-slate-800 border border-[#dadce0] dark:border-slate-700 rounded-md p-6 shadow-sm space-y-6">
+          <div class="flex items-center gap-3 border-b border-[#dadce0] dark:border-slate-700 pb-4">
+            <div class="w-10 h-10 rounded-full bg-[#f1f3f4] dark:bg-slate-700 text-[#5f6368] dark:text-slate-400 flex items-center justify-center text-lg">
               <i class="fas fa-chart-pie"></i>
             </div>
             <div>
-              <h2 class="text-base font-semibold text-[#202124]">Zaman Analizi & Efor Dağılımı</h2>
-              <p class="text-xs text-[#5f6368]">Kayıtlı eforların teknisyen bazında analizi ve SLA durum özeti.</p>
+              <h2 class="text-base font-semibold text-[#202124] dark:text-slate-100">Zaman Analizi & Efor Dağılımı</h2>
+              <p class="text-xs text-[#5f6368] dark:text-slate-400">Kayıtlı eforların teknisyen bazında analizi ve SLA durum özeti.</p>
             </div>
           </div>
 
           <!-- Dashboard Cards -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- SLA status card -->
-            <div class="border border-[#dadce0] rounded-lg p-5 bg-[#f8f9fa] flex flex-col justify-between">
-              <span class="text-xs font-semibold text-[#5f6368] uppercase tracking-wider block mb-2">SLA Hedefi</span>
+            <div class="border border-[#dadce0] dark:border-slate-700 rounded-lg p-5 bg-[#f8f9fa] dark:bg-slate-900 flex flex-col justify-between">
+              <span class="text-xs font-semibold text-[#5f6368] dark:text-slate-400 uppercase tracking-wider block mb-2">SLA Hedefi</span>
               <div>
-                <span class="text-sm font-semibold block text-[#202124]">{{ slaText || 'SLA Yok' }}</span>
-                <span class="text-[11px] text-[#5f6368] mt-1 block">Öngörülen çözüm vadesi.</span>
+                <span class="text-sm font-semibold block text-[#202124] dark:text-slate-100">{{ slaText || 'SLA Yok' }}</span>
+                <span class="text-[11px] text-[#5f6368] dark:text-slate-400 mt-1 block">Öngörülen çözüm vadesi.</span>
               </div>
             </div>
 
             <!-- Total active logs card -->
-            <div class="border border-[#dadce0] rounded-lg p-5 bg-[#f8f9fa] flex flex-col justify-between">
-              <span class="text-xs font-semibold text-[#5f6368] uppercase tracking-wider block mb-2">Toplam Süre</span>
+            <div class="border border-[#dadce0] dark:border-slate-700 rounded-lg p-5 bg-[#f8f9fa] dark:bg-slate-900 flex flex-col justify-between">
+              <span class="text-xs font-semibold text-[#5f6368] dark:text-slate-400 uppercase tracking-wider block mb-2">Toplam Süre</span>
               <div>
-                <span class="text-sm font-mono font-bold block text-[#1a73e8]">{{ formatSeconds(displayTotalSeconds) }}</span>
-                <span class="text-[11px] text-[#5f6368] mt-1 block">Tüm teknisyenlerin toplam eforu.</span>
+                <span class="text-sm font-mono font-bold block text-[#1a73e8] dark:text-blue-400">{{ formatSeconds(displayTotalSeconds) }}</span>
+                <span class="text-[11px] text-[#5f6368] dark:text-slate-400 mt-1 block">Tüm teknisyenlerin toplam eforu.</span>
               </div>
             </div>
 
             <!-- Co-technicians count card -->
-            <div class="border border-[#dadce0] rounded-lg p-5 bg-[#f8f9fa] flex flex-col justify-between">
-              <span class="text-xs font-semibold text-[#5f6368] uppercase tracking-wider block mb-2">Katkı Sağlayanlar</span>
+            <div class="border border-[#dadce0] dark:border-slate-700 rounded-lg p-5 bg-[#f8f9fa] dark:bg-slate-900 flex flex-col justify-between">
+              <span class="text-xs font-semibold text-[#5f6368] dark:text-slate-400 uppercase tracking-wider block mb-2">Katkı Sağlayanlar</span>
               <div>
-                <span class="text-sm font-semibold block text-[#34a853]">{{ timeAnalysisBreakdown.length }} Teknisyen</span>
-                <span class="text-[11px] text-[#5f6368] mt-1 block">Efor kaydeden çalışan sayısı.</span>
+                <span class="text-sm font-semibold block text-[#34a853] dark:text-green-400">{{ timeAnalysisBreakdown.length }} Teknisyen</span>
+                <span class="text-[11px] text-[#5f6368] dark:text-slate-400 mt-1 block">Efor kaydeden çalışan sayısı.</span>
               </div>
             </div>
           </div>
 
           <!-- Technician Breakdown Progress meters -->
           <div class="space-y-4">
-            <h3 class="text-sm font-semibold text-[#202124]">Teknisyen Efor Dağılımı</h3>
+            <h3 class="text-sm font-semibold text-[#202124] dark:text-slate-100">Teknisyen Efor Dağılımı</h3>
             <div class="space-y-3.5">
               <div v-for="user in timeAnalysisBreakdown" :key="user.name" class="space-y-1">
                 <div class="flex justify-between text-xs font-medium">
-                  <span class="text-[#202124]"><i class="far fa-user text-gray-400 mr-1.5"></i> {{ user.name }}</span>
-                  <span class="font-mono text-[#5f6368] font-semibold">{{ user.formatted }} ({{ Math.round((user.seconds / (displayTotalSeconds || 1)) * 100) }}%)</span>
+                  <span class="text-[#202124] dark:text-slate-100"><i class="far fa-user text-gray-400 dark:text-slate-500 mr-1.5"></i> {{ user.name }}</span>
+                  <span class="font-mono text-[#5f6368] dark:text-slate-400 font-semibold">{{ user.formatted }} ({{ Math.round((user.seconds / (displayTotalSeconds || 1)) * 100) }}%)</span>
                 </div>
-                <div class="w-full bg-[#f1f3f4] h-2 rounded-full overflow-hidden">
+                <div class="w-full bg-[#f1f3f4] dark:bg-slate-700 h-2 rounded-full overflow-hidden">
                   <div class="bg-[#1a73e8] h-full transition-all duration-300" :style="{width: `${(user.seconds / (displayTotalSeconds || 1)) * 100}%`}"></div>
                 </div>
               </div>
-              <div v-if="timeAnalysisBreakdown.length === 0" class="text-center py-6 text-xs text-gray-400 italic">Analiz edilecek süre kaydı bulunmuyor.</div>
+              <div v-if="timeAnalysisBreakdown.length === 0" class="text-center py-6 text-xs text-gray-400 dark:text-slate-500 italic">Analiz edilecek süre kaydı bulunmuyor.</div>
             </div>
           </div>
 
@@ -591,33 +591,33 @@
 
       <!-- TAB 7: GEÇMİŞ -->
       <div v-if="activeTab === 'history'" class="flex-1 overflow-y-auto p-6 max-w-4xl w-full mx-auto space-y-6">
-        <div class="bg-white border border-[#dadce0] rounded-md p-6 shadow-sm space-y-6">
-          <div class="flex items-center gap-3 border-b border-[#dadce0] pb-4">
-            <div class="w-10 h-10 rounded-full bg-[#f1f3f4] text-[#5f6368] flex items-center justify-center text-lg">
+        <div class="bg-white dark:bg-slate-800 border border-[#dadce0] dark:border-slate-700 rounded-md p-6 shadow-sm space-y-6">
+          <div class="flex items-center gap-3 border-b border-[#dadce0] dark:border-slate-700 pb-4">
+            <div class="w-10 h-10 rounded-full bg-[#f1f3f4] dark:bg-slate-700 text-[#5f6368] dark:text-slate-400 flex items-center justify-center text-lg">
               <i class="fas fa-history"></i>
             </div>
             <div>
-              <h2 class="text-base font-semibold text-[#202124]">Talep İşlem Geçmişi (Audit Logs)</h2>
-              <p class="text-xs text-[#5f6368]">Talep üzerinde gerçekleşen tüm durum, sahiplik ve zamanlama güncellemelerinin kronolojik akışı.</p>
+              <h2 class="text-base font-semibold text-[#202124] dark:text-slate-100">Talep İşlem Geçmişi (Audit Logs)</h2>
+              <p class="text-xs text-[#5f6368] dark:text-slate-400">Talep üzerinde gerçekleşen tüm durum, sahiplik ve zamanlama güncellemelerinin kronolojik akışı.</p>
             </div>
           </div>
 
           <!-- History Timeline -->
-          <div class="relative border-l border-[#dadce0] pl-6 ml-4 space-y-6 py-2">
+          <div class="relative border-l border-[#dadce0] dark:border-slate-700 pl-6 ml-4 space-y-6 py-2">
             <div v-for="log in historyLogs" :key="log.id" class="relative">
               <!-- Dot marker icon -->
-              <span class="absolute -left-[31px] top-0.5 w-4.5 h-4.5 rounded-full bg-white border-2 border-[#1a73e8] flex items-center justify-center">
+              <span class="absolute -left-[31px] top-0.5 w-4.5 h-4.5 rounded-full bg-white dark:bg-slate-800 border-2 border-[#1a73e8] flex items-center justify-center">
                 <span class="w-1.5 h-1.5 bg-[#1a73e8] rounded-full"></span>
               </span>
               <div class="space-y-1">
-                <p class="text-sm font-medium text-[#202124]">{{ log.message }}</p>
-                <p class="text-xs text-[#5f6368] flex items-center gap-1.5">
+                <p class="text-sm font-medium text-[#202124] dark:text-slate-100">{{ log.message }}</p>
+                <p class="text-xs text-[#5f6368] dark:text-slate-400 flex items-center gap-1.5">
                   <i class="far fa-clock"></i> {{ fmtDateShort(log.created_at) }}
                 </p>
               </div>
             </div>
 
-            <div v-if="historyLogs.length === 0" class="text-center py-8 text-xs text-gray-400 italic">İşlem geçmişi bulunamadı.</div>
+            <div v-if="historyLogs.length === 0" class="text-center py-8 text-xs text-gray-400 dark:text-slate-500 italic">İşlem geçmişi bulunamadı.</div>
           </div>
         </div>
       </div>
@@ -627,19 +627,19 @@
     <!-- RESOLUTION MODAL -->
     <Teleport to="body">
       <div v-if="showResolveModal" class="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-[#202124]/50">
-        <div class="relative bg-white border border-[#dadce0] rounded-md shadow-md w-full max-w-md flex flex-col overflow-hidden">
-          <div class="px-6 py-4 border-b border-[#dadce0] bg-[#f8f9fa] flex items-center justify-between shrink-0">
-            <h3 class="text-base font-medium text-[#202124]"><i class="fas fa-check-circle text-[#34a853] mr-2"></i> Talebi Çözümle</h3>
-            <button @click="showResolveModal = false" class="text-[#5f6368] hover:text-[#202124]">
+        <div class="relative bg-white dark:bg-slate-800 border border-[#dadce0] dark:border-slate-700 rounded-md shadow-md w-full max-w-md flex flex-col overflow-hidden">
+          <div class="px-6 py-4 border-b border-[#dadce0] dark:border-slate-700 bg-[#f8f9fa] dark:bg-slate-900 flex items-center justify-between shrink-0">
+            <h3 class="text-base font-medium text-[#202124] dark:text-slate-100"><i class="fas fa-check-circle text-[#34a853] dark:text-green-400 mr-2"></i> Talebi Çözümle</h3>
+            <button @click="showResolveModal = false" class="text-[#5f6368] dark:text-slate-400 hover:text-[#202124] dark:hover:text-slate-100">
               <i class="fas fa-times"></i>
             </button>
           </div>
           <div class="p-6 space-y-4">
-            <label class="block text-xs font-medium text-[#5f6368] uppercase tracking-wide">Çözüm Açıklaması (Zorunlu) <span class="text-red-500">*</span></label>
-            <textarea v-model="resolutionNote" rows="4" class="w-full border border-[#dadce0] px-3 py-2 rounded text-sm text-[#202124] bg-white outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] transition-colors resize-none" placeholder="Sorunun nasıl çözüldüğünü açıklayınız (Kullanıcıya mail atılacaktır)..."></textarea>
+            <label class="block text-xs font-medium text-[#5f6368] dark:text-slate-400 uppercase tracking-wide">Çözüm Açıklaması (Zorunlu) <span class="text-red-500">*</span></label>
+            <textarea v-model="resolutionNote" rows="4" class="w-full border border-[#dadce0] dark:border-slate-700 px-3 py-2 rounded text-sm text-[#202124] dark:text-slate-100 bg-white dark:bg-slate-800 outline-none focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8] transition-colors resize-none" placeholder="Sorunun nasıl çözüldüğünü açıklayınız (Kullanıcıya mail atılacaktır)..."></textarea>
           </div>
-          <div class="px-6 py-4 border-t border-[#dadce0] bg-[#f8f9fa] flex justify-end gap-3 shrink-0">
-            <button @click="showResolveModal = false" class="h-9 px-4 bg-white text-[#3c4043] text-sm font-medium rounded border border-[#dadce0] hover:bg-[#f1f3f4] transition-colors">
+          <div class="px-6 py-4 border-t border-[#dadce0] dark:border-slate-700 bg-[#f8f9fa] dark:bg-slate-900 flex justify-end gap-3 shrink-0">
+            <button @click="showResolveModal = false" class="h-9 px-4 bg-white dark:bg-slate-800 text-[#3c4043] text-sm font-medium rounded border border-[#dadce0] dark:border-slate-700 hover:bg-[#f1f3f4] dark:hover:bg-slate-700 transition-colors">
               İptal
             </button>
             <button @click="submitResolve" :disabled="!resolutionNote.trim()" class="h-9 px-4 bg-[#34a853] text-white text-sm font-medium rounded hover:bg-[#137333] transition-colors disabled:opacity-50">
@@ -798,12 +798,12 @@ const timeAnalysisBreakdown = computed(() => {
 
 const getStatusColor = (status) => {
   switch (status) {
-    case 'Açık': return { badge: 'bg-[#fce8e6] text-[#c5221f] border-[#ea4335]/30' }
-    case 'İşlemde': return { badge: 'bg-[#e8f0fe] text-[#1a73e8] border-[#1a73e8]/30' }
-    case 'Beklemede': return { badge: 'bg-[#fef7e0] text-[#b06000] border-[#fbbc04]/30' }
-    case 'Çözüldü': return { badge: 'bg-[#e6f4ea] text-[#137333] border-[#34a853]/30' }
-    case 'Kapalı': return { badge: 'bg-[#f1f3f4] text-[#5f6368] border-[#dadce0]' }
-    default: return { badge: 'bg-[#f1f3f4] text-[#5f6368] border-[#dadce0]' }
+    case 'Açık': return { badge: 'bg-[#fce8e6] dark:bg-red-500/10 text-[#c5221f] dark:text-red-400 border-[#ea4335]/30 dark:border-red-500/30' }
+    case 'İşlemde': return { badge: 'bg-[#e8f0fe] dark:bg-blue-500/10 text-[#1a73e8] dark:text-blue-400 border-[#1a73e8]/30 dark:border-blue-500/30' }
+    case 'Beklemede': return { badge: 'bg-[#fef7e0] dark:bg-amber-500/10 text-[#b06000] dark:text-amber-400 border-[#fbbc04]/30 dark:border-amber-500/30' }
+    case 'Çözüldü': return { badge: 'bg-[#e6f4ea] dark:bg-green-500/10 text-[#137333] dark:text-green-400 border-[#34a853]/30 dark:border-green-500/30' }
+    case 'Kapalı': return { badge: 'bg-[#f1f3f4] dark:bg-slate-700 text-[#5f6368] dark:text-slate-400 border-[#dadce0] dark:border-slate-600' }
+    default: return { badge: 'bg-[#f1f3f4] dark:bg-slate-700 text-[#5f6368] dark:text-slate-400 border-[#dadce0] dark:border-slate-600' }
   }
 }
 

@@ -1,3 +1,7 @@
+const MasterDataService = require('./service');
+const { parseM365Excel } = require('./services/m365InvoiceParser');
+const AuditService = require('../../services/auditService');
+
 const handleError = (res, e) => {
     if (e.message && (e.message.includes('UNIQUE') || e.code === 'SQLITE_CONSTRAINT_UNIQUE')) {
         return res.status(400).json({ error: 'Bu isim/kod/sicil numarası ile kayıtlı bir veri zaten sistemde mevcuttur.' });
@@ -639,40 +643,6 @@ class MasterDataController {
         try {
             const data = await MasterDataService.getAllAllocations();
             res.json(data);
-        } catch (e) {
-            res.status(500).json({ error: e.message });
-        }
-    }
-
-    static async assignLicenseToPersonnel(req, res) {
-        try {
-            const { personnelId, licenseId } = req.body;
-            if (!personnelId || !licenseId) return res.status(400).json({ message: 'Personel ve lisans seçimi zorunludur.' });
-            
-            await MasterDataService.assignLicenseToPersonnel(personnelId, licenseId);
-            res.json({ success: true });
-        } catch (e) {
-            res.status(500).json({ error: e.message });
-        }
-    }
-
-    static async unassignLicense(req, res) {
-        try {
-            await MasterDataService.unassignLicense(req.params.id);
-            res.json({ success: true });
-        } catch (e) {
-            res.status(500).json({ error: e.message });
-        }
-    }
-
-    static async bulkAssignLicenses(req, res) {
-        try {
-            const { personnelIds, licenseIds } = req.body;
-            if (!personnelIds?.length || !licenseIds?.length) 
-                return res.status(400).json({ message: 'Personel ve lisans seçimi zorunludur.' });
-            
-            await MasterDataService.bulkAssignLicenses(personnelIds, licenseIds);
-            res.json({ success: true });
         } catch (e) {
             res.status(500).json({ error: e.message });
         }

@@ -13,7 +13,6 @@ router.use('/api/data', require('./simdata'));
 router.use('/api/voice', require('./simvoice'));
 router.use('/api/invoices', require('./invoices'));
 router.use('/api/reports', require('./reports'));
-router.use('/api/logs', require('./logs'));
 router.use('/api/sim', require('./sim'));
 
 module.exports = router;

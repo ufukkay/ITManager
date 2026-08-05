@@ -706,6 +706,21 @@ const initDb = () => {
     )
   `).run();
 
+  // In-app Notifications table (bildirim zili)
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        type TEXT NOT NULL, -- ticket_assigned, ticket_status, ticket_message, hr_new, hr_status, monitoring_alert
+        title TEXT NOT NULL,
+        message TEXT,
+        link TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `).run();
+
   // --- ASSET MANAGEMENT TABLES ---
   try {
     const columns = db.prepare("PRAGMA table_info(asset_categories)").all();
@@ -796,6 +811,41 @@ const initDb = () => {
       if (!columns.some(c => c.name === 'last_audit_date')) {
         console.log("Adding last_audit_date to assets table...");
         db.prepare("ALTER TABLE assets ADD COLUMN last_audit_date DATETIME").run();
+      }
+      // SIM Kart entegrasyonu: telefon hattı ve genişletilmiş zimmet hedef kolonları
+      if (!columns.some(c => c.name === 'phone_no')) {
+        console.log("Adding phone_no to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN phone_no TEXT").run();
+      }
+      if (!columns.some(c => c.name === 'operator_id')) {
+        console.log("Adding operator_id to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN operator_id INTEGER REFERENCES operators(id)").run();
+      }
+      if (!columns.some(c => c.name === 'package_id')) {
+        console.log("Adding package_id to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN package_id INTEGER REFERENCES packages(id)").run();
+      }
+      if (!columns.some(c => c.name === 'vehicle_id')) {
+        console.log("Adding vehicle_id to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN vehicle_id INTEGER REFERENCES vehicles(id)").run();
+      }
+      if (!columns.some(c => c.name === 'department_id')) {
+        console.log("Adding department_id to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN department_id INTEGER REFERENCES departments(id)").run();
+      }
+      if (!columns.some(c => c.name === 'cost_center_id')) {
+        console.log("Adding cost_center_id to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN cost_center_id INTEGER REFERENCES cost_centers(id)").run();
+      }
+      if (!columns.some(c => c.name === 'last_usage_date')) {
+        console.log("Adding last_usage_date to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN last_usage_date DATETIME").run();
+      }
+      // line_status: SIM hattının operatör tarafındaki operasyonel durumu (Aktif/Pasif/İptal).
+      // status_id (zimmet durumu: Depoda/Zimmetli/Arızalı vb.) ile KARIŞTIRILMAMALI — ikisi bağımsız kavramlar.
+      if (!columns.some(c => c.name === 'line_status')) {
+        console.log("Adding line_status to assets table...");
+        db.prepare("ALTER TABLE assets ADD COLUMN line_status TEXT").run();
       }
     }
   } catch (e) { console.log("assets migration skipped:", e.message); }
@@ -1232,6 +1282,17 @@ const seedInitialData = () => {
     statuses.forEach(s => {
         db.prepare('INSERT OR IGNORE INTO asset_statuses (name) VALUES (?)').run(s);
     });
+
+    // SIM Kart Envanter Taxonomy (SIM hatları artık assets tablosunun bir parçası)
+    db.prepare('INSERT OR IGNORE INTO asset_categories (name) VALUES (?)').run('SIM Kart');
+    db.prepare('INSERT OR IGNORE INTO asset_brands (name) VALUES (?)').run('Operatör Hattı');
+    const simCategory = db.prepare("SELECT id FROM asset_categories WHERE name = 'SIM Kart'").get();
+    const simBrand = db.prepare("SELECT id FROM asset_brands WHERE name = 'Operatör Hattı'").get();
+    if (simCategory && simBrand) {
+        ['M2M Hattı', 'Data Hattı', 'Ses Hattı'].forEach(modelName => {
+            db.prepare('INSERT OR IGNORE INTO asset_models (name, category_id, brand_id) VALUES (?, ?, ?)').run(modelName, simCategory.id, simBrand.id);
+        });
+    }
 
     // Standart Rol İzinlerini Ata
     const techRole = db.prepare("SELECT id FROM roles WHERE name = 'Teknisyen'").get();

@@ -7,32 +7,33 @@ const normalizePhone = (value) => {
 };
 
 const sanitizePhoneSQL = (column) => `'0' || substr(replace(replace(replace(replace(replace(COALESCE(${column}, ''), ' ', ''), '-', ''), '(', ''), ')', ''), '+', ''), -10)`;
-const VOICE_PHONE_EXPR = sanitizePhoneSQL('sv.phone_no');
-const M2M_PHONE_EXPR = sanitizePhoneSQL('m.phone_no');
-const DATA_PHONE_EXPR = sanitizePhoneSQL('d.phone_no');
+const ASSET_PHONE_EXPR = sanitizePhoneSQL('a.phone_no');
 const PERSONNEL_PHONE_EXPR = sanitizePhoneSQL('p.phone');
 
+// SIM hatları artık `assets` tablosunda (bkz. simAssetService.js). Eşleşme önceliği eskisiyle
+// aynı: Ses hattı (personel) → M2M hattı (araç) → Data hattı (lokasyon) → doğrudan personel telefonu.
 function findPersonnelByPhone(phoneNo) {
   const cleanPhone = normalizePhone(phoneNo);
   if (!cleanPhone) return { name: '', costCenter: '', company: '', tariff: '', isMatched: false };
-  
+
   try {
-    // 1. Ses hatları tablosunda ara (atanmış bir personel var mı? + Paket bilgisi)
+    // 1. Ses hattında ara (atanmış bir personel var mı? + Paket bilgisi)
     let res = db.prepare(`
-      SELECT 
+      SELECT
         p.id as personnel_id,
-        p.first_name || ' ' || p.last_name as name, 
+        p.first_name || ' ' || p.last_name as name,
         cc.id as cost_center_id,
-        cc.name as cost_center_name, 
+        cc.name as cost_center_name,
         comp.id as company_id,
-        comp.name as company_name, 
+        comp.name as company_name,
         pk.name as package_name
-      FROM sim_voice sv
-      LEFT JOIN personnel p ON sv.personnel_id = p.id
+      FROM assets a
+      JOIN asset_models am ON a.model_id = am.id
+      LEFT JOIN personnel p ON a.personnel_id = p.id
       LEFT JOIN cost_centers cc ON p.cost_center_id = cc.id
       LEFT JOIN companies comp ON p.company_id = comp.id
-      LEFT JOIN packages pk ON sv.package_id = pk.id
-      WHERE ${VOICE_PHONE_EXPR} = ? LIMIT 1
+      LEFT JOIN packages pk ON a.package_id = pk.id
+      WHERE am.name = 'Ses Hattı' AND ${ASSET_PHONE_EXPR} = ? LIMIT 1
     `).get(cleanPhone);
 
     if (res && res.name) {
@@ -48,89 +49,91 @@ function findPersonnelByPhone(phoneNo) {
       };
     }
 
-    // 2. M2M hatlarında ara (Araç plakası + Paket bilgisi)
+    // 2. M2M hattında ara (Araç plakası + Paket bilgisi)
     res = db.prepare(`
-      SELECT 
-        m.id as m2m_id,
-        m.plate_no as name, 
+      SELECT
+        v.plate_no as name,
         comp.id as company_id,
-        comp.name as company_name, 
-        pk.name as package_name 
-      FROM sim_m2m m
-      LEFT JOIN companies comp ON m.company_id = comp.id
-      LEFT JOIN packages pk ON m.package_id = pk.id
-      WHERE ${M2M_PHONE_EXPR} = ? LIMIT 1
+        comp.name as company_name,
+        pk.name as package_name
+      FROM assets a
+      JOIN asset_models am ON a.model_id = am.id
+      LEFT JOIN vehicles v ON a.vehicle_id = v.id
+      LEFT JOIN companies comp ON a.company_id = comp.id
+      LEFT JOIN packages pk ON a.package_id = pk.id
+      WHERE am.name = 'M2M Hattı' AND ${ASSET_PHONE_EXPR} = ? LIMIT 1
     `).get(cleanPhone);
-    
-    if (res) return { 
+
+    if (res) return {
         personnel_id: null,
         company_id: res.company_id,
         cost_center_id: null,
-        name: res.name || '', 
-        costCenter: res.company_name || '', 
-        company: res.company_name || '', 
-        tariff: res.package_name || '', 
-        isMatched: true 
+        name: res.name || '',
+        costCenter: res.company_name || '',
+        company: res.company_name || '',
+        tariff: res.package_name || '',
+        isMatched: true
     };
 
-    // 3. Data hatlarında ara (Lokasyon + Paket bilgisi)
+    // 3. Data hattında ara (Lokasyon + Paket bilgisi)
     res = db.prepare(`
-      SELECT 
-        d.id as data_id,
-        d.location as name, 
+      SELECT
+        l.name as name,
         comp.id as company_id,
-        comp.name as company_name, 
-        pk.name as package_name 
-      FROM sim_data d 
-      LEFT JOIN companies comp ON d.company_id = comp.id
-      LEFT JOIN packages pk ON d.package_id = pk.id
-      WHERE ${DATA_PHONE_EXPR} = ? LIMIT 1
+        comp.name as company_name,
+        pk.name as package_name
+      FROM assets a
+      JOIN asset_models am ON a.model_id = am.id
+      LEFT JOIN locations l ON a.location_id = l.id
+      LEFT JOIN companies comp ON a.company_id = comp.id
+      LEFT JOIN packages pk ON a.package_id = pk.id
+      WHERE am.name = 'Data Hattı' AND ${ASSET_PHONE_EXPR} = ? LIMIT 1
     `).get(cleanPhone);
-    if (res) return { 
+    if (res) return {
         personnel_id: null,
         company_id: res.company_id,
         cost_center_id: null,
-        name: res.name || '', 
-        costCenter: '', 
-        company: res.company_name || '', 
-        tariff: res.package_name || '', 
-        isMatched: true 
+        name: res.name || '',
+        costCenter: '',
+        company: res.company_name || '',
+        tariff: res.package_name || '',
+        isMatched: true
     };
 
     // 4. Personeller tablosunda direkt telefon numarasıyla ara
     res = db.prepare(`
-      SELECT 
+      SELECT
         p.id as personnel_id,
-        p.first_name || ' ' || p.last_name as name, 
+        p.first_name || ' ' || p.last_name as name,
         cc.id as cost_center_id,
-        cc.name as cost_center_name, 
+        cc.name as cost_center_name,
         comp.id as company_id,
-        comp.name as company_name 
-      FROM personnel p 
+        comp.name as company_name
+      FROM personnel p
       LEFT JOIN cost_centers cc ON p.cost_center_id = cc.id
       LEFT JOIN companies comp ON p.company_id = comp.id
       WHERE ${PERSONNEL_PHONE_EXPR} = ? LIMIT 1
     `).get(cleanPhone);
-    if (res) return { 
+    if (res) return {
         personnel_id: res.personnel_id,
         company_id: res.company_id,
         cost_center_id: res.cost_center_id,
-        name: res.name, 
-        costCenter: res.cost_center_name || '', 
-        company: res.company_name || '', 
-        tariff: '', 
-        isMatched: true 
+        name: res.name,
+        costCenter: res.cost_center_name || '',
+        company: res.company_name || '',
+        tariff: '',
+        isMatched: true
     };
 
-    return { 
-        personnel_id: null, 
-        company_id: null, 
-        cost_center_id: null, 
-        name: '', 
-        costCenter: '', 
-        company: '', 
-        tariff: '', 
-        isMatched: false 
+    return {
+        personnel_id: null,
+        company_id: null,
+        cost_center_id: null,
+        name: '',
+        costCenter: '',
+        company: '',
+        tariff: '',
+        isMatched: false
     };
   } catch (e) {
     console.error('Invoice Matcher - Lookup Error:', e);
@@ -142,4 +145,3 @@ module.exports = {
   findPersonnelByPhone,
   normalizePhone
 };
-

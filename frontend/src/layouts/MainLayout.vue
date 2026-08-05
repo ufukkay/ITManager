@@ -10,7 +10,7 @@ const isFullBleed = computed(() => route.meta.fullBleed === true)
 </script>
 
 <template>
-  <div class="h-screen bg-white flex flex-col overflow-hidden">
+  <div class="h-screen bg-white dark:bg-slate-900 flex flex-col overflow-hidden">
     <!-- Standardized Header Component -->
     <AppHeader />
 

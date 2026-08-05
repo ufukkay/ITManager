@@ -1,45 +1,45 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-50/50 overflow-hidden">
+  <div class="h-full flex flex-col bg-gray-50/50 dark:bg-slate-900 overflow-hidden">
     <!-- TOP BAR / HEADER -->
-    <header class="h-14 border-b border-gray-200 flex items-center justify-between px-6 bg-white shrink-0 shadow-sm">
+    <header class="h-14 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between px-6 bg-white dark:bg-slate-800 shrink-0 shadow-sm">
       <div class="flex items-center gap-3">
-        <RouterLink to="/master-data/asset-definitions" class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors">
+        <RouterLink to="/master-data/asset-definitions" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 flex items-center justify-center transition-colors">
           <i class="fas fa-arrow-left text-sm"></i>
         </RouterLink>
         <div>
-          <h1 class="text-sm font-bold text-gray-900 flex items-center gap-2">
-            <i class="fas fa-file-signature text-purple-600"></i> Görsel A4 Zimmet Formu Studio
+          <h1 class="text-sm font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
+            <i class="fas fa-file-signature text-purple-600 dark:text-purple-400"></i> Görsel A4 Zimmet Formu Studio
           </h1>
-          <p class="text-[11px] text-gray-400">A4 Zimmet Teslim Tutanağının başlık, tablo, taahhüt ve imza alanlarını görsel tasarlayın</p>
+          <p class="text-[11px] text-gray-400 dark:text-slate-500">A4 Zimmet Teslim Tutanağının başlık, tablo, taahhüt ve imza alanlarını görsel tasarlayın</p>
         </div>
       </div>
 
       <!-- Action Buttons -->
       <div class="flex items-center gap-2">
-        <button 
-          @click="createNewTemplate" 
-          class="h-8 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors border border-gray-200"
+        <button
+          @click="createNewTemplate"
+          class="h-8 px-3 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors border border-gray-200 dark:border-slate-600"
           title="Tasarımı Sıfırla / Yeni Şablon"
         >
           <i class="fas fa-plus"></i> Yeni / Sıfırla
         </button>
 
-        <select v-model.number="pageCount" @change="onPageCountChange" class="h-8 px-3 bg-gray-50 border border-gray-200 rounded text-xs font-bold text-gray-700 outline-none focus:border-purple-500 cursor-pointer">
+        <select v-model.number="pageCount" @change="onPageCountChange" class="h-8 px-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 dark:text-slate-100 rounded text-xs font-bold text-gray-700 outline-none focus:border-purple-500 cursor-pointer">
           <option :value="1">1 Sayfa (A4)</option>
           <option :value="2">2 Sayfa (A4)</option>
         </select>
 
-        <select v-model="selectedTemplateId" @change="loadSelectedTemplate" class="h-8 px-3 bg-gray-50 border border-gray-200 rounded text-xs font-bold text-gray-700 outline-none focus:border-purple-500 cursor-pointer">
+        <select v-model="selectedTemplateId" @change="loadSelectedTemplate" class="h-8 px-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 dark:text-slate-100 rounded text-xs font-bold text-gray-700 outline-none focus:border-purple-500 cursor-pointer">
           <option value="">-- Kayıtlı A4 Şablon Seçin --</option>
           <option v-for="t in savedTemplates" :key="t.id" :value="t.id">
             {{ t.name }} {{ t.is_default ? '★ Varsayılan' : '' }}
           </option>
         </select>
 
-        <button 
+        <button
           v-if="selectedTemplateId"
           @click="deleteSelectedTemplate"
-          class="h-8 px-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors border border-red-200"
+          class="h-8 px-3 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors border border-red-200 dark:border-red-500/30"
           title="Seçili Şablonu Sil"
         >
           <i class="fas fa-trash"></i> Sil
@@ -54,18 +54,18 @@
     <!-- MAIN STUDIO WORKSPACE -->
     <div class="flex-1 flex overflow-hidden">
       <!-- LEFT PALETTE: COMPONENT LIBRARY -->
-      <aside class="w-72 bg-white border-r border-gray-200 flex flex-col p-4 shrink-0 overflow-y-auto">
-        <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-          <i class="fas fa-cubes text-purple-600"></i> Form Bileşen Kütüphanesi
+      <aside class="w-72 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 flex flex-col p-4 shrink-0 overflow-y-auto">
+        <h3 class="text-xs font-bold text-gray-900 dark:text-slate-100 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <i class="fas fa-cubes text-purple-600 dark:text-purple-400"></i> Form Bileşen Kütüphanesi
         </h3>
-        <p class="text-[11px] text-gray-400 mb-4">Kanvas üzerine eklemek istediğiniz zimmet belgesi bloğuna tıklayın:</p>
+        <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-4">Kanvas üzerine eklemek istediğiniz zimmet belgesi bloğuna tıklayın:</p>
 
         <div class="space-y-2">
           <button @click="addElement('header_title')" class="btn-palette">
             <i class="fas fa-heading text-blue-600"></i>
             <div class="text-left">
               <div class="font-bold text-xs">Tutanak Başlığı</div>
-              <div class="text-[10px] text-gray-400">Resmi Zimmet Tutanağı Başlık Metni</div>
+              <div class="text-[10px] text-gray-400 dark:text-slate-500">Resmi Zimmet Tutanağı Başlık Metni</div>
             </div>
           </button>
 
@@ -73,7 +73,7 @@
             <i class="fas fa-id-card text-emerald-600"></i>
             <div class="text-left">
               <div class="font-bold text-xs">Personel Bilgileri Tablosu</div>
-              <div class="text-[10px] text-gray-400">Ad Soyad, Unvan, Departman</div>
+              <div class="text-[10px] text-gray-400 dark:text-slate-500">Ad Soyad, Unvan, Departman</div>
             </div>
           </button>
 
@@ -81,7 +81,7 @@
             <i class="fas fa-table text-indigo-600"></i>
             <div class="text-left">
               <div class="font-bold text-xs">Donanım Listesi Tablosu</div>
-              <div class="text-[10px] text-gray-400">Cihazlar, Seri No & Envanter No</div>
+              <div class="text-[10px] text-gray-400 dark:text-slate-500">Cihazlar, Seri No & Envanter No</div>
             </div>
           </button>
 
@@ -89,7 +89,7 @@
             <i class="fas fa-gavel text-amber-600"></i>
             <div class="text-left">
               <div class="font-bold text-xs">Hukuki Taahhüt Metni</div>
-              <div class="text-[10px] text-gray-400">Yasal Şartlar & Kullanım Şartı</div>
+              <div class="text-[10px] text-gray-400 dark:text-slate-500">Yasal Şartlar & Kullanım Şartı</div>
             </div>
           </button>
 
@@ -97,7 +97,7 @@
             <i class="fas fa-signature text-purple-600"></i>
             <div class="text-left">
               <div class="font-bold text-xs">İmza & Tarih Bloğu</div>
-              <div class="text-[10px] text-gray-400">Teslim Eden IT & Teslim Alan Personel</div>
+              <div class="text-[10px] text-gray-400 dark:text-slate-500">Teslim Eden IT & Teslim Alan Personel</div>
             </div>
           </button>
 
@@ -105,7 +105,7 @@
             <i class="fas fa-qrcode text-rose-600"></i>
             <div class="text-left">
               <div class="font-bold text-xs">QR Doküman Doğrulama</div>
-              <div class="text-[10px] text-gray-400">Mobil Saha Sayım Linki Gömülü QR</div>
+              <div class="text-[10px] text-gray-400 dark:text-slate-500">Mobil Saha Sayım Linki Gömülü QR</div>
             </div>
           </button>
 
@@ -113,7 +113,7 @@
             <i class="fas fa-building text-cyan-600"></i>
             <div class="text-left">
               <div class="font-bold text-xs">Şirket Logosu & Kurum Adı</div>
-              <div class="text-[10px] text-gray-400">Talay Lojistik / Kurum Üst Bilgisi</div>
+              <div class="text-[10px] text-gray-400 dark:text-slate-500">Talay Lojistik / Kurum Üst Bilgisi</div>
             </div>
           </button>
 
@@ -121,7 +121,7 @@
             <i class="fas fa-font text-gray-600"></i>
             <div class="text-left">
               <div class="font-bold text-xs">Özel Metin / Not</div>
-              <div class="text-[10px] text-gray-400">Serbest Yazı veya Açıklama</div>
+              <div class="text-[10px] text-gray-400 dark:text-slate-500">Serbest Yazı veya Açıklama</div>
             </div>
           </button>
 
@@ -129,14 +129,14 @@
             <i class="fas fa-minus text-gray-400"></i>
             <div class="text-left">
               <div class="font-bold text-xs">Yatay Ayraç Çizgisi</div>
-              <div class="text-[10px] text-gray-400">Bölüm Ayırıcı İnce Çizgi</div>
+              <div class="text-[10px] text-gray-400 dark:text-slate-500">Bölüm Ayırıcı İnce Çizgi</div>
             </div>
           </button>
         </div>
       </aside>
 
       <!-- CENTER WORKSPACE: INTERACTIVE A4 CANVAS -->
-      <main class="flex-1 bg-gray-200/70 overflow-auto p-8 flex justify-center items-start">
+      <main class="flex-1 bg-gray-200/70 dark:bg-slate-950 overflow-auto p-8 flex justify-center items-start">
         <!-- Scaled A4 Paper Container (210mm x 297mm -> 700px x 990px / 1980px) -->
         <div 
           class="a4-paper bg-white shadow-2xl relative border border-gray-300 rounded-sm select-none transition-all"
@@ -292,16 +292,16 @@
       </main>
 
       <!-- RIGHT INSPECTOR: PROPERTY CONTROLS -->
-      <aside class="w-80 bg-white border-l border-gray-200 flex flex-col p-4 shrink-0 overflow-y-auto">
-        <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-          <i class="fas fa-sliders-h text-purple-600"></i> Bileşen Özellikleri
+      <aside class="w-80 bg-white dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 flex flex-col p-4 shrink-0 overflow-y-auto">
+        <h3 class="text-xs font-bold text-gray-900 dark:text-slate-100 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+          <i class="fas fa-sliders-h text-purple-600 dark:text-purple-400"></i> Bileşen Özellikleri
         </h3>
 
         <div v-if="selectedElement" class="space-y-4">
-          <div class="bg-purple-50 p-3 rounded-lg border border-purple-100 flex items-center justify-between">
+          <div class="bg-purple-50 dark:bg-purple-500/10 p-3 rounded-lg border border-purple-100 dark:border-purple-500/30 flex items-center justify-between">
             <div>
-              <div class="font-bold text-xs text-purple-900">{{ selectedElement.name }}</div>
-              <div class="text-[10px] text-purple-600">Bileşen ID: {{ selectedElement.id }}</div>
+              <div class="font-bold text-xs text-purple-900 dark:text-purple-300">{{ selectedElement.name }}</div>
+              <div class="text-[10px] text-purple-600 dark:text-purple-400">Bileşen ID: {{ selectedElement.id }}</div>
             </div>
             <button @click="deleteElement(selectedElement.id)" class="text-red-500 hover:text-red-700 text-xs font-bold">
               <i class="fas fa-trash mr-1"></i>Sil
@@ -311,41 +311,41 @@
           <!-- Position Controls -->
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="text-[10px] font-bold text-gray-500 uppercase">Sol Konum (%)</label>
-              <input v-model.number="selectedElement.x" type="number" min="0" max="95" class="h-8 w-full px-2 bg-gray-50 border rounded text-xs font-bold" />
+              <label class="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase">Sol Konum (%)</label>
+              <input v-model.number="selectedElement.x" type="number" min="0" max="95" class="h-8 w-full px-2 bg-gray-50 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 border rounded text-xs font-bold" />
             </div>
             <div>
-              <label class="text-[10px] font-bold text-gray-500 uppercase">Üst Konum (%)</label>
-              <input v-model.number="selectedElement.y" type="number" min="0" max="95" class="h-8 w-full px-2 bg-gray-50 border rounded text-xs font-bold" />
+              <label class="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase">Üst Konum (%)</label>
+              <input v-model.number="selectedElement.y" type="number" min="0" max="95" class="h-8 w-full px-2 bg-gray-50 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 border rounded text-xs font-bold" />
             </div>
           </div>
 
           <!-- Width % Control -->
           <div>
-            <label class="text-[10px] font-bold text-gray-500 uppercase">Genişlik (%)</label>
-            <input v-model.number="selectedElement.w" type="number" min="10" max="100" class="h-8 w-full px-2 bg-gray-50 border rounded text-xs font-bold" />
+            <label class="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase">Genişlik (%)</label>
+            <input v-model.number="selectedElement.w" type="number" min="10" max="100" class="h-8 w-full px-2 bg-gray-50 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 border rounded text-xs font-bold" />
           </div>
 
           <!-- Typography Controls -->
           <div v-if="selectedElement.type === 'commitment_text' || selectedElement.type === 'custom_text'">
-            <label class="text-[10px] font-bold text-gray-500 uppercase mb-1 block">Metin İçeriği</label>
-            <textarea v-model="selectedElement.text" rows="5" class="w-full p-2 bg-gray-50 border rounded text-xs font-medium text-gray-800"></textarea>
+            <label class="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase mb-1 block">Metin İçeriği</label>
+            <textarea v-model="selectedElement.text" rows="5" class="w-full p-2 bg-gray-50 dark:bg-slate-900 dark:border-slate-700 border rounded text-xs font-medium text-gray-800 dark:text-slate-100"></textarea>
           </div>
 
           <!-- Company Logo Specific Controls -->
-          <div v-if="selectedElement.type === 'company_logo'" class="space-y-3 pt-3 border-t">
+          <div v-if="selectedElement.type === 'company_logo'" class="space-y-3 pt-3 border-t dark:border-slate-700">
             <div>
-              <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Şirket Adı</label>
-              <input v-model="selectedElement.company_name" type="text" placeholder="TALAY LOJİSTİK A.Ş." class="h-8 w-full px-2 bg-gray-50 border rounded text-xs font-semibold" />
+              <label class="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase block mb-1">Şirket Adı</label>
+              <input v-model="selectedElement.company_name" type="text" placeholder="TALAY LOJİSTİK A.Ş." class="h-8 w-full px-2 bg-gray-50 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 border rounded text-xs font-semibold" />
             </div>
             <div>
-              <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Alt Başlık</label>
-              <input v-model="selectedElement.sub_title" type="text" placeholder="IT BİLİŞİM YÖNETİMİ" class="h-8 w-full px-2 bg-gray-50 border rounded text-xs font-semibold" />
+              <label class="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase block mb-1">Alt Başlık</label>
+              <input v-model="selectedElement.sub_title" type="text" placeholder="IT BİLİŞİM YÖNETİMİ" class="h-8 w-full px-2 bg-gray-50 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 border rounded text-xs font-semibold" />
             </div>
             <div>
-              <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1">Logo Görseli Yükle</label>
-              <input type="file" accept="image/*" @change="uploadLogoImage" class="text-xs file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer w-full" />
-              <div v-if="selectedElement.logo_url" class="mt-2 flex items-center gap-2 bg-gray-50 p-2 rounded border">
+              <label class="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase block mb-1">Logo Görseli Yükle</label>
+              <input type="file" accept="image/*" @change="uploadLogoImage" class="text-xs file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 cursor-pointer w-full dark:text-slate-300" />
+              <div v-if="selectedElement.logo_url" class="mt-2 flex items-center gap-2 bg-gray-50 dark:bg-slate-900 p-2 rounded border dark:border-slate-700">
                 <img :src="selectedElement.logo_url" class="h-6 object-contain" />
                 <button @click="selectedElement.logo_url = ''" class="text-[10px] font-bold text-red-500 hover:text-red-700 ml-auto">Kaldır</button>
               </div>
@@ -355,12 +355,12 @@
           <!-- Font Size & Weight -->
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="text-[10px] font-bold text-gray-500 uppercase">Yazı Boyutu (px)</label>
-              <input v-model.number="selectedElement.fontSize" type="number" min="8" max="32" class="h-8 w-full px-2 bg-gray-50 border rounded text-xs font-bold" />
+              <label class="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase">Yazı Boyutu (px)</label>
+              <input v-model.number="selectedElement.fontSize" type="number" min="8" max="32" class="h-8 w-full px-2 bg-gray-50 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 border rounded text-xs font-bold" />
             </div>
             <div>
-              <label class="text-[10px] font-bold text-gray-500 uppercase">Kalınlık</label>
-              <select v-model="selectedElement.fontWeight" class="h-8 w-full px-2 bg-gray-50 border rounded text-xs font-bold">
+              <label class="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase">Kalınlık</label>
+              <select v-model="selectedElement.fontWeight" class="h-8 w-full px-2 bg-gray-50 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100 border rounded text-xs font-bold">
                 <option value="normal">Normal</option>
                 <option value="bold">Kalın (Bold)</option>
                 <option value="black">Ekstra Kalın (Black)</option>
@@ -371,17 +371,17 @@
           <!-- Colors -->
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="text-[10px] font-bold text-gray-500 uppercase">Yazı Rengi</label>
-              <input v-model="selectedElement.color" type="color" class="h-8 w-full p-0.5 bg-gray-50 border rounded cursor-pointer" />
+              <label class="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase">Yazı Rengi</label>
+              <input v-model="selectedElement.color" type="color" class="h-8 w-full p-0.5 bg-gray-50 dark:bg-slate-900 dark:border-slate-700 border rounded cursor-pointer" />
             </div>
             <div>
-              <label class="text-[10px] font-bold text-gray-500 uppercase">Arka Plan</label>
-              <input v-model="selectedElement.bg" type="color" class="h-8 w-full p-0.5 bg-gray-50 border rounded cursor-pointer" />
+              <label class="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase">Arka Plan</label>
+              <input v-model="selectedElement.bg" type="color" class="h-8 w-full p-0.5 bg-gray-50 dark:bg-slate-900 dark:border-slate-700 border rounded cursor-pointer" />
             </div>
           </div>
         </div>
 
-        <div v-else class="flex flex-col items-center justify-center h-64 text-gray-300 gap-2">
+        <div v-else class="flex flex-col items-center justify-center h-64 text-gray-300 dark:text-slate-600 gap-2">
           <i class="fas fa-mouse-pointer text-3xl"></i>
           <p class="text-xs font-medium">Düzenlemek istediğiniz bileşene tıklayın.</p>
         </div>
@@ -390,34 +390,34 @@
 
     <!-- SAVE TEMPLATE MODAL -->
     <dialog ref="saveModal" class="modal">
-      <div class="modal-box bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
-        <h3 class="font-bold text-base text-gray-900 mb-4 flex items-center gap-2">
-          <i class="fas fa-file-export text-purple-600"></i>
+      <div class="modal-box bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+        <h3 class="font-bold text-base text-gray-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+          <i class="fas fa-file-export text-purple-600 dark:text-purple-400"></i>
           {{ templateForm.id ? 'A4 Şablonunu Güncelle / Farklı Kaydet' : 'Yeni A4 Şablonu Kaydet' }}
         </h3>
-        
+
         <div class="space-y-4">
           <div>
-            <label class="text-xs font-bold text-gray-700 block mb-1">Şablon İsmi *</label>
-            <input 
-              v-model="templateForm.name" 
-              type="text" 
-              placeholder="Örn: Resmi Kurumsal A4 Zimmet Formu" 
-              class="h-9 w-full px-3 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-800 outline-none focus:border-purple-500"
+            <label class="text-xs font-bold text-gray-700 dark:text-slate-300 block mb-1">Şablon İsmi *</label>
+            <input
+              v-model="templateForm.name"
+              type="text"
+              placeholder="Örn: Resmi Kurumsal A4 Zimmet Formu"
+              class="h-9 w-full px-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg text-xs font-bold text-gray-800 dark:text-slate-100 outline-none focus:border-purple-500"
             />
           </div>
 
-          <label class="flex items-center gap-2 cursor-pointer bg-purple-50 p-3 rounded-lg border border-purple-100">
-            <input type="checkbox" v-model="templateForm.is_default" class="rounded border-purple-300 text-purple-600 focus:ring-purple-500" />
+          <label class="flex items-center gap-2 cursor-pointer bg-purple-50 dark:bg-purple-500/10 p-3 rounded-lg border border-purple-100 dark:border-purple-500/30">
+            <input type="checkbox" v-model="templateForm.is_default" class="rounded border-purple-300 dark:border-purple-500/50 text-purple-600 focus:ring-purple-500" />
             <div>
-              <div class="font-bold text-xs text-purple-900">Varsayılan Form Şablonu Yap</div>
-              <div class="text-[10.5px] text-purple-600">Zimmet formu basılırken bu A4 düzeni kullanılır.</div>
+              <div class="font-bold text-xs text-purple-900 dark:text-purple-300">Varsayılan Form Şablonu Yap</div>
+              <div class="text-[10.5px] text-purple-600 dark:text-purple-400">Zimmet formu basılırken bu A4 düzeni kullanılır.</div>
             </div>
           </label>
         </div>
 
         <div class="modal-action mt-6 flex items-center justify-end gap-2">
-          <button @click="closeSaveModal" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-lg">İptal</button>
+          <button @click="closeSaveModal" class="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-bold text-xs rounded-lg">İptal</button>
           <button 
             v-if="templateForm.id" 
             @click="submitSaveNewTemplate" 
@@ -709,7 +709,7 @@ onMounted(() => {
 
 <style scoped>
 .btn-palette {
-  @apply w-full p-2.5 bg-gray-50 hover:bg-purple-50 hover:border-purple-200 border border-gray-200 rounded-lg flex items-center gap-3 transition-colors cursor-pointer;
+  @apply w-full p-2.5 bg-gray-50 dark:bg-slate-900 hover:bg-purple-50 dark:hover:bg-purple-500/10 hover:border-purple-200 dark:hover:border-purple-500/50 border border-gray-200 dark:border-slate-700 rounded-lg flex items-center gap-3 transition-colors cursor-pointer;
 }
 .bg-grid {
   background-image: radial-gradient(#000 1px, transparent 1px);

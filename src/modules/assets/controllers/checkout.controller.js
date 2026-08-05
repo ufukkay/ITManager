@@ -29,11 +29,14 @@ exports.checkoutAsset = (req, res) => {
 
         let personnel_id = null;
         let location_id = null;
+        let vehicle_id = null;
 
         if (target_type === 'PERSONNEL') {
             personnel_id = target_id;
         } else if (target_type === 'LOCATION') {
             location_id = target_id;
+        } else if (target_type === 'VEHICLE') {
+            vehicle_id = target_id;
         } else {
             return res.status(400).json({ error: 'Geçersiz zimmet türü.' });
         }
@@ -49,9 +52,9 @@ exports.checkoutAsset = (req, res) => {
 
         db.prepare(`
             UPDATE assets
-            SET personnel_id = ?, location_id = ?, status_id = ?, updated_at = CURRENT_TIMESTAMP
+            SET personnel_id = ?, location_id = ?, vehicle_id = ?, department_id = NULL, cost_center_id = NULL, status_id = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        `).run(personnel_id, location_id, statusId, id);
+        `).run(personnel_id, location_id, vehicle_id, statusId, id);
 
         db.prepare(`
             INSERT INTO asset_logs (asset_id, action, target_type, target_id, notes, created_by)
@@ -83,7 +86,7 @@ exports.checkinAsset = (req, res) => {
 
         db.prepare(`
             UPDATE assets
-            SET personnel_id = NULL, location_id = NULL, status_id = ?, updated_at = CURRENT_TIMESTAMP
+            SET personnel_id = NULL, location_id = NULL, vehicle_id = NULL, department_id = NULL, cost_center_id = NULL, status_id = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `).run(finalStatusId, id);
 

@@ -1,4 +1,5 @@
 const { db } = require('../../../database/db');
+const simAssetService = require('../../simcardtracking/services/simAssetService');
 
 // List all assets with enriched brand, model, category, status, company, user, and location info
 exports.getAssets = (req, res) => {
@@ -14,7 +15,12 @@ exports.getAssets = (req, res) => {
                 as_t.name as status_name,
                 c.name as company_name,
                 p.first_name || ' ' || p.last_name as personnel_name,
-                l.name as location_name
+                l.name as location_name,
+                v.plate_no as vehicle_plate_no,
+                d.name as department_name,
+                cc.name as cost_center_name,
+                op.name as operator_name,
+                pkg.name as package_name
             FROM assets a
             JOIN asset_models am ON a.model_id = am.id
             JOIN asset_categories ac ON am.category_id = ac.id
@@ -23,6 +29,11 @@ exports.getAssets = (req, res) => {
             JOIN companies c ON a.company_id = c.id
             LEFT JOIN personnel p ON a.personnel_id = p.id
             LEFT JOIN locations l ON a.location_id = l.id
+            LEFT JOIN vehicles v ON a.vehicle_id = v.id
+            LEFT JOIN departments d ON a.department_id = d.id
+            LEFT JOIN cost_centers cc ON a.cost_center_id = cc.id
+            LEFT JOIN operators op ON a.operator_id = op.id
+            LEFT JOIN packages pkg ON a.package_id = pkg.id
             ORDER BY a.created_at DESC
         `;
         const assets = db.prepare(query).all();
@@ -35,9 +46,35 @@ exports.getAssets = (req, res) => {
 
 // Add a new asset
 exports.addAsset = (req, res) => {
-    try {
-        const { serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version, specs_json } = req.body;
+    const { serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version, specs_json } = req.body;
 
+    // SIM Kart kategorisindeki modeller (Ses/Data/M2M Hattı) kendi iş mantığına
+    // (placeholder seri no, telefon no benzersizliği, sahiplik->durum senkronizasyonu) sahip;
+    // bunu tekrar yazmak yerine simAssetService'e devrediyoruz.
+    const simType = simAssetService.resolveTypeByModelId(model_id);
+    if (simType) {
+        if (!company_id) {
+            return res.status(400).json({ error: 'Lütfen zorunlu alanı (Şirket) doldurun.' });
+        }
+        try {
+            const id = simAssetService.create(Number(model_id), {
+                ...req.body,
+                iccid: req.body.iccid || serial_no,
+                phone_no: req.body.phone_no || barcode
+            });
+            const userId = req.session?.user?.id || null;
+            db.prepare(`
+                INSERT INTO asset_logs (asset_id, action, target_type, notes, created_by)
+                VALUES (?, 'CREATE', 'NONE', 'SIM hattı oluşturuldu.', ?)
+            `).run(id, userId);
+            return res.json({ id, message: 'SIM hattı başarıyla oluşturuldu.' });
+        } catch (err) {
+            console.error('addAsset (SIM) error:', err);
+            return res.status(err.statusCode || 400).json({ error: err.message });
+        }
+    }
+
+    try {
         if (!serial_no || !model_id || !status_id || !company_id) {
             return res.status(400).json({ error: 'Lütfen zorunlu alanları (Seri No, Model, Durum, Şirket) doldurun.' });
         }
@@ -96,10 +133,33 @@ exports.addAsset = (req, res) => {
 
 // Update existing asset
 exports.updateAsset = (req, res) => {
-    try {
-        const { id } = req.params;
-        const { serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version, specs_json } = req.body;
+    const { id } = req.params;
+    const { serial_no, barcode, model_id, status_id, company_id, purchase_price, purchase_date, lifetime_months, notes, mac_address, ip_address, cpu_model, ram_gb, disk_gb, os_version, specs_json } = req.body;
 
+    const simType = simAssetService.resolveTypeByModelId(model_id);
+    if (simType) {
+        try {
+            const changes = simAssetService.update(Number(model_id), id, {
+                ...req.body,
+                iccid: req.body.iccid || serial_no,
+                phone_no: req.body.phone_no || barcode
+            });
+            if (changes === 0) {
+                return res.status(404).json({ error: 'Varlık bulunamadı.' });
+            }
+            const userId = req.session?.user?.id || null;
+            db.prepare(`
+                INSERT INTO asset_logs (asset_id, action, target_type, notes, created_by)
+                VALUES (?, 'UPDATE', 'NONE', 'SIM hattı bilgileri güncellendi.', ?)
+            `).run(id, userId);
+            return res.json({ message: 'SIM hattı başarıyla güncellendi.' });
+        } catch (err) {
+            console.error('updateAsset (SIM) error:', err);
+            return res.status(err.statusCode || 400).json({ error: err.message });
+        }
+    }
+
+    try {
         const currentAsset = db.prepare('SELECT invoice_path, warranty_path FROM assets WHERE id = ?').get(id);
         if (!currentAsset) {
             return res.status(404).json({ error: 'Varlık bulunamadı.' });
@@ -164,7 +224,7 @@ exports.deleteAsset = (req, res) => {
         }
 
         // Zimmet / Kullanım durumu kontrolü
-        if (asset.personnel_id || asset.location_id) {
+        if (asset.personnel_id || asset.location_id || asset.vehicle_id || asset.department_id || asset.cost_center_id) {
             return res.status(400).json({ error: 'Bu cihaz zimmetlidir! Silme işleminden önce zimmeti depoya iade almalısınız.' });
         }
 

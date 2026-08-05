@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useMasterDataStore } from '../../stores/masterData'
 import { useToast } from '../../composables/useToast'
 import { useConfirm } from '../../composables/useConfirm'
@@ -122,21 +122,21 @@ onMounted(fetchData)
     <!-- Başlık -->
     <div class="flex items-center justify-between shrink-0">
       <div>
-        <h1 class="text-xl font-semibold text-gray-800">Servis Tanımları</h1>
-        <p class="text-sm text-gray-500 mt-0.5">Operatörler ve Hizmet Paketlerinin Merkezi Yönetimi</p>
+        <h1 class="text-xl font-semibold text-gray-800 dark:text-slate-100">Servis Tanımları</h1>
+        <p class="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Operatörler ve Hizmet Paketlerinin Merkezi Yönetimi</p>
       </div>
     </div>
 
     <!-- Sekmeler -->
-    <div class="flex border-b border-gray-200 shrink-0">
+    <div class="flex border-b border-gray-200 dark:border-slate-700 shrink-0">
       <button type="button" @click="activeTab = 'operators'"
         class="px-6 py-3 text-sm font-bold transition-all border-b-2"
-        :class="activeTab === 'operators' ? 'border-[#1a73e8] text-[#1a73e8]' : 'border-transparent text-gray-500 hover:text-gray-700'">
+        :class="activeTab === 'operators' ? 'border-[#1a73e8] text-[#1a73e8]' : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'">
         OPERATÖRLER
       </button>
       <button type="button" @click="activeTab = 'packages'"
         class="px-6 py-3 text-sm font-bold transition-all border-b-2"
-        :class="activeTab === 'packages' ? 'border-[#1a73e8] text-[#1a73e8]' : 'border-transparent text-gray-500 hover:text-gray-700'">
+        :class="activeTab === 'packages' ? 'border-[#1a73e8] text-[#1a73e8]' : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'">
         HİZMET PAKETLERİ (SIM/M2M)
       </button>
     </div>
@@ -151,22 +151,22 @@ onMounted(fetchData)
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto">
         <div v-for="op in masterData.operators" :key="op.id"
-          class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between group">
+          class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm flex items-center justify-between group">
           <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-[#1a73e8]">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-[#1a73e8] dark:text-blue-400">
               <i class="fas fa-tower-broadcast text-xl"></i>
             </div>
             <div>
-              <h3 class="font-bold text-gray-800">{{ op.name }}</h3>
-              <p class="text-xs text-gray-400">Merkezi Operatör Kaydı</p>
+              <h3 class="font-bold text-gray-800 dark:text-slate-100">{{ op.name }}</h3>
+              <p class="text-xs text-gray-400 dark:text-slate-500">Merkezi Operatör Kaydı</p>
             </div>
           </div>
           <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button type="button" @click="openOperatorModal(op)" class="p-2 text-gray-400 hover:text-blue-600"><i class="far fa-edit"></i></button>
-            <button type="button" @click="handleDelete('operators', op.id)" class="p-2 text-gray-400 hover:text-red-600"><i class="far fa-trash-alt"></i></button>
+            <button type="button" @click="openOperatorModal(op)" class="p-2 text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400"><i class="far fa-edit"></i></button>
+            <button type="button" @click="handleDelete('operators', op.id)" class="p-2 text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400"><i class="far fa-trash-alt"></i></button>
           </div>
         </div>
-        <div v-if="masterData.operators.length === 0" class="col-span-full py-20 text-center text-gray-400 italic">
+        <div v-if="masterData.operators.length === 0" class="col-span-full py-20 text-center text-gray-400 dark:text-slate-500 italic">
           Operatör kaydı bulunamadı.
         </div>
       </div>
@@ -194,23 +194,23 @@ onMounted(fetchData)
 
       <!-- Paket adı + features alt satır -->
       <template #cell-name="{ row, value }">
-        <div class="font-bold text-gray-900">{{ value }}</div>
-        <div class="text-[11px] text-gray-400 truncate max-w-xs">{{ row.features || 'Detay belirtilmemiş' }}</div>
+        <div class="font-bold text-gray-900 dark:text-slate-100">{{ value }}</div>
+        <div class="text-[11px] text-gray-400 dark:text-slate-500 truncate max-w-xs">{{ row.features || 'Detay belirtilmemiş' }}</div>
       </template>
 
       <!-- Tip badge -->
       <template #cell-type="{ value }">
         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold uppercase ring-1 ring-inset"
-          :class="value === 'm2m'  ? 'bg-orange-50 text-orange-700 ring-orange-200' :
-                  value === 'data' ? 'bg-blue-50 text-blue-700 ring-blue-200' :
-                                     'bg-purple-50 text-purple-700 ring-purple-200'">
+          :class="value === 'm2m'  ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 ring-orange-200 dark:ring-orange-500/20' :
+                  value === 'data' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 ring-blue-200 dark:ring-blue-500/20' :
+                                     'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 ring-purple-200 dark:ring-purple-500/20'">
           {{ value }}
         </span>
       </template>
 
       <!-- Limitler (virtual column) -->
       <template #cell-limits="{ row }">
-        <div class="text-[12px] text-gray-500">
+        <div class="text-[12px] text-gray-500 dark:text-slate-400">
           <div v-if="row.data_limit">{{ row.data_limit }} GB</div>
           <div v-if="row.minutes_limit">{{ row.minutes_limit }} DK</div>
           <span v-if="!row.data_limit && !row.minutes_limit">—</span>
@@ -219,7 +219,7 @@ onMounted(fetchData)
 
       <!-- Ücret -->
       <template #cell-price="{ value }">
-        <span class="font-bold text-gray-900">{{ value || 0 }} ₺</span>
+        <span class="font-bold text-gray-900 dark:text-slate-100">{{ value || 0 }} ₺</span>
       </template>
     </AppTable>
 
@@ -227,13 +227,13 @@ onMounted(fetchData)
 
     <!-- Operator Modal -->
     <dialog class="modal" :class="{ 'modal-open': isOperatorModalOpen }">
-      <div class="modal-box bg-white p-6 rounded-2xl shadow-xl border border-gray-100 max-w-sm">
-        <h3 class="font-bold text-lg mb-4">{{ selectedOperator ? 'Operatör Düzenle' : 'Yeni Operatör' }}</h3>
+      <div class="modal-box bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 max-w-sm">
+        <h3 class="font-bold text-lg mb-4 text-gray-900 dark:text-slate-100">{{ selectedOperator ? 'Operatör Düzenle' : 'Yeni Operatör' }}</h3>
         <input v-model="operatorForm.name" type="text" placeholder="Operatör Adı (Örn: Turkcell)"
-          class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none focus:border-[#1a73e8] mb-6">
+          class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl outline-none focus:border-[#1a73e8] mb-6">
         <div class="flex justify-end gap-2">
           <button type="button" @click="isOperatorModalOpen = false"
-            class="px-4 py-2 font-bold text-gray-400 hover:text-gray-600 uppercase text-xs">İPTAL</button>
+            class="px-4 py-2 font-bold text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 uppercase text-xs">İPTAL</button>
           <button type="button" @click="saveOperator"
             class="px-6 py-2 bg-[#1a73e8] text-white rounded-xl font-bold shadow-md uppercase text-xs">KAYDET</button>
         </div>
@@ -243,49 +243,49 @@ onMounted(fetchData)
 
     <!-- Package Modal -->
     <dialog class="modal" :class="{ 'modal-open': isPackageModalOpen }">
-      <div class="modal-box bg-white p-6 rounded-2xl shadow-xl border border-gray-100 max-w-lg">
-        <h3 class="font-bold text-lg mb-6">{{ selectedPackage ? 'Paket Düzenle' : 'Yeni Hizmet Paketi Ekleyin' }}</h3>
+      <div class="modal-box bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 max-w-lg">
+        <h3 class="font-bold text-lg mb-6 text-gray-900 dark:text-slate-100">{{ selectedPackage ? 'Paket Düzenle' : 'Yeni Hizmet Paketi Ekleyin' }}</h3>
         <div class="grid grid-cols-2 gap-4 mb-6">
           <div class="col-span-2 space-y-1">
-            <label class="text-xs font-bold text-gray-400">PAKET ADI</label>
+            <label class="text-xs font-bold text-gray-400 dark:text-slate-500">PAKET ADI</label>
             <input v-model="packageForm.name" type="text" required
-              class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none focus:border-[#1a73e8]">
+              class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl outline-none focus:border-[#1a73e8]">
           </div>
           <div class="space-y-1">
-            <label class="text-xs font-bold text-gray-400">OPERATÖR</label>
+            <label class="text-xs font-bold text-gray-400 dark:text-slate-500">OPERATÖR</label>
             <select v-model="packageForm.operator_id"
-              class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none bg-white">
+              class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 rounded-xl outline-none bg-white dark:bg-slate-900 dark:text-slate-100">
               <option v-for="op in masterData.operators" :key="op.id" :value="op.id">{{ op.name }}</option>
             </select>
           </div>
           <div class="space-y-1">
-            <label class="text-xs font-bold text-gray-400">TIP</label>
+            <label class="text-xs font-bold text-gray-400 dark:text-slate-500">TIP</label>
             <select v-model="packageForm.type"
-              class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none bg-white">
+              class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 rounded-xl outline-none bg-white dark:bg-slate-900 dark:text-slate-100">
               <option value="voice">Ses Hattı</option>
               <option value="data">Data Hattı</option>
               <option value="m2m">M2M Hattı</option>
             </select>
           </div>
           <div class="space-y-1">
-            <label class="text-xs font-bold text-gray-400">FIYAT (₺)</label>
+            <label class="text-xs font-bold text-gray-400 dark:text-slate-500">FIYAT (₺)</label>
             <input v-model="packageForm.price" type="number" step="0.01"
-              class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none">
+              class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl outline-none">
           </div>
           <div class="space-y-1">
-            <label class="text-xs font-bold text-gray-400">DATA (GB)</label>
+            <label class="text-xs font-bold text-gray-400 dark:text-slate-500">DATA (GB)</label>
             <input v-model="packageForm.data_limit" type="number"
-              class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none">
+              class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl outline-none">
           </div>
           <div class="col-span-2 space-y-1">
-            <label class="text-xs font-bold text-gray-400">ÖZELLIKLER / NOTLAR</label>
+            <label class="text-xs font-bold text-gray-400 dark:text-slate-500">ÖZELLIKLER / NOTLAR</label>
             <input v-model="packageForm.features" type="text"
-              class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none">
+              class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl outline-none">
           </div>
         </div>
         <div class="flex justify-end gap-2">
           <button type="button" @click="isPackageModalOpen = false"
-            class="px-4 py-2 font-bold text-gray-400 hover:text-gray-600 uppercase text-xs">İPTAL</button>
+            class="px-4 py-2 font-bold text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 uppercase text-xs">İPTAL</button>
           <button type="button" @click="savePackage"
             class="px-6 py-2 bg-[#1a73e8] text-white rounded-xl font-bold shadow-md uppercase text-xs">KAYDET</button>
         </div>

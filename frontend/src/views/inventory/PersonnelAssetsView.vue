@@ -1,10 +1,10 @@
 <template>
-  <div class="h-full flex flex-col bg-white overflow-hidden">
+  <div class="h-full flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
     <!-- HEADER -->
-    <header class="h-14 border-b border-gray-100 flex items-center px-6 gap-4 bg-white shrink-0">
+    <header class="h-14 border-b border-gray-100 dark:border-slate-700 flex items-center px-6 gap-4 bg-white dark:bg-slate-800 shrink-0">
       <div class="flex items-center gap-2 shrink-0">
-        <i class="fas fa-user-tag text-gray-400"></i>
-        <h1 class="text-[15px] font-bold text-gray-900">Personel Zimmet Özeti</h1>
+        <i class="fas fa-user-tag text-gray-400 dark:text-slate-500"></i>
+        <h1 class="text-[15px] font-bold text-gray-900 dark:text-slate-100">Personel Zimmet Özeti</h1>
       </div>
 
       <!-- Search & Filter Controls -->
@@ -13,24 +13,24 @@
           v-model="searchQuery"
           type="text"
           placeholder="Personel adı veya şirkete göre ara..."
-          class="h-8 px-3 bg-gray-50 border border-gray-200 rounded text-[12px] font-medium text-gray-700 outline-none focus:border-blue-500 w-64"
+          class="h-8 px-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded text-[12px] font-medium text-gray-700 dark:text-slate-300 outline-none focus:border-blue-500 w-64"
         />
-        <select v-model="selectedCompanyId" class="h-8 px-2 bg-gray-50 border border-gray-200 rounded text-[12px] font-medium text-gray-700 outline-none focus:border-blue-500 cursor-pointer">
+        <select v-model="selectedCompanyId" class="h-8 px-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded text-[12px] font-medium text-gray-700 dark:text-slate-300 outline-none focus:border-blue-500 cursor-pointer">
           <option value="">Tüm Şirketler</option>
           <option v-for="c in companies" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
 
         <!-- Toggle Filter (Only Assigned vs All) -->
-        <div class="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg ml-2">
-          <button 
+        <div class="flex items-center gap-1 bg-gray-100 dark:bg-slate-700 p-0.5 rounded-lg ml-2">
+          <button
             @click="onlyAssignedFilter = true"
-            :class="['px-2.5 py-1 rounded text-[11px] font-bold transition-all', onlyAssignedFilter ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+            :class="['px-2.5 py-1 rounded text-[11px] font-bold transition-all', onlyAssignedFilter ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200']"
           >
             Sadece Zimmetliler ({{ personnelWithAssetsCount }})
           </button>
-          <button 
+          <button
             @click="onlyAssignedFilter = false"
-            :class="['px-2.5 py-1 rounded text-[11px] font-bold transition-all', !onlyAssignedFilter ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+            :class="['px-2.5 py-1 rounded text-[11px] font-bold transition-all', !onlyAssignedFilter ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200']"
           >
             Tüm Personel
           </button>
@@ -39,14 +39,14 @@
 
       <!-- Stats & Batch Actions -->
       <div class="ml-auto flex items-center gap-2 text-[12px]">
-        <RouterLink 
-          to="/master-data/form-designer" 
+        <RouterLink
+          to="/master-data/form-designer"
           class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11.5px] rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
           title="A4 Zimmet Formunu Görsel Tasarla"
         >
           <i class="fas fa-file-signature"></i> A4 Form Studio
         </RouterLink>
-        <button 
+        <button
           v-if="personnelWithAssetsCount > 0"
           @click="openBatchPrintModal"
           class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11.5px] rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
@@ -54,24 +54,24 @@
         >
           <i class="fas fa-print"></i> Toplu Zimmet Formları
         </button>
-        <span class="text-gray-400">
-          <span class="font-bold text-gray-700">{{ filteredPersonnel.length }}</span> personel
+        <span class="text-gray-400 dark:text-slate-500">
+          <span class="font-bold text-gray-700 dark:text-slate-300">{{ filteredPersonnel.length }}</span> personel
         </span>
-        <span class="text-gray-400">
-          <span class="font-bold text-emerald-600">{{ totalAssignedCount }}</span> toplam zimmet
+        <span class="text-gray-400 dark:text-slate-500">
+          <span class="font-bold text-emerald-600 dark:text-green-400">{{ totalAssignedCount }}</span> toplam zimmet
         </span>
       </div>
     </header>
 
     <!-- MAIN CONTENT -->
-    <main class="flex-1 overflow-y-auto bg-gray-50/40 p-6">
+    <main class="flex-1 overflow-y-auto bg-gray-50/40 dark:bg-slate-900 p-6">
 
 
-      <div v-if="loading" class="flex items-center justify-center h-64 text-gray-300">
+      <div v-if="loading" class="flex items-center justify-center h-64 text-gray-300 dark:text-slate-600">
         <i class="fas fa-circle-notch fa-spin text-3xl"></i>
       </div>
 
-      <div v-else-if="filteredPersonnel.length === 0" class="flex flex-col items-center justify-center h-64 text-gray-300 gap-3">
+      <div v-else-if="filteredPersonnel.length === 0" class="flex flex-col items-center justify-center h-64 text-gray-300 dark:text-slate-600 gap-3">
         <i class="fas fa-user-slash text-4xl"></i>
         <p class="text-sm font-medium">Zimmetli personel bulunamadı.</p>
       </div>
@@ -80,28 +80,28 @@
         <div
           v-for="person in filteredPersonnel"
           :key="person.id"
-          class="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden"
+          class="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden"
         >
           <!-- Personnel Header -->
           <div
-            class="flex items-center gap-4 px-5 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50/50 transition-colors"
+            class="flex items-center gap-4 px-5 py-3 border-b border-gray-50 dark:border-slate-700 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors"
             @click="toggleExpand(person.id)"
           >
             <!-- Avatar -->
-            <div class="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-[12px] border border-blue-100 shrink-0">
+            <div class="w-9 h-9 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-[12px] border border-blue-100 dark:border-blue-500/30 shrink-0">
               {{ person.first_name?.[0] }}{{ person.last_name?.[0] }}
             </div>
             <!-- Info -->
             <div class="flex-1 min-w-0">
-              <div class="font-bold text-gray-900 text-[13.5px] flex items-center gap-2">
+              <div class="font-bold text-gray-900 dark:text-slate-100 text-[13.5px] flex items-center gap-2">
                 <span>{{ person.first_name }} {{ person.last_name }}</span>
               </div>
-              <div class="text-[11px] text-gray-400 flex items-center gap-2 mt-0.5">
+              <div class="text-[11px] text-gray-400 dark:text-slate-500 flex items-center gap-2 mt-0.5">
                 <span v-if="person.title">{{ person.title }}</span>
-                <span v-if="person.title && person.company_name" class="text-gray-200">·</span>
-                <span v-if="person.company_name" class="text-blue-500 font-medium">{{ person.company_name }}</span>
-                <span v-if="person.department_name" class="text-gray-300">·</span>
-                <span v-if="person.department_name" class="text-gray-400">{{ person.department_name }}</span>
+                <span v-if="person.title && person.company_name" class="text-gray-200 dark:text-slate-700">·</span>
+                <span v-if="person.company_name" class="text-blue-500 dark:text-blue-400 font-medium">{{ person.company_name }}</span>
+                <span v-if="person.department_name" class="text-gray-300 dark:text-slate-600">·</span>
+                <span v-if="person.department_name" class="text-gray-400 dark:text-slate-500">{{ person.department_name }}</span>
               </div>
             </div>
 
@@ -111,13 +111,13 @@
                   v-if="personnelAssets[person.id]"
                   class="flex items-center gap-2"
                 >
-                  <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[11px] font-bold rounded-full">
+                  <span class="px-2.5 py-1 bg-emerald-50 dark:bg-green-500/10 text-emerald-700 dark:text-green-400 text-[11px] font-bold rounded-full">
                     <i class="fas fa-desktop mr-1"></i>
                     {{ personnelAssets[person.id].active?.length || 0 }} Aktif Zimmet
                   </span>
                   <span
                     v-if="personnelAssets[person.id].totalValue > 0"
-                    class="px-2.5 py-1 bg-blue-50 text-blue-700 text-[11px] font-bold rounded-full"
+                    class="px-2.5 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 text-[11px] font-bold rounded-full"
                   >
                     {{ fmt(personnelAssets[person.id].totalValue) }}
                   </span>
@@ -133,10 +133,10 @@
                   <button
                     v-if="personnelAssets[person.id].active?.length > 0"
                     @click.stop="openPrintModal(person)"
-                    class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-bold rounded-lg flex items-center gap-1.5 transition-colors print:hidden"
+                    class="px-2.5 py-1 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 text-[11px] font-bold rounded-lg flex items-center gap-1.5 transition-colors print:hidden"
                     title="Zimmet Formu Yazdır"
                   >
-                    <i class="fas fa-print text-gray-500"></i>
+                    <i class="fas fa-print text-gray-500 dark:text-slate-400"></i>
                     <span>Zimmet Formu</span>
                   </button>
                   <button
@@ -148,19 +148,19 @@
                     <span>Zimmetle</span>
                   </button>
                 </div>
-                <div v-else class="text-gray-300 text-[11px] italic">Yükleniyor...</div>
+                <div v-else class="text-gray-300 dark:text-slate-600 text-[11px] italic">Yükleniyor...</div>
 
-                <i :class="['fas', expandedIds.has(person.id) ? 'fa-chevron-up' : 'fa-chevron-down', 'text-gray-400 text-[11px] transition-transform']"></i>
+                <i :class="['fas', expandedIds.has(person.id) ? 'fa-chevron-up' : 'fa-chevron-down', 'text-gray-400 dark:text-slate-500 text-[11px] transition-transform']"></i>
               </div>
           </div>
 
           <!-- Expanded Assets Table -->
           <div v-if="expandedIds.has(person.id) && personnelAssets[person.id]">
-            <div v-if="personnelAssets[person.id].active?.length === 0" class="px-5 py-4 text-[12px] text-gray-400 italic">
+            <div v-if="personnelAssets[person.id].active?.length === 0" class="px-5 py-4 text-[12px] text-gray-400 dark:text-slate-500 italic">
               Bu personelde aktif zimmetli cihaz bulunmuyor.
             </div>
             <table v-else class="w-full text-left text-[12px]">
-              <thead class="bg-gray-50 text-gray-400 uppercase text-[9.5px] font-bold border-b border-gray-100">
+              <thead class="bg-gray-50 dark:bg-slate-900 text-gray-400 dark:text-slate-500 uppercase text-[9.5px] font-bold border-b border-gray-100 dark:border-slate-700">
                 <tr>
                   <th class="px-5 py-2.5">Seri No / Envanter No</th>
                   <th class="px-5 py-2.5">Cihaz Bilgisi</th>
@@ -170,36 +170,36 @@
                   <th class="px-5 py-2.5 text-right">İşlemler</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-gray-50">
+              <tbody class="divide-y divide-gray-50 dark:divide-slate-700">
                 <tr
                   v-for="asset in personnelAssets[person.id].active"
                   :key="asset.id"
-                  class="hover:bg-gray-50/50 transition-colors"
+                  class="hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors"
                 >
                   <td class="px-5 py-3">
-                    <div class="font-bold text-gray-900">{{ asset.serial_no }}</div>
-                    <div v-if="asset.barcode" class="text-[10px] text-gray-400 mt-0.5">
+                    <div class="font-bold text-gray-900 dark:text-slate-100">{{ asset.serial_no }}</div>
+                    <div v-if="asset.barcode" class="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">
                       <i class="fas fa-barcode mr-1"></i>{{ asset.barcode }}
                     </div>
                   </td>
-                  <td class="px-5 py-3 font-semibold text-gray-700">
+                  <td class="px-5 py-3 font-semibold text-gray-700 dark:text-slate-300">
                     {{ asset.brand_name }} {{ asset.model_name }}
                   </td>
-                  <td class="px-5 py-3 text-gray-500">{{ asset.category_name }}</td>
-                  <td class="px-5 py-3 font-semibold text-gray-900">{{ fmt(asset.purchase_price) }}</td>
-                  <td class="px-5 py-3 text-gray-500">{{ fmtDate(asset.purchase_date) }}</td>
+                  <td class="px-5 py-3 text-gray-500 dark:text-slate-400">{{ asset.category_name }}</td>
+                  <td class="px-5 py-3 font-semibold text-gray-900 dark:text-slate-100">{{ fmt(asset.purchase_price) }}</td>
+                  <td class="px-5 py-3 text-gray-500 dark:text-slate-400">{{ fmtDate(asset.purchase_date) }}</td>
                   <td class="px-5 py-3 text-right">
                     <div class="flex items-center justify-end gap-2">
                       <button
                         @click="handleQuickReturn(asset)"
-                        class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 text-[11px] font-bold rounded flex items-center gap-1 transition-colors border border-amber-200"
+                        class="px-2 py-1 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-[11px] font-bold rounded flex items-center gap-1 transition-colors border border-amber-200 dark:border-amber-500/30"
                         title="Bu cihazı depoya iade et"
                       >
                         <i class="fas fa-undo"></i> İade Et
                       </button>
                       <RouterLink
                         to="/inventory/assets"
-                        class="text-blue-600 hover:text-blue-800 text-[11px] font-bold transition-colors p-1"
+                        class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-[11px] font-bold transition-colors p-1"
                         title="Envanterde Görüntüle"
                       >
                         <i class="fas fa-external-link-alt"></i>
@@ -211,20 +211,20 @@
             </table>
 
             <!-- History Section -->
-            <div v-if="personnelAssets[person.id].history?.length > 0" class="border-t border-gray-50 px-5 py-3">
-              <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <div v-if="personnelAssets[person.id].history?.length > 0" class="border-t border-gray-50 dark:border-slate-700 px-5 py-3">
+              <div class="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
                 <i class="fas fa-history"></i> Zimmet Geçmişi ({{ personnelAssets[person.id].history.length }})
               </div>
               <div class="flex flex-wrap gap-2">
                 <div
                   v-for="h in personnelAssets[person.id].history.slice(0, 5)"
                   :key="h.id"
-                  class="text-[11px] px-2.5 py-1 rounded-full bg-gray-100 text-gray-500"
+                  class="text-[11px] px-2.5 py-1 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400"
                 >
                   <i :class="h.action === 'CHECKOUT' ? 'fas fa-arrow-right text-blue-400' : 'fas fa-arrow-left text-amber-400'" class="mr-1"></i>
                   {{ h.brand_name }} {{ h.model_name }} · {{ fmtDate(h.created_at) }}
                 </div>
-                <div v-if="personnelAssets[person.id].history.length > 5" class="text-[11px] px-2.5 py-1 text-gray-400">
+                <div v-if="personnelAssets[person.id].history.length > 5" class="text-[11px] px-2.5 py-1 text-gray-400 dark:text-slate-500">
                   +{{ personnelAssets[person.id].history.length - 5 }} daha...
                 </div>
               </div>
@@ -236,18 +236,18 @@
 
     <!-- PRINT ZİMMET MODAL -->
     <div v-if="showPrintModal && selectedPrintPerson" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 print:p-0 print:static print:bg-transparent">
-      <div class="bg-white rounded-2xl max-w-4xl w-full p-8 shadow-2xl relative max-h-[95vh] overflow-y-auto print:max-h-none print:shadow-none print:w-full print:p-0">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-4xl w-full p-8 shadow-2xl relative max-h-[95vh] overflow-y-auto print:max-h-none print:shadow-none print:w-full print:p-0">
         <!-- Close & Print Action Buttons (Hidden on Print) -->
-        <div class="flex items-center justify-between border-b pb-4 mb-6 print:hidden">
+        <div class="flex items-center justify-between border-b dark:border-slate-700 pb-4 mb-6 print:hidden">
           <div class="flex items-center gap-2">
-            <i class="fas fa-file-contract text-blue-600 text-xl"></i>
-            <h2 class="text-lg font-bold text-gray-800">Zimmet Teslim ve Tesellüm Tutanağı Önizleme</h2>
+            <i class="fas fa-file-contract text-blue-600 dark:text-blue-400 text-xl"></i>
+            <h2 class="text-lg font-bold text-gray-800 dark:text-slate-100">Zimmet Teslim ve Tesellüm Tutanağı Önizleme</h2>
           </div>
           <div class="flex items-center gap-3">
             <button @click="triggerPrint" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg flex items-center gap-2 transition-colors">
               <i class="fas fa-print"></i> Yazdır / PDF İndir
             </button>
-            <button @click="showPrintModal = false" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-xs rounded-lg">
+            <button @click="showPrintModal = false" class="px-3 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 font-bold text-xs rounded-lg">
               Kapat
             </button>
           </div>
@@ -528,35 +528,35 @@
 
     <!-- QUICK ASSIGNMENT DIALOG -->
     <dialog ref="quickAssignDialog" class="modal">
-      <div class="modal-box w-11/12 max-w-md bg-white p-6 rounded-2xl relative shadow-2xl">
-        <h3 class="font-bold text-[16px] text-gray-900 mb-1 flex items-center gap-2">
-          <i class="fas fa-user-plus text-blue-600"></i> Hızlı Zimmet Atama
+      <div class="modal-box w-11/12 max-w-md bg-white dark:bg-slate-800 p-6 rounded-2xl relative shadow-2xl">
+        <h3 class="font-bold text-[16px] text-gray-900 dark:text-slate-100 mb-1 flex items-center gap-2">
+          <i class="fas fa-user-plus text-blue-600 dark:text-blue-400"></i> Hızlı Zimmet Atama
         </h3>
-        <p class="text-xs text-gray-400 mb-4">
+        <p class="text-xs text-gray-400 dark:text-slate-500 mb-4">
           <strong>{{ selectedPersonForAssign?.first_name }} {{ selectedPersonForAssign?.last_name }}</strong> personeline depodan cihaz zimmetleyin.
         </p>
 
         <form @submit.prevent="submitQuickAssign" class="space-y-4">
           <div>
-            <label class="form-label font-bold text-gray-700 block mb-1">Depodaki / Boştaki Cihaz Seçin *</label>
-            <select v-model="selectedUnassignedAssetId" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold" required>
+            <label class="form-label font-bold text-gray-700 dark:text-slate-300 block mb-1">Depodaki / Boştaki Cihaz Seçin *</label>
+            <select v-model="selectedUnassignedAssetId" class="w-full p-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 dark:text-slate-100 rounded-lg text-xs font-semibold" required>
               <option value="">-- Cihaz Seçiniz --</option>
               <option v-for="a in unassignedAssetsList" :key="a.id" :value="a.id">
                 [{{ a.category_name }}] {{ a.brand_name }} {{ a.model_name }} (SN: {{ a.serial_no }})
               </option>
             </select>
-            <div v-if="unassignedAssetsList.length === 0" class="text-[11px] text-amber-600 font-bold mt-1">
+            <div v-if="unassignedAssetsList.length === 0" class="text-[11px] text-amber-600 dark:text-amber-400 font-bold mt-1">
               ⚠️ Depoda boşta zimmetlenebilir cihaz bulunmuyor.
             </div>
           </div>
 
           <div>
-            <label class="form-label font-bold text-gray-700 block mb-1">Zimmet Açıklaması / Not</label>
-            <textarea v-model="assignNotes" class="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs" rows="2" placeholder="Örn: Yeni başlangıç bilgisayarı teslimi"></textarea>
+            <label class="form-label font-bold text-gray-700 dark:text-slate-300 block mb-1">Zimmet Açıklaması / Not</label>
+            <textarea v-model="assignNotes" class="w-full p-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 dark:text-slate-100 rounded-lg text-xs" rows="2" placeholder="Örn: Yeni başlangıç bilgisayarı teslimi"></textarea>
           </div>
 
           <div class="modal-action mt-6 flex justify-end gap-2">
-            <button type="button" @click="quickAssignDialog?.close()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-lg">İptal</button>
+            <button type="button" @click="quickAssignDialog?.close()" class="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-bold text-xs rounded-lg">İptal</button>
             <button type="submit" :disabled="!selectedUnassignedAssetId" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm disabled:opacity-50">Zimmeti Tamamla</button>
           </div>
         </form>
@@ -565,52 +565,52 @@
 
     <!-- AUDIT CHECKLIST SESSION DIALOG -->
     <dialog ref="auditSessionDialog" class="modal">
-      <div class="modal-box w-11/12 max-w-2xl bg-white p-6 rounded-2xl relative shadow-2xl space-y-4">
-        <div class="flex items-center justify-between border-b pb-3 border-gray-100">
+      <div class="modal-box w-11/12 max-w-2xl bg-white dark:bg-slate-800 p-6 rounded-2xl relative shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b pb-3 border-gray-100 dark:border-slate-700">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-lg shadow-md">
               <i class="fas fa-clipboard-check"></i>
             </div>
             <div>
-              <h3 class="font-extrabold text-[15px] text-gray-900">Saha Zimmet Stok Sayımı Kontrolü</h3>
-              <p class="text-xs text-gray-400 font-medium">
+              <h3 class="font-extrabold text-[15px] text-gray-900 dark:text-slate-100">Saha Zimmet Stok Sayımı Kontrolü</h3>
+              <p class="text-xs text-gray-400 dark:text-slate-500 font-medium">
                 Personel: <strong>{{ activeAuditPerson?.first_name }} {{ activeAuditPerson?.last_name }}</strong> ({{ activeAuditPerson?.company_name }})
               </p>
             </div>
           </div>
-          <button @click="auditSessionDialog?.close()" class="text-gray-400 hover:text-gray-600 font-bold text-sm">✕</button>
+          <button @click="auditSessionDialog?.close()" class="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 font-bold text-sm">✕</button>
         </div>
 
         <!-- Asset Checklist -->
         <div class="space-y-3">
-          <div class="flex items-center justify-between text-xs font-bold text-gray-600">
+          <div class="flex items-center justify-between text-xs font-bold text-gray-600 dark:text-slate-400">
             <span>Personelin Üzerindeki Cihazlar Listesi ({{ activeAuditAssets.length }} Cihaz):</span>
-            <span class="text-emerald-600 font-extrabold">{{ verifiedAssetIds.size }} / {{ activeAuditAssets.length }} Doğrulandı</span>
+            <span class="text-emerald-600 dark:text-green-400 font-extrabold">{{ verifiedAssetIds.size }} / {{ activeAuditAssets.length }} Doğrulandı</span>
           </div>
 
           <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
-            <div 
-              v-for="item in activeAuditAssets" 
-              :key="item.id" 
-              :class="['p-3 rounded-xl border transition-all flex items-center justify-between', verifiedAssetIds.has(item.id) ? 'bg-emerald-50/70 border-emerald-200' : 'bg-gray-50 border-gray-100']"
+            <div
+              v-for="item in activeAuditAssets"
+              :key="item.id"
+              :class="['p-3 rounded-xl border transition-all flex items-center justify-between', verifiedAssetIds.has(item.id) ? 'bg-emerald-50/70 dark:bg-green-500/10 border-emerald-200 dark:border-green-500/30' : 'bg-gray-50 dark:bg-slate-900 border-gray-100 dark:border-slate-700']"
             >
               <div class="space-y-0.5">
-                <div class="font-bold text-gray-900 text-xs flex items-center gap-2">
+                <div class="font-bold text-gray-900 dark:text-slate-100 text-xs flex items-center gap-2">
                   <span>{{ item.brand_name }} {{ item.model_name }}</span>
-                  <span class="text-[10px] font-bold px-2 py-0.2 bg-white border rounded text-gray-600">{{ item.category_name }}</span>
+                  <span class="text-[10px] font-bold px-2 py-0.2 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded text-gray-600 dark:text-slate-400">{{ item.category_name }}</span>
                 </div>
-                <div class="text-[11px] text-gray-400 font-mono flex items-center gap-2">
+                <div class="text-[11px] text-gray-400 dark:text-slate-500 font-mono flex items-center gap-2">
                   <span>SN: {{ item.serial_no }}</span>
                   <span v-if="item.barcode">| ENV: {{ item.barcode }}</span>
-                  <span v-if="item.last_audit_date" class="text-blue-500">| Son Sayım: {{ fmtDate(item.last_audit_date) }}</span>
+                  <span v-if="item.last_audit_date" class="text-blue-500 dark:text-blue-400">| Son Sayım: {{ fmtDate(item.last_audit_date) }}</span>
                 </div>
               </div>
 
               <div class="flex items-center gap-2">
-                <button 
-                  v-if="!verifiedAssetIds.has(item.id)" 
-                  @click="toggleAssetVerified(item.id)" 
-                  class="px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-lg transition-colors flex items-center gap-1"
+                <button
+                  v-if="!verifiedAssetIds.has(item.id)"
+                  @click="toggleAssetVerified(item.id)"
+                  class="px-2.5 py-1 bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-green-500/10 text-emerald-700 dark:text-green-400 border border-emerald-200 dark:border-green-500/30 text-xs font-bold rounded-lg transition-colors flex items-center gap-1"
                 >
                   <i class="fas fa-check"></i> Fiziksel Kontrol OK
                 </button>
@@ -624,19 +624,19 @@
 
         <!-- Audit Note Input -->
         <div>
-          <label class="form-label text-xs font-bold text-gray-700 block mb-1">Saha Kontrol Notu / Açıklama</label>
-          <input v-model="auditSessionNote" type="text" placeholder="Örn: Tüm cihazlar yerinde ve çalışır vaziyette görüldü." class="w-full p-2 bg-gray-50 border rounded-lg text-xs" />
+          <label class="form-label text-xs font-bold text-gray-700 dark:text-slate-300 block mb-1">Saha Kontrol Notu / Açıklama</label>
+          <input v-model="auditSessionNote" type="text" placeholder="Örn: Tüm cihazlar yerinde ve çalışır vaziyette görüldü." class="w-full p-2 bg-gray-50 dark:bg-slate-900 border dark:border-slate-700 dark:text-slate-100 rounded-lg text-xs" />
         </div>
 
         <!-- Footer Actions -->
-        <div class="modal-action pt-2 flex justify-between items-center border-t border-gray-100">
-          <div class="text-[11px] text-gray-400 font-medium">Sayımı bitirmek için cihazları doğrulayıp kaydedin.</div>
+        <div class="modal-action pt-2 flex justify-between items-center border-t border-gray-100 dark:border-slate-700">
+          <div class="text-[11px] text-gray-400 dark:text-slate-500 font-medium">Sayımı bitirmek için cihazları doğrulayıp kaydedin.</div>
           <div class="flex gap-2">
-            <button type="button" @click="auditSessionDialog?.close()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-xl">İptal</button>
-            <button 
-              type="button" 
-              @click="submitAuditSession" 
-              :disabled="verifiedAssetIds.size === 0" 
+            <button type="button" @click="auditSessionDialog?.close()" class="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-bold text-xs rounded-xl">İptal</button>
+            <button
+              type="button"
+              @click="submitAuditSession"
+              :disabled="verifiedAssetIds.size === 0"
               class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md disabled:opacity-50 flex items-center gap-1.5"
             >
               <i class="fas fa-save"></i> Sayımı Tescille & Kaydet
@@ -648,23 +648,23 @@
 
     <!-- AUDIT PERIOD SETTINGS DIALOG -->
     <dialog ref="auditSettingsDialog" class="modal">
-      <div class="modal-box w-11/12 max-w-sm bg-white p-6 rounded-2xl relative shadow-2xl">
-        <h3 class="font-bold text-[15px] text-gray-900 mb-2 flex items-center gap-2">
-          <i class="fas fa-cog text-blue-600"></i> Periyodik Sayım Kuralı Ayarı
+      <div class="modal-box w-11/12 max-w-sm bg-white dark:bg-slate-800 p-6 rounded-2xl relative shadow-2xl">
+        <h3 class="font-bold text-[15px] text-gray-900 dark:text-slate-100 mb-2 flex items-center gap-2">
+          <i class="fas fa-cog text-blue-600 dark:text-blue-400"></i> Periyodik Sayım Kuralı Ayarı
         </h3>
-        <p class="text-xs text-gray-400 mb-4">
+        <p class="text-xs text-gray-400 dark:text-slate-500 mb-4">
           Sistem admini olarak personele ait zimmetlerin kaç günde bir kontrol edilmesi gerektiğini belirleyin.
         </p>
 
         <form @submit.prevent="saveAuditSettings" class="space-y-4">
           <div>
-            <label class="form-label font-bold text-gray-700 block mb-1">Denetim Periyodu (Gün) *</label>
-            <input v-model.number="editPeriodDays" type="number" min="7" max="365" class="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold" required />
-            <div class="text-[11px] text-gray-400 mt-1">Örnek: 90 Gün = 3 Ayda bir stok sayım zorunluluğu.</div>
+            <label class="form-label font-bold text-gray-700 dark:text-slate-300 block mb-1">Denetim Periyodu (Gün) *</label>
+            <input v-model.number="editPeriodDays" type="number" min="7" max="365" class="w-full p-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 dark:text-slate-100 rounded-lg text-xs font-bold" required />
+            <div class="text-[11px] text-gray-400 dark:text-slate-500 mt-1">Örnek: 90 Gün = 3 Ayda bir stok sayım zorunluluğu.</div>
           </div>
 
           <div class="modal-action flex justify-end gap-2">
-            <button type="button" @click="auditSettingsDialog?.close()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-lg">İptal</button>
+            <button type="button" @click="auditSettingsDialog?.close()" class="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-bold text-xs rounded-lg">İptal</button>
             <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm">Ayarı Kaydet</button>
           </div>
         </form>

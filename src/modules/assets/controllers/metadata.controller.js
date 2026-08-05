@@ -4,27 +4,11 @@ const { db } = require('../../../database/db');
 exports.getMetadata = (req, res) => {
     try {
         const categoriesRaw = db.prepare('SELECT * FROM asset_categories ORDER BY name').all();
-        const defaultComputerFields = ["İşlemci (CPU)", "RAM (GB)", "Disk (GB)", "İşletim Sistemi", "IP Adresi", "MAC Adresi"];
-        const defaultPhoneFields = ["IMEI 1", "IMEI 2", "Depolama (GB)", "Renk"];
-        const defaultMonitorFields = ["Ekran Boyutu (İnç)", "Çözünürlük", "Yenileme Hızı (Hz)", "Bağlantı Portları"];
-        const defaultPrinterFields = ["Baskı Tipi (Lazer/Mürekkepli)", "Toner/Kartuş Modeli", "Baskı Rengi"];
 
         const categories = categoriesRaw.map(c => {
             let fields = [];
             if (c.custom_fields_json) {
                 try { fields = JSON.parse(c.custom_fields_json); } catch (e) {}
-            }
-            if (!fields || fields.length === 0) {
-                const nameLower = (c.name || '').toLowerCase();
-                if (nameLower.includes('telefon') || nameLower.includes('phone') || nameLower.includes('mobil') || nameLower.includes('gsm') || nameLower.includes('tablet')) {
-                    fields = defaultPhoneFields;
-                } else if (nameLower.includes('monitör') || nameLower.includes('ekran') || nameLower.includes('display')) {
-                    fields = defaultMonitorFields;
-                } else if (nameLower.includes('yazıcı') || nameLower.includes('printer')) {
-                    fields = defaultPrinterFields;
-                } else {
-                    fields = defaultComputerFields;
-                }
             }
             return { ...c, custom_fields: fields };
         });
@@ -34,6 +18,11 @@ exports.getMetadata = (req, res) => {
         const companies = db.prepare('SELECT id, name FROM companies ORDER BY name').all();
         const locations = db.prepare('SELECT id, name FROM locations ORDER BY name').all();
         const personnel = db.prepare("SELECT id, first_name || ' ' || last_name as name FROM personnel ORDER BY first_name").all();
+        const vehicles = db.prepare('SELECT id, plate_no, vehicle_type FROM vehicles ORDER BY plate_no').all();
+        const departments = db.prepare('SELECT id, name FROM departments ORDER BY name').all();
+        const costCenters = db.prepare('SELECT id, code, name FROM cost_centers ORDER BY name').all();
+        const operators = db.prepare('SELECT id, name FROM operators ORDER BY name').all();
+        const packages = db.prepare('SELECT id, name, type, operator_id, price, data_limit FROM packages ORDER BY name').all();
 
         const models = db.prepare(`
             SELECT am.id, am.name, am.category_id, am.brand_id, ac.name as category_name, ab.name as brand_name
@@ -43,7 +32,7 @@ exports.getMetadata = (req, res) => {
             ORDER BY am.name
         `).all();
 
-        res.json({ categories, brands, statuses, companies, locations, personnel, models });
+        res.json({ categories, brands, statuses, companies, locations, personnel, vehicles, departments, costCenters, operators, packages, models });
     } catch (err) {
         console.error('getMetadata error:', err);
         res.status(500).json({ error: 'Alt listeler yüklenemedi.' });

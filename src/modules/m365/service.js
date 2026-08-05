@@ -142,8 +142,9 @@ class M365Service {
         reason = 'Atıl Lisans (E-Posta ve Teams servisleri inaktif)';
       }
 
-      if (isInactive) {
-        const potentialSavings = user.unit_price || 0;
+      // Ücretsiz lisanslar (unit_price = 0 veya girilmemiş) tasarruf sağlamadığı için önerilere dahil edilmez
+      if (isInactive && user.unit_price > 0) {
+        const potentialSavings = user.unit_price;
         totalSavings += potentialSavings;
 
         recommendations.push({
@@ -169,28 +170,82 @@ class M365Service {
     };
   }
 
-  removeAllocationUser(allocationUserId) {
-    const transaction = db.transaction(() => {
-      const row = db.prepare("SELECT allocation_id FROM m365_allocation_users WHERE id = ?").get(allocationUserId);
-      if (row) {
-        db.prepare("DELETE FROM m365_allocation_users WHERE id = ?").run(allocationUserId);
-        
-        db.prepare(`
-          UPDATE m365_allocations 
-          SET quantity = (
-            SELECT COUNT(*) 
-            FROM m365_allocation_users 
-            WHERE m365_allocation_users.allocation_id = ?
-          ) 
-          WHERE id = ?
-        `).run(row.allocation_id, row.allocation_id);
-        return true;
-      }
-      return false;
-    });
+  // Şirket ve departman bazlı lisans dağılımı + maliyet özeti
+  getSummaryReport() {
+    const byCompany = db.prepare(`
+      SELECT
+        c.id as company_id,
+        c.name as company_name,
+        COUNT(mau.id) as seat_count,
+        COUNT(DISTINCT mau.personnel_id) as personnel_count,
+        SUM(COALESCE(ml.unit_price, 0)) as monthly_cost
+      FROM m365_allocation_users mau
+      JOIN m365_allocations ma ON mau.allocation_id = ma.id
+      JOIN m365_licenses ml ON ma.license_id = ml.id
+      JOIN companies c ON ma.company_id = c.id
+      GROUP BY c.id
+      ORDER BY monthly_cost DESC
+    `).all();
 
-    return transaction();
+    const byDepartment = db.prepare(`
+      SELECT
+        COALESCE(d.id, 0) as department_id,
+        COALESCE(d.name, 'Departmansız') as department_name,
+        COUNT(mau.id) as seat_count,
+        COUNT(DISTINCT mau.personnel_id) as personnel_count,
+        SUM(COALESCE(ml.unit_price, 0)) as monthly_cost
+      FROM m365_allocation_users mau
+      JOIN m365_allocations ma ON mau.allocation_id = ma.id
+      JOIN m365_licenses ml ON ma.license_id = ml.id
+      JOIN personnel p ON mau.personnel_id = p.id
+      LEFT JOIN departments d ON p.department_id = d.id
+      GROUP BY department_id
+      ORDER BY monthly_cost DESC
+    `).all();
+
+    const byLicense = db.prepare(`
+      SELECT
+        ml.id as license_id,
+        ml.name as license_name,
+        ml.category,
+        ml.unit_price,
+        ml.currency,
+        COUNT(mau.id) as seat_count,
+        SUM(COALESCE(ml.unit_price, 0)) as monthly_cost
+      FROM m365_allocation_users mau
+      JOIN m365_allocations ma ON mau.allocation_id = ma.id
+      JOIN m365_licenses ml ON ma.license_id = ml.id
+      GROUP BY ml.id
+      ORDER BY monthly_cost DESC
+    `).all();
+
+    const totals = db.prepare(`
+      SELECT
+        COUNT(mau.id) as total_seats,
+        COUNT(DISTINCT mau.personnel_id) as total_personnel,
+        SUM(COALESCE(ml.unit_price, 0)) as total_monthly_cost
+      FROM m365_allocation_users mau
+      JOIN m365_allocations ma ON mau.allocation_id = ma.id
+      JOIN m365_licenses ml ON ma.license_id = ml.id
+    `).get();
+
+    const { recommendations, totalSavings } = this.getOptimizationRecommendations();
+
+    return {
+      byCompany,
+      byDepartment,
+      byLicense,
+      totals: {
+        totalSeats: totals.total_seats || 0,
+        totalPersonnel: totals.total_personnel || 0,
+        totalMonthlyCost: parseFloat((totals.total_monthly_cost || 0).toFixed(2)),
+        totalIdleCost: totalSavings,
+        idleCount: recommendations.length,
+        currency: 'USD'
+      }
+    };
   }
+
 }
 
 module.exports = new M365Service();

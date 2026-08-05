@@ -169,43 +169,43 @@ onUnmounted(() => stopPolling())
 </script>
 
 <template>
-  <div class="h-full overflow-y-auto bg-gray-50/50 p-6">
+  <div class="h-full overflow-y-auto bg-gray-50/50 dark:bg-slate-900 p-6">
     <div class="max-w-5xl mx-auto space-y-6">
-      
+
       <!-- Başlık & Tab Seçimi -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm">
         <div>
-          <h1 class="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <i class="fas fa-cloud-download-alt text-blue-600"></i>
+          <h1 class="text-xl font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
+            <i class="fas fa-cloud-download-alt text-blue-600 dark:text-blue-400"></i>
             Sistem Güncelleme & Yedekleme
-            <span v-if="updateInfo?.currentVersion" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+            <span v-if="updateInfo?.currentVersion" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400">
               v{{ updateInfo.currentVersion }}
             </span>
           </h1>
-          <p class="text-xs text-gray-500 mt-1">
+          <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
             GitHub (ufukkay/ITManager) üzerinden otomatik versiyon kontrolü, veritabanı yedeği ve sürüm yükseltme.
           </p>
         </div>
 
-        <div class="flex items-center gap-2 bg-gray-100 p-1 rounded-xl shrink-0">
-          <button 
+        <div class="flex items-center gap-2 bg-gray-100 dark:bg-slate-900 p-1 rounded-xl shrink-0">
+          <button
             @click="activeTab = 'update'"
             class="px-4 py-2 rounded-lg text-xs font-bold transition-all"
-            :class="activeTab === 'update' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+            :class="activeTab === 'update' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100'"
           >
             <i class="fas fa-sync-alt mr-1"></i> Güncelleme
           </button>
-          <button 
+          <button
             @click="activeTab = 'backups'"
             class="px-4 py-2 rounded-lg text-xs font-bold transition-all"
-            :class="activeTab === 'backups' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+            :class="activeTab === 'backups' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100'"
           >
             <i class="fas fa-database mr-1"></i> Sunucu Yedekleri ({{ serverBackups.length }})
           </button>
-          <button 
+          <button
             @click="activeTab = 'history'"
             class="px-4 py-2 rounded-lg text-xs font-bold transition-all"
-            :class="activeTab === 'history' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+            :class="activeTab === 'history' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100'"
           >
             <i class="fas fa-history mr-1"></i> Geçmiş
           </button>
@@ -218,32 +218,32 @@ onUnmounted(() => stopPolling())
         <!-- Sürüm Kartı -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Mevcut Sürüm -->
-          <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm flex items-center justify-between">
             <div>
-              <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Mevcut Çalışan Sürüm</span>
-              <div class="text-2xl font-black text-gray-800 mt-1 flex items-center gap-2">
+              <span class="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Mevcut Çalışan Sürüm</span>
+              <div class="text-2xl font-black text-gray-800 dark:text-slate-100 mt-1 flex items-center gap-2">
                 v{{ updateInfo?.currentVersion || '...' }}
-                <span v-if="updateInfo?.currentCommit" class="text-xs font-mono font-normal text-gray-400">({{ updateInfo.currentCommit }})</span>
+                <span v-if="updateInfo?.currentCommit" class="text-xs font-mono font-normal text-gray-400 dark:text-slate-500">({{ updateInfo.currentCommit }})</span>
               </div>
             </div>
-            <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl font-bold">
+            <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl font-bold">
               <i class="fas fa-server"></i>
             </div>
           </div>
 
           <!-- En Son GitHub Commit'i -->
-          <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+          <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm flex items-center justify-between">
             <div>
-              <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">GitHub main (son commit)</span>
-              <div class="text-2xl font-black mt-1 flex items-center gap-2 font-mono" :class="updateInfo?.hasUpdate ? 'text-emerald-600' : 'text-gray-800'">
+              <span class="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">GitHub main (son commit)</span>
+              <div class="text-2xl font-black mt-1 flex items-center gap-2 font-mono" :class="updateInfo?.hasUpdate ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-800 dark:text-slate-100'">
                 {{ updateInfo?.latestCommit || '...' }}
-                <span v-if="updateInfo?.hasUpdate" class="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-sans">Yeni!</span>
+                <span v-if="updateInfo?.hasUpdate" class="text-xs font-bold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full font-sans">Yeni!</span>
               </div>
             </div>
-            <button 
-              @click="checkUpdate" 
+            <button
+              @click="checkUpdate"
               :disabled="checking"
-              class="w-12 h-12 rounded-2xl bg-gray-50 hover:bg-gray-100 text-gray-600 flex items-center justify-center text-lg transition-colors"
+              class="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 flex items-center justify-center text-lg transition-colors"
               title="Yeniden Kontrol Et"
             >
               <i class="fas fa-sync-alt" :class="{ 'fa-spin': checking }"></i>
@@ -252,40 +252,40 @@ onUnmounted(() => stopPolling())
         </div>
 
         <!-- Hata Mesajı -->
-        <div v-if="updateErrorMessage" class="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-medium flex items-center gap-3">
-          <i class="fas fa-exclamation-circle text-base text-rose-500"></i>
+        <div v-if="updateErrorMessage" class="p-4 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 rounded-2xl text-xs font-medium flex items-center gap-3">
+          <i class="fas fa-exclamation-circle text-base text-rose-500 dark:text-rose-400"></i>
           <span>{{ updateErrorMessage }}</span>
         </div>
 
         <!-- Başarı Mesajı -->
-        <div v-if="updateSuccessMessage" class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-medium flex items-center gap-3">
-          <i class="fas fa-check-circle text-base text-emerald-500"></i>
+        <div v-if="updateSuccessMessage" class="p-4 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-400 rounded-2xl text-xs font-medium flex items-center gap-3">
+          <i class="fas fa-check-circle text-base text-emerald-500 dark:text-emerald-400"></i>
           <span>{{ updateSuccessMessage }}</span>
         </div>
 
         <!-- Güncelleme Durum Alanı -->
-        <div v-if="updateInfo" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          
+        <div v-if="updateInfo" class="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
+
           <!-- Durum Banner -->
-          <div 
-            class="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-            :class="updateInfo.hasUpdate ? 'bg-emerald-50/50' : 'bg-gray-50/50'"
+          <div
+            class="p-6 border-b border-gray-100 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+            :class="updateInfo.hasUpdate ? 'bg-emerald-50/50 dark:bg-emerald-500/5' : 'bg-gray-50/50 dark:bg-slate-900/50'"
           >
             <div class="flex items-center gap-4">
-              <div 
+              <div
                 class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0"
-                :class="updateInfo.hasUpdate ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200' : 'bg-blue-500 text-white shadow-md shadow-blue-200'"
+                :class="updateInfo.hasUpdate ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200 dark:shadow-emerald-900/30' : 'bg-blue-500 text-white shadow-md shadow-blue-200 dark:shadow-blue-900/30'"
               >
                 <i :class="updateInfo.hasUpdate ? 'fas fa-arrow-alt-circle-up' : 'fas fa-check-circle'"></i>
               </div>
               <div>
-                <h3 class="font-bold text-gray-900 text-base">
+                <h3 class="font-bold text-gray-900 dark:text-slate-100 text-base">
                   {{ updateInfo.hasUpdate ? 'Yeni Güncelleme Mevcut' : 'Sisteminiz Güncel!' }}
                 </h3>
-                <p class="text-xs text-gray-500 mt-0.5">
+                <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                   {{ updateInfo.hasUpdate ? (updateInfo.latestCommitDate ? `Yayınlanma: ${formatDate(updateInfo.latestCommitDate)}` : '') : 'main branch ile aynı commit\'tesiniz.' }}
                 </p>
-                <p class="text-[11px] text-gray-400 mt-1">
+                <p class="text-[11px] text-gray-400 dark:text-slate-500 mt-1">
                   Güncelleme, GitHub'daki main branch'in son halini indirir. Öncesinde otomatik veritabanı yedeği alınır, sonrasında backend ve frontend yeniden kurulup derlenir.
                 </p>
               </div>
@@ -315,15 +315,15 @@ onUnmounted(() => stopPolling())
 
           <!-- Son Commit Bilgisi -->
           <div class="p-6 space-y-4">
-            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-              <i class="fas fa-file-alt text-blue-500"></i>
+            <h4 class="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <i class="fas fa-file-alt text-blue-500 dark:text-blue-400"></i>
               GitHub main - Son Commit Mesajı
             </h4>
 
-            <div v-if="updateInfo.latestCommitMessage" class="bg-gray-50 p-4 rounded-xl text-xs text-gray-700 font-mono whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto border border-gray-200/60">
+            <div v-if="updateInfo.latestCommitMessage" class="bg-gray-50 dark:bg-slate-900 p-4 rounded-xl text-xs text-gray-700 dark:text-slate-300 font-mono whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto border border-gray-200/60 dark:border-slate-700">
               {{ updateInfo.latestCommitMessage }}
             </div>
-            <div v-else class="text-xs text-gray-400 italic">
+            <div v-else class="text-xs text-gray-400 dark:text-slate-500 italic">
               Commit mesajı alınamadı.
             </div>
           </div>
@@ -346,43 +346,43 @@ onUnmounted(() => stopPolling())
       </div>
 
       <!-- TAB 2: SUNUCU YEDEKLERİ -->
-      <div v-if="activeTab === 'backups'" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+      <div v-if="activeTab === 'backups'" class="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
           <div>
-            <h3 class="font-bold text-gray-900 text-sm">Sunucudaki Otomatik Yedekler (`/backups` Klasörü)</h3>
-            <p class="text-xs text-gray-500">Her güncellemeden önce alınan tüm veritabanı snapshots zip dosyaları burada saklanır.</p>
+            <h3 class="font-bold text-gray-900 dark:text-slate-100 text-sm">Sunucudaki Otomatik Yedekler (`/backups` Klasörü)</h3>
+            <p class="text-xs text-gray-500 dark:text-slate-400">Her güncellemeden önce alınan tüm veritabanı snapshots zip dosyaları burada saklanır.</p>
           </div>
-          <button @click="downloadBackup" :disabled="backupLoading" class="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl text-xs font-bold transition-colors">
+          <button @click="downloadBackup" :disabled="backupLoading" class="px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 rounded-xl text-xs font-bold transition-colors">
             + Anlık Yedek Al
           </button>
         </div>
 
-        <div v-if="serverBackupsLoading" class="p-8 text-center text-xs text-gray-400">
+        <div v-if="serverBackupsLoading" class="p-8 text-center text-xs text-gray-400 dark:text-slate-500">
           Yedekler yükleniyor...
         </div>
 
-        <div v-else-if="serverBackups.length === 0" class="p-8 text-center text-xs text-gray-400">
+        <div v-else-if="serverBackups.length === 0" class="p-8 text-center text-xs text-gray-400 dark:text-slate-500">
           Henüz alınmış sunucu yedeği bulunmuyor.
         </div>
 
-        <div v-else class="divide-y divide-gray-100">
-          <div v-for="file in serverBackups" :key="file.name" class="p-4 flex items-center justify-between hover:bg-gray-50/80 transition-colors">
+        <div v-else class="divide-y divide-gray-100 dark:divide-slate-700">
+          <div v-for="file in serverBackups" :key="file.name" class="p-4 flex items-center justify-between hover:bg-gray-50/80 dark:hover:bg-slate-700/50 transition-colors">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-base font-bold shrink-0">
+              <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-base font-bold shrink-0">
                 <i class="fas fa-file-archive"></i>
               </div>
               <div>
-                <div class="font-mono font-bold text-xs text-gray-800">{{ file.name }}</div>
-                <div class="text-[11px] text-gray-400 mt-0.5 flex items-center gap-3">
+                <div class="font-mono font-bold text-xs text-gray-800 dark:text-slate-100">{{ file.name }}</div>
+                <div class="text-[11px] text-gray-400 dark:text-slate-500 mt-0.5 flex items-center gap-3">
                   <span><i class="far fa-clock mr-1"></i>{{ formatDate(file.createdAt) }}</span>
                   <span><i class="fas fa-weight-hanging mr-1"></i>{{ formatBytes(file.size) }}</span>
                 </div>
               </div>
             </div>
 
-            <button 
+            <button
               @click="downloadServerBackupFile(file.name)"
-              class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5"
+              class="px-3 py-1.5 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5"
             >
               <i class="fas fa-download"></i> İndir
             </button>
@@ -391,29 +391,29 @@ onUnmounted(() => stopPolling())
       </div>
 
       <!-- TAB 3: GÜNCELLEME GEÇMİŞİ -->
-      <div v-if="activeTab === 'history'" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div class="p-5 border-b border-gray-100">
-          <h3 class="font-bold text-gray-900 text-sm">Geçmiş Güncelleme Kayıtları</h3>
-          <p class="text-xs text-gray-500">Daha önce yapılan güncelleme işlemleri ve sonuçları.</p>
+      <div v-if="activeTab === 'history'" class="bg-white dark:bg-slate-800 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-gray-100 dark:border-slate-700">
+          <h3 class="font-bold text-gray-900 dark:text-slate-100 text-sm">Geçmiş Güncelleme Kayıtları</h3>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Daha önce yapılan güncelleme işlemleri ve sonuçları.</p>
         </div>
 
-        <div v-if="history.length === 0" class="p-8 text-center text-xs text-gray-400">
+        <div v-if="history.length === 0" class="p-8 text-center text-xs text-gray-400 dark:text-slate-500">
           Henüz kaydedilmiş güncelleme geçmişi yok.
         </div>
 
-        <div v-else class="divide-y divide-gray-100">
+        <div v-else class="divide-y divide-gray-100 dark:divide-slate-700">
           <div v-for="(item, idx) in history" :key="idx" class="p-4 space-y-2">
             <div class="flex items-center justify-between text-xs">
               <div class="flex items-center gap-2 font-bold">
-                <span :class="item.status === 'success' ? 'text-emerald-600' : 'text-rose-600'">
+                <span :class="item.status === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
                   <i :class="item.status === 'success' ? 'fas fa-check-circle' : 'fas fa-times-circle'"></i>
                 </span>
-                <span class="font-mono">{{ (item.fromCommit || '').slice(0,7) || '?' }} → {{ (item.toCommit || '').slice(0,7) || '?' }}</span>
+                <span class="font-mono dark:text-slate-300">{{ (item.fromCommit || '').slice(0,7) || '?' }} → {{ (item.toCommit || '').slice(0,7) || '?' }}</span>
               </div>
-              <span class="text-gray-400">{{ formatDate(item.startedAt) }}</span>
+              <span class="text-gray-400 dark:text-slate-500">{{ formatDate(item.startedAt) }}</span>
             </div>
 
-            <div v-if="item.error" class="bg-rose-50 p-2.5 rounded-lg text-[11px] font-mono text-rose-600">
+            <div v-if="item.error" class="bg-rose-50 dark:bg-rose-500/10 p-2.5 rounded-lg text-[11px] font-mono text-rose-600 dark:text-rose-400">
               {{ item.error }}
             </div>
           </div>

@@ -484,9 +484,9 @@ function resetPanel() {
       <!-- ── Sayfalama ──────────────────────────────────────────────────────── -->
       <div class="at-pagination">
         <div class="at-page-info flex items-center gap-4">
-          <div class="flex items-center gap-2 border-r border-gray-200 pr-4 mr-2">
-            <span class="text-[11px] text-gray-400 font-bold uppercase tracking-wider">Göster:</span>
-            <select v-model="itemsPerPage" class="bg-transparent text-[12px] font-bold text-gray-700 outline-none cursor-pointer">
+          <div class="flex items-center gap-2 border-r border-gray-200 dark:border-slate-700 pr-4 mr-2">
+            <span class="text-[11px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-wider">Göster:</span>
+            <select v-model="itemsPerPage" class="bg-transparent text-[12px] font-bold text-gray-700 dark:text-slate-300 outline-none cursor-pointer">
               <option :value="10">10</option>
               <option :value="25">25</option>
               <option :value="50">50</option>

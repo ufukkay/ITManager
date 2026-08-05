@@ -163,10 +163,10 @@ const rolePermissions = ref([])
 
 // Helper functions for roles
 const getRoleBadgeClass = (hasAccount, roleName) => {
-    if (!hasAccount) return 'bg-gray-100 text-gray-400 border-gray-200'
-    if (roleName === 'Admin') return 'bg-purple-50 text-purple-600 border-purple-100'
-    if (roleName === 'Teknisyen') return 'bg-blue-50 text-blue-600 border-blue-100'
-    return 'bg-emerald-50 text-emerald-600 border-emerald-100'
+    if (!hasAccount) return 'bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500 border-gray-200 dark:border-slate-600'
+    if (roleName === 'Admin') return 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-500/20'
+    if (roleName === 'Teknisyen') return 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-500/20'
+    return 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20'
 }
 
 const getRoleNameForPersonnel = (row) => {
@@ -393,20 +393,20 @@ onMounted(fetchData)
       <template #toolbar>
         <div class="flex items-center gap-2">
           <template v-if="selectedIds.length > 0">
-            <span class="text-[13px] font-bold text-[#1a73e8] mr-2">{{ selectedIds.length }} Seçili</span>
-            
+            <span class="text-[13px] font-bold text-[#1a73e8] dark:text-blue-400 mr-2">{{ selectedIds.length }} Seçili</span>
+
             <button type="button" @click="handleBulkDelete"
-              class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[12px] font-bold hover:bg-red-100 transition-all">
+              class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-500/20 rounded-lg text-[12px] font-bold hover:bg-red-100 dark:hover:bg-red-500/20 transition-all">
               <i class="fas fa-trash"></i> Seçilenleri Sil
             </button>
           </template>
 
-          <button type="button" @click="downloadTemplate" 
-            class="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-[12px] font-semibold hover:bg-gray-50 flex items-center gap-1.5 transition-all">
-            <i class="fas fa-download text-gray-400"></i> Şablon
+          <button type="button" @click="downloadTemplate"
+            class="px-3 py-1.5 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 rounded-lg text-[12px] font-semibold hover:bg-gray-50 dark:hover:bg-slate-700/50 flex items-center gap-1.5 transition-all">
+            <i class="fas fa-download text-gray-400 dark:text-slate-500"></i> Şablon
           </button>
-          
-          <label class="cursor-pointer px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[12px] font-bold hover:bg-emerald-100 flex items-center gap-1.5 transition-colors">
+
+          <label class="cursor-pointer px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-lg text-[12px] font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20 flex items-center gap-1.5 transition-colors">
             <i class="fas fa-file-excel"></i> Excel Yükle
             <input type="file" @change="handleExcelImport" class="hidden" accept=".xlsx,.xls">
           </label>
@@ -427,26 +427,26 @@ onMounted(fetchData)
       <!-- Avatar + isim + email -->
       <template #cell-full_name="{ row, value }">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-[11px] shrink-0 border border-blue-100">
+          <div class="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-[11px] shrink-0 border border-blue-100 dark:border-blue-500/20">
             {{ row.first_name?.[0] }}{{ row.last_name?.[0] }}
           </div>
           <div>
-            <div class="text-[13px] font-semibold text-gray-900 leading-tight">{{ value }}</div>
-            <div class="text-[11px] text-gray-400 mt-0.5">{{ row.email || 'E-posta yok' }}</div>
+            <div class="text-[13px] font-semibold text-gray-900 dark:text-slate-100 leading-tight">{{ value }}</div>
+            <div class="text-[11px] text-gray-400 dark:text-slate-500 mt-0.5">{{ row.email || 'E-posta yok' }}</div>
           </div>
         </div>
       </template>
 
       <!-- Unvan -->
       <template #cell-title="{ value }">
-        <span class="text-[13px] text-gray-600 font-medium truncate block max-w-[170px]" :title="value">{{ value || '—' }}</span>
+        <span class="text-[13px] text-gray-600 dark:text-slate-300 font-medium truncate block max-w-[170px]" :title="value">{{ value || '—' }}</span>
       </template>
 
       <!-- Kaynak -->
       <template #cell-source_display="{ row }">
         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border"
-              :class="row.source === 'azure' || row.entra_id ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-gray-100 text-gray-700 border-gray-200'">
-          <i :class="row.source === 'azure' || row.entra_id ? 'fab fa-microsoft text-blue-500' : 'fas fa-user-edit text-gray-500'"></i>
+              :class="row.source === 'azure' || row.entra_id ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20' : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-600'">
+          <i :class="row.source === 'azure' || row.entra_id ? 'fab fa-microsoft text-blue-500 dark:text-blue-400' : 'fas fa-user-edit text-gray-500 dark:text-slate-400'"></i>
           {{ row.source === 'azure' || row.entra_id ? 'M365 Senkronize' : 'Manuel Kayıt' }}
         </span>
       </template>
@@ -455,7 +455,7 @@ onMounted(fetchData)
       <template #cell-status="{ value }">
         <span :class="[
           'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold',
-          value === 'active' ? 'bg-[#ecfdf5] text-[#059669]' : 'bg-[#fff1f2] text-[#e11d48]'
+          value === 'active' ? 'bg-[#ecfdf5] dark:bg-emerald-500/10 text-[#059669] dark:text-emerald-400' : 'bg-[#fff1f2] dark:bg-rose-500/10 text-[#e11d48] dark:text-rose-400'
         ]">
           <span class="w-1.5 h-1.5 rounded-full" :class="value === 'active' ? 'bg-[#10b981]' : 'bg-[#f43f5e]'"></span>
           {{ value === 'active' ? 'Aktif' : 'Pasif' }}
@@ -464,8 +464,8 @@ onMounted(fetchData)
 
       <!-- Account / System Access -->
       <template #cell-account="{ row }">
-        <span class="inline-flex items-center gap-1.5 px-2 py-1 border rounded text-[10px] font-bold uppercase tracking-wide" 
-              :class="row.has_account ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-gray-50 text-gray-400 border-gray-100'">
+        <span class="inline-flex items-center gap-1.5 px-2 py-1 border rounded text-[10px] font-bold uppercase tracking-wide"
+              :class="row.has_account ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-500/20' : 'bg-gray-50 dark:bg-slate-700 text-gray-400 dark:text-slate-500 border-gray-100 dark:border-slate-600'">
             <i class="fas" :class="row.has_account ? 'fa-check-circle' : 'fa-times-circle'"></i>
             {{ row.has_account ? 'Erişimi Var' : 'Erişim Yok' }}
         </span>
@@ -475,39 +475,39 @@ onMounted(fetchData)
     <!-- Modal -->
     <Teleport to="body">
       <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" @click.self="showModal = false">
-        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
-          <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
+          <div class="px-7 py-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between bg-gray-50/50 dark:bg-slate-900/50">
             <div>
-              <h2 class="text-[17px] font-bold text-gray-900">{{ editingPersonnel.id ? 'Personel Düzenle' : 'Yeni Personel Kaydı' }}</h2>
-              <p class="text-[12px] text-gray-400 mt-0.5">Personel kartı bilgilerini eksiksiz doldurun</p>
+              <h2 class="text-[17px] font-bold text-gray-900 dark:text-slate-100">{{ editingPersonnel.id ? 'Personel Düzenle' : 'Yeni Personel Kaydı' }}</h2>
+              <p class="text-[12px] text-gray-400 dark:text-slate-500 mt-0.5">Personel kartı bilgilerini eksiksiz doldurun</p>
             </div>
             <button type="button" @click="showModal = false"
-              class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100">
+              class="w-8 h-8 flex items-center justify-center text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700">
               <i class="fas fa-times"></i>
             </button>
           </div>
-          
+
           <div class="p-7 space-y-6 max-h-[75vh] overflow-y-auto">
             <!-- Temel Bilgiler -->
             <div class="space-y-4">
-              <div class="flex items-center gap-2 text-[11px] font-bold text-blue-600 uppercase tracking-wider">
+              <div class="flex items-center gap-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                 <i class="fas fa-user-circle"></i> Temel Bilgiler
               </div>
               <div class="grid grid-cols-3 gap-5">
                 <div>
-                  <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Sicil No (Otomatik)</label>
+                  <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Sicil No (Otomatik)</label>
                   <input :value="editingPersonnel.employee_id" type="text" placeholder="Otomatik atanır" readonly
-                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none bg-gray-100 font-bold text-gray-500 cursor-not-allowed">
+                    class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 rounded-lg outline-none bg-gray-100 dark:bg-slate-900 font-bold text-gray-500 dark:text-slate-400 cursor-not-allowed">
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Ad <span class="text-red-500">*</span></label>
+                  <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Ad <span class="text-red-500 dark:text-red-400">*</span></label>
                   <input v-model="editingPersonnel.first_name" type="text"
-                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                    class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-500/20">
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Soyad <span class="text-red-500">*</span></label>
+                  <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Soyad <span class="text-red-500 dark:text-red-400">*</span></label>
                   <input v-model="editingPersonnel.last_name" type="text"
-                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                    class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-500/20">
                 </div>
               </div>
             </div>
@@ -515,67 +515,67 @@ onMounted(fetchData)
             <!-- İletişim ve Unvan -->
             <div class="grid grid-cols-2 gap-5">
                <div class="space-y-4">
-                  <div class="flex items-center gap-2 text-[11px] font-bold text-blue-600 uppercase tracking-wider">
+                  <div class="flex items-center gap-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                     <i class="fas fa-id-badge"></i> Kurumsal Bilgi
                   </div>
                   <div class="space-y-4">
                     <div>
-                      <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Unvan</label>
+                      <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Unvan</label>
                       <input v-model="editingPersonnel.title" type="text" placeholder="Örn: Kıdemli Yazılım Uzmanı"
-                        class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500">
+                        class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-lg outline-none focus:border-blue-500">
                     </div>
                     <div>
-                      <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">E-posta</label>
+                      <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">E-posta</label>
                       <input v-model="editingPersonnel.email" type="email" placeholder="isim.soyisim@sirket.com"
-                        class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500">
+                        class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-lg outline-none focus:border-blue-500">
                     </div>
                     <div>
-                      <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Telefon</label>
+                      <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Telefon</label>
                       <input v-model="editingPersonnel.phone" type="text" placeholder="Örn: 0555 123 4567"
-                        class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500">
+                        class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-lg outline-none focus:border-blue-500">
                     </div>
                   </div>
                </div>
                <div class="space-y-4">
-                  <div class="flex items-center gap-2 text-[11px] font-bold text-blue-600 uppercase tracking-wider">
+                  <div class="flex items-center gap-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                     <i class="fas fa-calendar-alt"></i> Takvim ve Durum
                   </div>
                   <div class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                       <div>
-                        <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Giriş Tarihi</label>
+                        <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Giriş Tarihi</label>
                         <input v-model="editingPersonnel.hire_date" type="date"
-                          class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500">
+                          class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-lg outline-none focus:border-blue-500">
                       </div>
                       <div>
-                        <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Çıkış Tarihi</label>
+                        <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Çıkış Tarihi</label>
                         <input v-model="editingPersonnel.exit_date" type="date"
-                          class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500">
+                          class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-lg outline-none focus:border-blue-500">
                       </div>
                     </div>
                     <div>
-                      <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Çalışma Durumu</label>
+                      <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Çalışma Durumu</label>
                       <select v-model="editingPersonnel.status"
-                        class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                        class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 rounded-lg outline-none focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-slate-100">
                         <option value="active">Aktif</option>
                         <option value="passive">Pasif</option>
                       </select>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                       <div>
-                        <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Kayıt Kaynağı</label>
+                        <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Kayıt Kaynağı</label>
                         <input :value="editingPersonnel.source === 'azure' ? 'Microsoft Azure AD' : 'Manuel Kayıt'" type="text" readonly
-                          class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none bg-gray-50 font-semibold text-gray-600 cursor-not-allowed">
+                          class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 rounded-lg outline-none bg-gray-50 dark:bg-slate-900 font-semibold text-gray-600 dark:text-slate-400 cursor-not-allowed">
                       </div>
                       <div>
                         <div class="flex justify-between items-center mb-1.5">
-                          <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide">Entra ID (Azure GUID)</label>
-                          <span v-if="editingPersonnel.source === 'azure'" class="px-2 py-0.5 rounded text-[9px] font-bold bg-green-100 text-green-700 border border-green-200">Eşleşti</span>
+                          <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide">Entra ID (Azure GUID)</label>
+                          <span v-if="editingPersonnel.source === 'azure'" class="px-2 py-0.5 rounded text-[9px] font-bold bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-500/20">Eşleşti</span>
                         </div>
                         <input v-model="editingPersonnel.entra_id" type="text" placeholder="xxxxxxxx-xxxx-xxxx..."
                           :readonly="editingPersonnel.source === 'azure'"
-                          :class="editingPersonnel.source === 'azure' ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''"
-                          class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 font-mono">
+                          :class="editingPersonnel.source === 'azure' ? 'bg-gray-50 dark:bg-slate-900 text-gray-500 dark:text-slate-500 cursor-not-allowed' : 'dark:bg-slate-900 dark:text-slate-100'"
+                          class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 rounded-lg outline-none focus:border-blue-500 font-mono">
                       </div>
                     </div>
                   </div>
@@ -584,84 +584,84 @@ onMounted(fetchData)
 
             <!-- Organizasyon -->
             <div class="space-y-4">
-              <div class="flex items-center gap-2 text-[11px] font-bold text-blue-600 uppercase tracking-wider">
+              <div class="flex items-center gap-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                 <i class="fas fa-sitemap"></i> Organizasyon Yapısı
               </div>
               <div class="grid grid-cols-3 gap-5">
                 <div>
-                  <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Şirket</label>
-                  <select v-model="editingPersonnel.company_id" 
-                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                  <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Şirket</label>
+                  <select v-model="editingPersonnel.company_id"
+                    class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 rounded-lg outline-none focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-slate-100">
                     <option :value="null">Seçiniz</option>
                     <option v-for="c in masterData.companies" :key="c.id" :value="c.id">{{ c.name }}</option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Departman</label>
+                  <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Departman</label>
                   <select v-model="editingPersonnel.department_id"
-                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                    class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 rounded-lg outline-none focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-slate-100">
                     <option :value="null">Seçiniz</option>
                     <option v-for="d in masterData.departments" :key="d.id" :value="d.id">{{ d.name }}</option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Masraf Yeri</label>
+                  <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Masraf Yeri</label>
                   <select v-model="editingPersonnel.cost_center_id"
-                    class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                    class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 rounded-lg outline-none focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-slate-100">
                     <option :value="null">Seçiniz</option>
                     <option v-for="cc in masterData.costCenters" :key="cc.id" :value="cc.id">{{ cc.name }}</option>
                   </select>
                 </div>
               </div>
             </div>
-            
+
             <div>
-              <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Notlar</label>
+              <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Notlar</label>
               <textarea v-model="editingPersonnel.notes" rows="2" placeholder="Personel hakkında ek notlar..."
-                class="w-full px-3 py-2 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 resize-none"></textarea>
+                class="w-full px-3 py-2 text-[13px] border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-lg outline-none focus:border-blue-500 resize-none"></textarea>
             </div>
 
             <!-- Sistem Erişimi ve Yetkiler Section -->
-            <div class="pt-6 border-t border-gray-100 space-y-4">
+            <div class="pt-6 border-t border-gray-100 dark:border-slate-700 space-y-4">
                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2 text-[11px] font-bold text-blue-600 uppercase tracking-wider">
+                  <div class="flex items-center gap-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                     <i class="fas fa-shield-alt"></i> Sistem Erişimi ve Yetkiler
                   </div>
                   <!-- Enable/Disable System Account -->
                   <label class="flex items-center gap-2 cursor-pointer">
-                      <span class="text-[12px] font-bold text-gray-600">Sisteme Giriş Yapabilsin</span>
+                      <span class="text-[12px] font-bold text-gray-600 dark:text-slate-300">Sisteme Giriş Yapabilsin</span>
                       <div class="relative inline-block w-9 h-5">
                           <input type="checkbox" v-model="editingPersonnel.has_account" class="peer sr-only">
-                          <div class="w-full h-full bg-gray-200 rounded-full peer-checked:bg-blue-600 transition-colors"></div>
+                          <div class="w-full h-full bg-gray-200 dark:bg-slate-700 rounded-full peer-checked:bg-blue-600 transition-colors"></div>
                           <div class="absolute left-1 top-1 w-3 h-3 bg-white rounded-full transition-all peer-checked:translate-x-4"></div>
                       </div>
                   </label>
                </div>
-               
-               <div v-if="editingPersonnel.has_account" class="p-5 border border-blue-100 bg-blue-50/30 rounded-xl space-y-4">
+
+               <div v-if="editingPersonnel.has_account" class="p-5 border border-blue-100 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5 rounded-xl space-y-4">
                   <div class="grid grid-cols-2 gap-5">
                       <div>
-                          <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Kullanıcı Rolü / Statüsü</label>
-                          <select v-model="editingPersonnel.role_id" class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white">
+                          <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Kullanıcı Rolü / Statüsü</label>
+                          <select v-model="editingPersonnel.role_id" class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 rounded-lg outline-none focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-slate-100">
                               <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
                           </select>
-                          <p class="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
+                          <p class="text-[11px] text-gray-500 dark:text-slate-400 mt-1.5 leading-relaxed">
                               Rol seçimi ile personelin temel yetkilerini belirleyebilirsiniz. 'Admin' tüm kısıtlamalardan muaftır.
                           </p>
                       </div>
                       <div>
-                          <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Giriş Şifresi</label>
-                          <input v-model="editingPersonnel.password" type="password" 
+                          <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Giriş Şifresi</label>
+                          <input v-model="editingPersonnel.password" type="password"
                             :placeholder="editingPersonnel.id ? 'Boş bırakılırsa mevcut şifre kalır' : 'Varsayılan: 123456'"
-                            class="w-full h-10 px-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white" />
-                          <p class="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
+                            class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 rounded-lg outline-none focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-slate-100" />
+                          <p class="text-[11px] text-gray-500 dark:text-slate-400 mt-1.5 leading-relaxed">
                               Kullanıcının sisteme giriş yaparken kullanacağı şifre.
                           </p>
                       </div>
                   </div>
 
                   <!-- Inline Permission Matrix -->
-                  <div class="mt-4 border border-gray-100 bg-white rounded-xl overflow-hidden shadow-sm max-h-[400px] flex flex-col">
+                  <div class="mt-4 border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm max-h-[400px] flex flex-col">
                       <AppPermissionMatrix
                           :user="editingPersonnel"
                           :roles="roles"
@@ -677,24 +677,24 @@ onMounted(fetchData)
             </div>
 
             <!-- Maliyet Analizi Section (Sadece Mevcut Personel İçin) -->
-            <div v-if="editingPersonnel.id" class="pt-6 border-t border-gray-100">
+            <div v-if="editingPersonnel.id" class="pt-6 border-t border-gray-100 dark:border-slate-700">
                <AppFinancialHistory :personnel-id="editingPersonnel.id" />
             </div>
 
             <!-- Zimmet Geçmişi Section (Sadece Mevcut Personel İçin) -->
-            <div v-if="editingPersonnel.id" class="pt-6 border-t border-gray-100">
+            <div v-if="editingPersonnel.id" class="pt-6 border-t border-gray-100 dark:border-slate-700">
                <AppPersonnelAssets :personnel-id="editingPersonnel.id" />
             </div>
 
             <!-- Aylık Destekler Section (Sadece Mevcut Personel İçin) -->
-            <div v-if="editingPersonnel.id" class="pt-6 border-t border-gray-100">
+            <div v-if="editingPersonnel.id" class="pt-6 border-t border-gray-100 dark:border-slate-700">
                <AppPersonnelBenefits :personnel-id="editingPersonnel.id" />
             </div>
           </div>
 
-          <div class="px-7 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
+          <div class="px-7 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900/50 flex justify-end gap-3">
             <button type="button" @click="showModal = false"
-              class="px-5 py-2 text-[13px] font-semibold text-gray-500 hover:text-gray-700 transition-colors">Vazgeç</button>
+              class="px-5 py-2 text-[13px] font-semibold text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors">Vazgeç</button>
             <button type="button" @click="savePersonnel" :disabled="saving"
               class="px-8 py-2 text-[13px] font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
               <i :class="saving ? 'fas fa-spinner fa-spin' : 'fas fa-save'" class="text-[11px]"></i>

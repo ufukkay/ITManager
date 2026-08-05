@@ -75,17 +75,17 @@ onMounted(fetchData)
 </script>
 
 <template>
-  <div class="h-full flex flex-col overflow-hidden bg-gray-50/50">
+  <div class="h-full flex flex-col overflow-hidden bg-gray-50/50 dark:bg-slate-900">
     <!-- Stats -->
-    <div class="shrink-0 px-6 py-3 border-b border-gray-100 bg-white flex items-center gap-6 flex-wrap">
+    <div class="shrink-0 px-6 py-3 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center gap-6 flex-wrap">
       <div class="flex items-center gap-2">
-        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Toplam Aylık Destek</span>
-        <span class="text-[15px] font-bold text-emerald-600">{{ formatCurrency(totalMonthly) }}</span>
+        <span class="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide">Toplam Aylık Destek</span>
+        <span class="text-[15px] font-bold text-emerald-600 dark:text-emerald-400">{{ formatCurrency(totalMonthly) }}</span>
       </div>
-      <div class="w-px h-4 bg-gray-200"></div>
+      <div class="w-px h-4 bg-gray-200 dark:bg-slate-700"></div>
       <div v-for="(total, type) in totalsByType" :key="type" class="flex items-center gap-2">
-        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wide">{{ benefitTypeLabels[type] || type }}</span>
-        <span class="text-[13px] font-bold text-gray-700">{{ formatCurrency(total) }}</span>
+        <span class="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide">{{ benefitTypeLabels[type] || type }}</span>
+        <span class="text-[13px] font-bold text-gray-700 dark:text-slate-300">{{ formatCurrency(total) }}</span>
       </div>
     </div>
 
@@ -98,17 +98,17 @@ onMounted(fetchData)
       >
         <template #toolbar>
           <button type="button" @click="exportExcel"
-            class="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-[12px] font-semibold hover:bg-gray-50">
-            <i class="fas fa-file-excel text-emerald-500"></i> Excel
+            class="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 rounded-lg text-[12px] font-semibold hover:bg-gray-50 dark:hover:bg-slate-700">
+            <i class="fas fa-file-excel text-emerald-500 dark:text-emerald-400"></i> Excel
           </button>
         </template>
 
         <template #cell-amount="{ value }">
-          <span class="font-bold text-emerald-600">{{ formatCurrency(value) }}</span>
+          <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ formatCurrency(value) }}</span>
         </template>
 
         <template #cell-benefit_type_label="{ row }">
-          <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-600">
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400">
             {{ row.benefit_type_label }}
           </span>
         </template>

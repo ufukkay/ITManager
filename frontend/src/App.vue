@@ -51,12 +51,12 @@ const layout = computed(() => {
   <!-- Bakım Modu Overlay: sistem güncellenirken tüm ekranı kaplar -->
   <div
     v-if="isMaintenanceMode"
-    class="fixed inset-0 z-[9999] bg-white/95 backdrop-blur-sm flex items-center justify-center p-6"
+    class="fixed inset-0 z-[9999] bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm flex items-center justify-center p-6"
   >
     <div class="max-w-md text-center space-y-4">
       <div class="text-5xl">🛠️</div>
-      <h2 class="text-xl font-bold text-gray-800">Sistem Güncelleniyor</h2>
-      <p class="text-sm text-gray-500 leading-relaxed">
+      <h2 class="text-xl font-bold text-gray-800 dark:text-slate-100">Sistem Güncelleniyor</h2>
+      <p class="text-sm text-gray-500 dark:text-slate-400 leading-relaxed">
         ITManager şu anda bir güncelleme nedeniyle kısa süreliğine kullanım dışı. Kısa süre içinde tekrar kullanılabilir olacak.
       </p>
       <button

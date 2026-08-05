@@ -30,6 +30,90 @@ function getEmailDomain(user) {
   return (email.split('@')[1] || '').toLowerCase();
 }
 
+// Bilinen Microsoft SKU part number -> okunabilir isim eşleştirmesi.
+// Liste tam değildir; eşleşmeyen SKU'lar humanizeSkuName() ile okunabilir hale getirilir.
+const SKU_NAME_MAP = {
+  ENTERPRISEPACK: 'Microsoft 365 E3',
+  SPE_E3: 'Microsoft 365 E3',
+  ENTERPRISEPREMIUM: 'Microsoft 365 E5',
+  SPE_E5: 'Microsoft 365 E5',
+  SPB: 'Microsoft 365 Business Premium',
+  O365_BUSINESS_ESSENTIALS: 'Microsoft 365 Business Basic',
+  SMB_BUSINESS_PREMIUM: 'Microsoft 365 Business Standard',
+  STANDARDPACK: 'Office 365 E1',
+  DESKLESSPACK: 'Office 365 F3',
+  SPE_F1: 'Microsoft 365 F3',
+  EXCHANGESTANDARD: 'Exchange Online (Plan 1)',
+  EXCHANGEENTERPRISE: 'Exchange Online (Plan 2)',
+  POWER_BI_PRO: 'Power BI Pro',
+  POWER_BI_STANDARD: 'Power BI (Ücretsiz)',
+  Microsoft_365_Copilot: 'Microsoft 365 Copilot',
+  MICROSOFT_365_COPILOT_DEPT: 'Microsoft 365 Copilot (Departman Denemesi)',
+  FLOW_FREE: 'Power Automate (Ücretsiz)',
+  POWERAPPS_VIRAL: 'Power Apps (Deneme)',
+  POWERAPPS_PER_APP_IW: 'Power Apps (Per App)',
+  CCIBOTS_PRIVPREV_VIRAL: 'Copilot Studio (Deneme)',
+  WINDOWS_STORE: 'Windows Store Hizmeti',
+  Microsoft_Teams_Exploratory_Dept: 'Teams Keşif Sürümü (Departman)',
+  TEAMS_EXPLORATORY: 'Teams Keşif Sürümü',
+  Dynamics_365_Customer_Service_Enterprise_viral_trial: 'Dynamics 365 Customer Service (Deneme)',
+  MCOMEETADV: 'Microsoft 365 Audio Conferencing',
+  VISIOCLIENT: 'Visio Plan 2',
+  PROJECTPREMIUM: 'Project Plan 5',
+  PROJECTPROFESSIONAL: 'Project Plan 3',
+  AAD_PREMIUM: 'Entra ID P1',
+  AAD_PREMIUM_P2: 'Entra ID P2',
+  EMS: 'Enterprise Mobility + Security E3',
+  EMSPREMIUM: 'Enterprise Mobility + Security E5',
+  INTUNE_A: 'Intune'
+};
+
+function humanizeSkuName(skuPartNumber) {
+  if (!skuPartNumber) return 'Bilinmeyen Lisans';
+  return skuPartNumber
+    .split('_')
+    .map(word => {
+      if (word.length <= 3 && word === word.toUpperCase()) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+function resolveSkuFriendlyName(skuPartNumber) {
+  return SKU_NAME_MAP[skuPartNumber] || humanizeSkuName(skuPartNumber);
+}
+
+// Graph Reports CSV çıktısını (quote-aware) satır/sütun dizisine çevirir.
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === ',') {
+      row.push(field); field = '';
+    } else if (c === '\r') {
+      // yoksay
+    } else if (c === '\n') {
+      row.push(field); rows.push(row); row = []; field = '';
+    } else {
+      field += c;
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.length > 1 || (r.length === 1 && r[0] !== ''));
+}
+
 class MicrosoftGraphService {
   async getSettings() {
     let settings = db.prepare("SELECT * FROM entra_settings LIMIT 1").get();
@@ -90,6 +174,56 @@ class MicrosoftGraphService {
       url = res.data['@odata.nextLink'] || null;
     }
     return allUsers;
+  }
+
+  // Son 30 günün Exchange/Teams kullanım raporunu çeker, UPN bazlı bir harita döner:
+  // { [upn]: { mailActive, teamsActive, lastActivityDate } }
+  // Reports.Read.All izni gerektirir. Rapor çekilemezse boş harita döner (çağıran taraf güvenli varsayılana düşer).
+  async getUsageReport(token) {
+    const url = "https://graph.microsoft.com/v1.0/reports/getOffice365ActiveUserDetail(period='D30')";
+    const res = await axios.get(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: 'text'
+    });
+
+    const rows = parseCsv(res.data);
+    if (rows.length < 2) return {};
+
+    const header = rows[0];
+    const col = (name) => header.indexOf(name);
+    const upnIdx = col('User Principal Name');
+    const exLastIdx = col('Exchange Last Activity Date');
+    const teamsLastIdx = col('Teams Last Activity Date');
+    if (upnIdx === -1) return {};
+
+    const now = new Date();
+    const parseActivity = (dateStr) => {
+      if (!dateStr) return { active: 0, date: null };
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return { active: 0, date: null };
+      const daysAgo = (now - d) / (1000 * 60 * 60 * 24);
+      return { active: daysAgo <= 30 ? 1 : 0, date: d.toISOString() };
+    };
+
+    const map = {};
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const upn = (r[upnIdx] || '').trim().toLowerCase();
+      if (!upn) continue;
+
+      const ex = parseActivity(r[exLastIdx]);
+      const teams = parseActivity(r[teamsLastIdx]);
+
+      let lastActivityDate = null;
+      if (ex.date && teams.date) {
+        lastActivityDate = new Date(ex.date) > new Date(teams.date) ? ex.date : teams.date;
+      } else {
+        lastActivityDate = ex.date || teams.date || null;
+      }
+
+      map[upn] = { mailActive: ex.active, teamsActive: teams.active, lastActivityDate };
+    }
+    return map;
   }
 
   // Benzersiz domain listesi ve istatistiklerini döner
@@ -454,28 +588,27 @@ class MicrosoftGraphService {
 
     const graphLicenses = skuRes.data.value || [];
     const idMap = {};
-    
+
     for (const sku of graphLicenses) {
-      let friendlyName = sku.skuPartNumber;
-      if (sku.skuPartNumber === 'ENTERPRISEPACK') friendlyName = 'Microsoft 365 E3';
-      else if (sku.skuPartNumber === 'ENTERPRISEPREMIUM') friendlyName = 'Microsoft 365 E5';
-      else if (sku.skuPartNumber === 'SPB') friendlyName = 'Microsoft 365 Business Premium';
-      else if (sku.skuPartNumber === 'O365_BUSINESS_ESSENTIALS') friendlyName = 'Microsoft 365 Business Basic';
-      else if (sku.skuPartNumber === 'SMB_BUSINESS_PREMIUM') friendlyName = 'Microsoft 365 Business Standard';
-      
-      let lic = db.prepare("SELECT id FROM m365_licenses WHERE name = ?").get(friendlyName);
+      const friendlyName = resolveSkuFriendlyName(sku.skuPartNumber);
+
+      let lic = db.prepare("SELECT id FROM m365_licenses WHERE name = ? OR sku_id = ?").get(friendlyName, sku.skuId);
       let licId;
       if (lic) {
         licId = lic.id;
-        db.prepare("UPDATE m365_licenses SET quantity = ? WHERE id = ?").run(sku.enabled, licId);
+        db.prepare("UPDATE m365_licenses SET quantity = ?, consumed_units = ?, sku_id = ?, sku_part_number = ? WHERE id = ?")
+          .run(sku.prepaidUnits?.enabled || 0, sku.consumedUnits || 0, sku.skuId, sku.skuPartNumber, licId);
       } else {
-        let price = 10.00;
+        // Bilinmeyen SKU'lar için fiyat 0 olarak bırakılır; gerçek birim fiyat Lisans Kataloğu ekranından girilmelidir.
+        let price = 0;
         if (friendlyName.includes('E5')) price = 57.00;
         else if (friendlyName.includes('E3')) price = 36.00;
-        else if (friendlyName.includes('Premium')) price = 22.00;
-        
-        const info = db.prepare('INSERT INTO m365_licenses (name, quantity, unit_price, currency, category) VALUES (?, ?, ?, \'USD\', \'M365\')')
-          .run(friendlyName, sku.enabled, price);
+        else if (friendlyName.includes('Business Premium')) price = 22.00;
+        else if (friendlyName.includes('Business Standard')) price = 12.50;
+        else if (friendlyName.includes('Business Basic')) price = 6.00;
+
+        const info = db.prepare('INSERT INTO m365_licenses (name, quantity, unit_price, currency, category, sku_id, sku_part_number, consumed_units) VALUES (?, ?, ?, \'USD\', \'M365\', ?, ?, ?)')
+          .run(friendlyName, sku.prepaidUnits?.enabled || 0, price, sku.skuId, sku.skuPartNumber, sku.consumedUnits || 0);
         licId = info.lastInsertRowid;
       }
       idMap[sku.skuId] = licId;
@@ -483,7 +616,17 @@ class MicrosoftGraphService {
 
     // Get users with license info (paginated)
     const allUsers = await this.getAllAzureUsers(token);
-    
+
+    // Gerçek kullanım verisi (Reports.Read.All). Çekilemezse boş harita ile devam edilir
+    // (eşleşmeyen kullanıcılar güvenli varsayılan olarak "aktif" kabul edilir, yanlış pasif etiketlemesi önlenir).
+    let usageMap = {};
+    try {
+      usageMap = await this.getUsageReport(token);
+      console.log(`Kullanım raporu alındı: ${Object.keys(usageMap).length} kullanıcı.`);
+    } catch (usageErr) {
+      console.error('Kullanım raporu (Reports.Read.All) alınamadı, aktivite verisi olmadan devam ediliyor:', usageErr.response?.data || usageErr.message);
+    }
+
     db.prepare("DELETE FROM m365_allocation_users").run();
     db.prepare("DELETE FROM m365_allocations").run();
 
@@ -502,6 +645,13 @@ class MicrosoftGraphService {
       if (!person) continue;
 
       if (gUser.assignedLicenses && gUser.assignedLicenses.length > 0) {
+        const upnKey = (gUser.userPrincipalName || '').toLowerCase();
+        const mailKey = (gUser.mail || '').toLowerCase();
+        const usage = usageMap[upnKey] || usageMap[mailKey];
+        const mailActive = usage ? usage.mailActive : 1;
+        const teamsActive = usage ? usage.teamsActive : 1;
+        const lastActivityDate = usage && usage.lastActivityDate ? usage.lastActivityDate : new Date().toISOString();
+
         for (const licInfo of gUser.assignedLicenses) {
           const licId = idMap[licInfo.skuId];
           if (!licId) continue;
@@ -512,17 +662,7 @@ class MicrosoftGraphService {
             allocation = { id: info.lastInsertRowid };
           }
 
-          let lastActivityDate = new Date();
-          let mailActive = 1;
-          let teamsActive = 1;
-
-          if (Math.random() < 0.15) {
-            lastActivityDate.setDate(lastActivityDate.getDate() - 35);
-            mailActive = 0;
-            teamsActive = 0;
-          }
-
-          insertAllocUser.run(allocation.id, person.id, lastActivityDate.toISOString(), mailActive, teamsActive);
+          insertAllocUser.run(allocation.id, person.id, lastActivityDate, mailActive, teamsActive);
           matchedUsersCount++;
         }
       }

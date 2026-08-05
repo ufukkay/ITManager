@@ -118,7 +118,7 @@ onUnmounted(() => {
 <template>
   <div class="h-full flex flex-col">
     <!-- Table Section (Full Width, No Header) -->
-    <div class="flex-1 min-h-0 bg-white shadow-sm overflow-hidden">
+    <div class="flex-1 min-h-0 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
       <AppTable
         :columns="columns"
         :rows="tableRows"
@@ -130,31 +130,31 @@ onUnmounted(() => {
         <!-- Custom Cells -->
         <template #cell-name="{ value }">
           <div class="flex items-center gap-2.5">
-             <i class="fas fa-server text-gray-400 text-[13px]"></i>
-             <span class="font-bold text-gray-900">{{ value }}</span>
+             <i class="fas fa-server text-gray-400 dark:text-slate-500 text-[13px]"></i>
+             <span class="font-bold text-gray-900 dark:text-slate-100">{{ value }}</span>
           </div>
         </template>
 
         <template #cell-ip_address="{ value }">
-           <span class="font-mono text-[13px] text-gray-600">{{ value }}</span>
+           <span class="font-mono text-[13px] text-gray-600 dark:text-slate-400">{{ value }}</span>
         </template>
 
         <template #cell-companies="{ row }">
           <div class="flex flex-wrap gap-1">
-            <span v-for="c in row.companies" :key="c.company_id" 
-                  class="px-2 py-0.5 rounded-lg bg-gray-50 border border-gray-100 text-[10px] font-bold text-gray-600">
+            <span v-for="c in row.companies" :key="c.company_id"
+                  class="px-2 py-0.5 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-100 dark:border-slate-600 text-[10px] font-bold text-gray-600 dark:text-slate-300">
               {{ c.name }} (%{{ c.share_ratio }})
             </span>
-            <span v-if="!row.companies || row.companies.length === 0" class="text-gray-300 italic text-[11px]">Şirket atanmamış</span>
+            <span v-if="!row.companies || row.companies.length === 0" class="text-gray-300 dark:text-slate-600 italic text-[11px]">Şirket atanmamış</span>
           </div>
         </template>
 
         <template #cell-cpu_usage="{ value }">
           <div class="w-[80px]">
             <div class="flex justify-between text-[10px] font-bold mb-1">
-              <span :class="value > 85 ? 'text-red-500' : 'text-gray-400'">%{{ value }}</span>
+              <span :class="value > 85 ? 'text-red-500' : 'text-gray-400 dark:text-slate-500'">%{{ value }}</span>
             </div>
-            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
               <div class="h-full bg-blue-500 rounded-full" :style="{ width: value + '%' }"></div>
             </div>
           </div>
@@ -163,24 +163,24 @@ onUnmounted(() => {
         <template #cell-ram_usage="{ value }">
           <div class="w-[80px]">
             <div class="flex justify-between text-[10px] font-bold mb-1">
-              <span :class="value > 85 ? 'text-red-500' : 'text-gray-400'">%{{ value }}</span>
+              <span :class="value > 85 ? 'text-red-500' : 'text-gray-400 dark:text-slate-500'">%{{ value }}</span>
             </div>
-            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
               <div class="h-full bg-emerald-500 rounded-full" :style="{ width: value + '%' }"></div>
             </div>
           </div>
         </template>
 
         <template #cell-disk_usage="{ value }">
-           <span class="font-bold text-gray-600 text-[13px]">{{ value || '--' }}</span>
+           <span class="font-bold text-gray-600 dark:text-slate-400 text-[13px]">{{ value || '--' }}</span>
         </template>
 
         <template #cell-status="{ value }">
           <span :class="[
             'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold',
-            value === 'online' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'
+            value === 'online' ? 'bg-emerald-50 dark:bg-green-500/10 text-emerald-600 dark:text-green-400' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'
           ]">
-            <span class="w-1.5 h-1.5 rounded-full" :class="value === 'online' ? 'bg-emerald-500' : 'bg-gray-400'"></span>
+            <span class="w-1.5 h-1.5 rounded-full" :class="value === 'online' ? 'bg-emerald-500' : 'bg-gray-400 dark:bg-slate-500'"></span>
             {{ value === 'online' ? 'Aktif' : 'Pasif' }}
           </span>
         </template>
@@ -190,59 +190,59 @@ onUnmounted(() => {
     <!-- Edit Modal (Teleport body) -->
     <Teleport to="body">
       <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" @click.self="showModal = false">
-        <div class="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-          <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+          <div class="px-7 py-5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
             <div>
-              <h2 class="text-[17px] font-bold text-gray-900">Sunucu Detayı & Maliyet Payı</h2>
-              <p class="text-[12px] text-gray-400 mt-0.5">Sistem bilgilerini ve sahiplik oranlarını düzenleyin</p>
+              <h2 class="text-[17px] font-bold text-gray-900 dark:text-slate-100">Sunucu Detayı & Maliyet Payı</h2>
+              <p class="text-[12px] text-gray-400 dark:text-slate-500 mt-0.5">Sistem bilgilerini ve sahiplik oranlarını düzenleyin</p>
             </div>
-            <button type="button" @click="showModal = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            <button type="button" @click="showModal = false" class="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300"><i class="fas fa-times"></i></button>
           </div>
 
           <div class="p-7 space-y-6 max-h-[75vh] overflow-y-auto">
             <div class="grid grid-cols-2 gap-5">
               <div class="col-span-2">
-                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Sunucu Adı</label>
-                <input v-model="form.name" type="text" class="w-full h-10 px-3 border border-gray-200 rounded-lg outline-none bg-gray-50" readonly>
+                <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Sunucu Adı</label>
+                <input v-model="form.name" type="text" class="w-full h-10 px-3 border border-gray-200 dark:border-slate-700 rounded-lg outline-none bg-gray-50 dark:bg-slate-900 dark:text-slate-100" readonly>
               </div>
               <div>
-                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">Sunucu Tipi</label>
-                <select v-model="form.type" class="w-full h-10 px-3 border border-gray-200 rounded-lg outline-none bg-white text-[13px]">
+                <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Sunucu Tipi</label>
+                <select v-model="form.type" class="w-full h-10 px-3 border border-gray-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-slate-100 text-[13px]">
                    <option value="cloud">Cloud</option>
                    <option value="vodafone">Vodafone</option>
                    <option value="local">Local</option>
                 </select>
               </div>
               <div>
-                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-1.5">IP Adresi</label>
-                <input v-model="form.ip_address" type="text" class="w-full h-10 px-3 border border-gray-200 rounded-lg outline-none focus:border-blue-500" placeholder="10.0.x.x">
+                <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">IP Adresi</label>
+                <input v-model="form.ip_address" type="text" class="w-full h-10 px-3 border border-gray-200 dark:border-slate-700 rounded-lg outline-none focus:border-blue-500 dark:bg-slate-900 dark:text-slate-100" placeholder="10.0.x.x">
               </div>
             </div>
 
-            <div class="border-t border-gray-100 pt-6">
+            <div class="border-t border-gray-100 dark:border-slate-700 pt-6">
               <div class="flex items-center justify-between mb-4">
-                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Şirket Paylaşımı & Maliyet Payı (%)</label>
-                <button @click="addCompanyToForm" type="button" class="text-[11px] font-bold text-blue-600 hover:underline">+ Şirket Ekle</button>
+                <label class="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide">Şirket Paylaşımı & Maliyet Payı (%)</label>
+                <button @click="addCompanyToForm" type="button" class="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">+ Şirket Ekle</button>
               </div>
-              
+
               <div class="space-y-3">
                 <div v-for="(comp, index) in form.companies" :key="index" class="flex gap-3 items-center">
-                  <select v-model="comp.id" class="flex-1 h-10 px-3 border border-gray-200 rounded-lg outline-none bg-white text-[13px]">
+                  <select v-model="comp.id" class="flex-1 h-10 px-3 border border-gray-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-slate-100 text-[13px]">
                     <option value="" disabled>Şirket Seçin</option>
                     <option v-for="c in masterData.companies" :key="c.id" :value="c.id">{{ c.name }}</option>
                   </select>
                   <div class="w-24 relative">
-                    <input v-model.number="comp.share_ratio" type="number" class="w-full h-10 pl-3 pr-6 border border-gray-200 rounded-lg outline-none focus:border-blue-500 text-[13px]">
-                    <span class="absolute right-2 top-2.5 text-[12px] text-gray-400">%</span>
+                    <input v-model.number="comp.share_ratio" type="number" class="w-full h-10 pl-3 pr-6 border border-gray-200 dark:border-slate-700 rounded-lg outline-none focus:border-blue-500 dark:bg-slate-900 dark:text-slate-100 text-[13px]">
+                    <span class="absolute right-2 top-2.5 text-[12px] text-gray-400 dark:text-slate-500">%</span>
                   </div>
-                  <button @click="removeCompanyFromForm(index)" class="w-10 h-10 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><i class="fas fa-trash-alt"></i></button>
+                  <button @click="removeCompanyFromForm(index)" class="w-10 h-10 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg"><i class="fas fa-trash-alt"></i></button>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="px-7 py-4 border-t border-gray-100 bg-gray-50/40 flex justify-end gap-2">
-            <button @click="showModal = false" class="px-5 py-2 text-[13px] font-semibold text-gray-500 hover:text-gray-700">Vazgeç</button>
+          <div class="px-7 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50/40 dark:bg-slate-900/40 flex justify-end gap-2">
+            <button @click="showModal = false" class="px-5 py-2 text-[13px] font-semibold text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200">Vazgeç</button>
             <button @click="save" class="px-6 py-2 text-[13px] font-bold bg-[#1a73e8] text-white rounded-lg hover:bg-blue-700 shadow-sm flex items-center gap-1.5">
               <i class="fas fa-save text-[11px]"></i> Güncelle
             </button>

@@ -88,8 +88,8 @@ onMounted(fetchData)
     <!-- Başlık -->
     <div class="flex items-center justify-between shrink-0">
       <div>
-        <h1 class="text-xl font-semibold text-gray-800">Araç Envanteri</h1>
-        <p class="text-sm text-gray-500 mt-0.5">Sistem Genelindeki Tüm Kayıtlı Araçların Listesi</p>
+        <h1 class="text-xl font-semibold text-gray-800 dark:text-slate-100">Araç Envanteri</h1>
+        <p class="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Sistem Genelindeki Tüm Kayıtlı Araçların Listesi</p>
       </div>
     </div>
 
@@ -105,11 +105,11 @@ onMounted(fetchData)
     >
       <template #toolbar>
         <div class="flex items-center gap-2">
-          <button type="button" @click="downloadTemplate" 
-            class="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-[12px] font-semibold hover:bg-gray-50 flex items-center gap-1.5 transition-all">
-            <i class="fas fa-download text-gray-400"></i> Örnek Şablon
+          <button type="button" @click="downloadTemplate"
+            class="px-3 py-1.5 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 rounded-lg text-[12px] font-semibold hover:bg-gray-50 dark:hover:bg-slate-700/50 flex items-center gap-1.5 transition-all">
+            <i class="fas fa-download text-gray-400 dark:text-slate-500"></i> Örnek Şablon
           </button>
-          <label class="cursor-pointer px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[12px] font-bold hover:bg-emerald-100 flex items-center gap-1.5 transition-colors">
+          <label class="cursor-pointer px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-lg text-[12px] font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20 flex items-center gap-1.5 transition-colors">
             <i class="fas fa-file-excel"></i> Excel'den Yükle
             <input type="file" @change="handleExcelImport" class="hidden" accept=".xlsx,.xls">
           </label>
@@ -125,12 +125,12 @@ onMounted(fetchData)
 
       <!-- Plaka bold -->
       <template #cell-plate_no="{ value }">
-        <span class="font-semibold text-gray-900 tracking-wide">{{ value }}</span>
+        <span class="font-semibold text-gray-900 dark:text-slate-100 tracking-wide">{{ value }}</span>
       </template>
 
       <!-- Araç tipi badge -->
       <template #cell-vehicle_type="{ value }">
-        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-gray-100 text-gray-600">
+        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
           {{ value || '—' }}
         </span>
       </template>
@@ -138,25 +138,25 @@ onMounted(fetchData)
 
     <!-- Modal -->
     <dialog class="modal" :class="{ 'modal-open': isModalOpen }">
-      <div class="modal-box bg-white p-0 rounded-2xl shadow-xl border border-gray-100 max-w-md">
-        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-          <h3 class="font-bold text-lg text-gray-800">
+      <div class="modal-box bg-white dark:bg-slate-800 p-0 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-700 max-w-md">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center">
+          <h3 class="font-bold text-lg text-gray-800 dark:text-slate-100">
             {{ selectedItem ? 'Araç Düzenle' : 'Yeni Araç Ekle' }}
           </h3>
-          <button type="button" class="text-gray-400 hover:text-gray-600" @click="isModalOpen = false">
+          <button type="button" class="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300" @click="isModalOpen = false">
             <i class="fas fa-times"></i>
           </button>
         </div>
         <form class="p-6 space-y-4" @submit.prevent="saveItem">
           <div class="space-y-1">
-            <label class="text-xs font-bold text-gray-500 uppercase">Plaka</label>
+            <label class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Plaka</label>
             <input v-model="form.plate_no" type="text" required placeholder="Örn: 34 ABC 123"
-              class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none focus:border-[#1a73e8]">
+              class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl outline-none focus:border-[#1a73e8]">
           </div>
           <div class="space-y-1">
-            <label class="text-xs font-bold text-gray-500 uppercase">Araç Tipi</label>
+            <label class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Araç Tipi</label>
             <select v-model="form.vehicle_type"
-              class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none focus:border-[#1a73e8] bg-white">
+              class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 rounded-xl outline-none focus:border-[#1a73e8] bg-white dark:bg-slate-900 dark:text-slate-100">
               <option value="Çekici">Çekici</option>
               <option value="Dorse">Dorse</option>
               <option value="Binek">Binek</option>
@@ -164,13 +164,13 @@ onMounted(fetchData)
             </select>
           </div>
           <div class="space-y-1">
-            <label class="text-xs font-bold text-gray-500 uppercase">Notlar</label>
+            <label class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Notlar</label>
             <textarea v-model="form.notes" rows="3"
-              class="w-full p-4 border border-gray-200 rounded-xl outline-none focus:border-[#1a73e8]"
+              class="w-full p-4 border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl outline-none focus:border-[#1a73e8]"
               placeholder="Araç hakkında ek bilgi..."></textarea>
           </div>
           <div class="flex justify-end gap-3 pt-2">
-            <button type="button" class="px-6 py-2 text-gray-500 font-bold hover:text-gray-800"
+            <button type="button" class="px-6 py-2 text-gray-500 dark:text-slate-400 font-bold hover:text-gray-800 dark:hover:text-slate-200"
               @click="isModalOpen = false">İptal</button>
             <button type="submit"
               class="px-8 py-2 bg-[#1a73e8] text-white rounded-xl font-bold hover:bg-[#174ea6] shadow-md">Kaydet</button>

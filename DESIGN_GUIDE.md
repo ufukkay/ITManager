@@ -865,6 +865,33 @@ Bunları yukarıdaki standart alternatifleriyle değiştir.
 
 ---
 
+## 13.4 Koyu Mod (Dark Mode)
+
+Uygulamada bir tema anahtarı var (`AppHeader.vue`, `localStorage` + `<html class="dark">`) ve `tailwind.config.js`'de `darkMode: 'class'` doğru ayarlanmış. Ancak projenin `gray-*` skalası tamamen bu belgedeki **light-only** Google paletiyle ezilmiş (`gray-800`/`gray-900` ikisi de `#202124`) — bu yüzden koyu mod class'larında `gray-*` **kullanılmaz**, kafa karışıklığına ve (`gray-750` gibi var olmayan tonlara) yol açar.
+
+**Kural: Koyu mod için her zaman ezilmemiş, standart Tailwind `slate-*` skalası kullanılır.**
+
+| Amaç | Light class | Dark class |
+|---|---|---|
+| Sayfa zemini | `bg-gray-50` / `bg-white` (dış kabuk) | `dark:bg-slate-900` |
+| Kart / panel / tablo gövdesi | `bg-white` | `dark:bg-slate-800` |
+| İkincil yüzey (sidebar, tablo header, hover bg) | `bg-gray-50`, `bg-gray-100` | `dark:bg-slate-700/50` (hover), `dark:bg-slate-800` (yüzey) |
+| Standart kenarlık | `border-gray-200` | `dark:border-slate-700` |
+| Hafif bölücü kenarlık | `border-gray-100` | `dark:border-slate-800` |
+| Ana metin | `text-gray-900`, `text-gray-800` | `dark:text-slate-100` |
+| İkincil metin | `text-gray-600`, `text-gray-500` | `dark:text-slate-400` |
+| Pasif/ipucu metin | `text-gray-400`, `text-gray-300` | `dark:text-slate-500` |
+| Input / select | `bg-white border-gray-200` | `dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100` |
+| Renkli rozet arka planı (blue/green/red/amber `-50` + `-600/700` metin) | `bg-blue-50 text-blue-700` | `dark:bg-blue-500/10 dark:text-blue-400` (aynı desen green/red/amber/indigo için) |
+| Modal overlay | `bg-black/40` | değişmez (iki modda da çalışır) |
+
+> ⛔ **YASAK:** Koyu mod class'larında `dark:bg-gray-*`, `dark:text-gray-*`, `dark:border-gray-*` kullanmak — bu skala light-only değerlerle ezilmiş, öngörülemez sonuç verir. `slate-*` kullanın.
+> ✅ **DOĞRU:** Yeni bir sayfa/bileşen eklerken her `bg-white`/`bg-gray-50`/`border-gray-200`/`text-gray-*` class'ının yanına tablodaki karşılığı olan `dark:` varyantı da eklenir.
+
+`style.css`'deki CSS custom property'ler (`--bg-primary`, `--text-primary` vb.) `.dark { ... }` seçicisi altında da tanımlıdır; `var(--x)` kullanan bileşenler (ör. `AppTable.vue`'nun arama input'u) otomatik uyum sağlar.
+
+---
+
 ## 14. Örneklerden Alınan Geçerli Tasarımlar
 
 Bu sayfalar ve bölümler **referans olarak kullanılabilir**:

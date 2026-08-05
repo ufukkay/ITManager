@@ -116,15 +116,15 @@ onMounted(fetchData)
 </script>
 
 <template>
-    <div class="h-full flex flex-col bg-white">
+    <div class="h-full flex flex-col bg-white dark:bg-slate-900">
         <!-- Header -->
-        <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between shrink-0 bg-gray-50/30">
+        <div class="px-8 py-6 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between shrink-0 bg-gray-50/30 dark:bg-slate-800/30">
             <div>
-                <h1 class="text-[18px] font-black text-gray-900 tracking-tight leading-none mb-1.5">Hat Aktarım Merkezi</h1>
-                <p class="text-[12px] text-gray-400 font-medium">SIM kartları araç, personel veya lokasyonlar arasında taşıyın</p>
+                <h1 class="text-[18px] font-black text-gray-900 dark:text-slate-100 tracking-tight leading-none mb-1.5">Hat Aktarım Merkezi</h1>
+                <p class="text-[12px] text-gray-400 dark:text-slate-500 font-medium">SIM kartları araç, personel veya lokasyonlar arasında taşıyın</p>
             </div>
-            
-            <div class="flex items-center gap-3 text-[11px] font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-xl border border-blue-100">
+
+            <div class="flex items-center gap-3 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-4 py-2 rounded-xl border border-blue-100 dark:border-blue-500/20">
                 <i class="fas fa-info-circle"></i>
                 Aktarım işlemi tarihçeye otomatik kaydedilir.
             </div>
@@ -136,34 +136,34 @@ onMounted(fetchData)
                 
                 <!-- 1. Hat Arama -->
                 <div class="space-y-3">
-                    <label class="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">1. ADIM: HATTI BULUN</label>
+                    <label class="text-[11px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em]">1. ADIM: HATTI BULUN</label>
                     <div class="relative group">
-                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
+                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 group-focus-within:text-blue-500 dark:group-focus-within:text-blue-400 transition-colors"></i>
                         <input v-model="searchQuery" @input="searchSims" type="text"
                             placeholder="Telefon numarası veya ICCID giriniz..."
-                            class="w-full h-14 bg-white border border-gray-200 pl-12 pr-4 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none text-[15px] font-medium transition-all shadow-sm">
-                        
+                            class="w-full h-14 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 pl-12 pr-4 rounded-2xl focus:border-blue-500 dark:focus:border-blue-400 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-500/10 outline-none text-[15px] font-medium text-gray-900 dark:text-slate-100 transition-all shadow-sm">
+
                         <!-- Dropdown -->
-                        <div v-if="searchResults.length > 0" class="absolute z-50 left-0 right-0 mt-2 bg-white rounded-2xl border border-gray-200 shadow-2xl overflow-hidden divide-y divide-gray-50">
-                            <button v-for="res in searchResults" :key="res.id + res.type" 
+                        <div v-if="searchResults.length > 0" class="absolute z-50 left-0 right-0 mt-2 bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-2xl overflow-hidden divide-y divide-gray-50 dark:divide-slate-700">
+                            <button v-for="res in searchResults" :key="res.id + res.type"
                                 @click="selectSimForTransfer(res)"
-                                class="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors text-left group">
+                                class="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors text-left group">
                                 <div class="flex items-center gap-4">
                                     <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-[12px] uppercase transition-colors"
-                                        :class="res.type === 'm2m' ? 'bg-orange-50 text-orange-600' : res.type === 'voice' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'">
+                                        :class="res.type === 'm2m' ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400' : res.type === 'voice' ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400'">
                                         {{ res.type }}
                                     </div>
                                     <div class="flex flex-col">
-                                        <span class="text-[14px] font-bold text-gray-800">{{ res.phone_no }}</span>
-                                        <span class="text-[11px] text-gray-400 font-medium">{{ res.iccid || 'ICCID Yok' }}</span>
+                                        <span class="text-[14px] font-bold text-gray-800 dark:text-slate-100">{{ res.phone_no }}</span>
+                                        <span class="text-[11px] text-gray-400 dark:text-slate-500 font-medium">{{ res.iccid || 'ICCID Yok' }}</span>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-4">
                                     <div class="text-right flex flex-col">
-                                        <span class="text-[12px] font-bold text-gray-700">{{ res.owner_name || 'STOKTA' }}</span>
-                                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{{ res.company_name || 'BOŞ' }}</span>
+                                        <span class="text-[12px] font-bold text-gray-700 dark:text-slate-300">{{ res.owner_name || 'STOKTA' }}</span>
+                                        <span class="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-tight">{{ res.company_name || 'BOŞ' }}</span>
                                     </div>
-                                    <i class="fas fa-chevron-right text-gray-300 group-hover:text-blue-500 transition-colors"></i>
+                                    <i class="fas fa-chevron-right text-gray-300 dark:text-slate-600 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors"></i>
                                 </div>
                             </button>
                         </div>
@@ -173,7 +173,7 @@ onMounted(fetchData)
                 <!-- 2. Hedef Seçimi -->
                 <Transition name="fade">
                     <div v-if="selectedSim" class="space-y-6 pt-4">
-                        <div class="p-5 bg-blue-600 rounded-2xl text-white shadow-xl shadow-blue-100 flex items-center justify-between">
+                        <div class="p-5 bg-blue-600 rounded-2xl text-white shadow-xl shadow-blue-100 dark:shadow-blue-900/30 flex items-center justify-between">
                             <div class="flex items-center gap-4">
                                 <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
                                     <i class="fas fa-sim-card text-xl"></i>
@@ -190,7 +190,7 @@ onMounted(fetchData)
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div class="space-y-4">
-                                <label class="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">2. ADIM: HEDEF TİPİ</label>
+                                <label class="text-[11px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em]">2. ADIM: HEDEF TİPİ</label>
                                 <div class="grid grid-cols-1 gap-2">
                                     <button v-for="t in [
                                         {id:'vehicle', n:'Araç', i:'fa-truck', desc:'M2M Hattı olarak işaretlenir'},
@@ -200,52 +200,52 @@ onMounted(fetchData)
                                     ]" :key="t.id"
                                         @click="transferTargetType = t.id; transferTargetId = ''"
                                         class="flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left"
-                                        :class="transferTargetType === t.id ? 'border-blue-600 bg-blue-50/50' : 'border-gray-100 hover:border-gray-200 bg-white'">
+                                        :class="transferTargetType === t.id ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-500/10' : 'border-gray-100 dark:border-slate-700 hover:border-gray-200 dark:hover:border-slate-600 bg-white dark:bg-slate-800'">
                                         <div class="w-10 h-10 rounded-xl flex items-center justify-center"
-                                            :class="transferTargetType === t.id ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-400'">
+                                            :class="transferTargetType === t.id ? 'bg-blue-600 text-white' : 'bg-gray-50 dark:bg-slate-700 text-gray-400 dark:text-slate-500'">
                                             <i class="fas" :class="t.i"></i>
                                         </div>
                                         <div>
-                                            <div class="text-[14px] font-bold" :class="transferTargetType === t.id ? 'text-blue-900' : 'text-gray-700'">{{ t.n }}</div>
-                                            <div class="text-[11px] font-medium text-gray-400">{{ t.desc }}</div>
+                                            <div class="text-[14px] font-bold" :class="transferTargetType === t.id ? 'text-blue-900 dark:text-blue-300' : 'text-gray-700 dark:text-slate-300'">{{ t.n }}</div>
+                                            <div class="text-[11px] font-medium text-gray-400 dark:text-slate-500">{{ t.desc }}</div>
                                         </div>
                                     </button>
                                 </div>
                             </div>
 
                             <div class="space-y-4">
-                                <label class="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">3. ADIM: HEDEF SEÇİN</label>
-                                
-                                <div v-if="transferTargetType === 'stock'" class="p-8 border-2 border-dashed border-gray-100 rounded-3xl flex flex-col items-center justify-center text-center">
-                                    <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-4">
+                                <label class="text-[11px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em]">3. ADIM: HEDEF SEÇİN</label>
+
+                                <div v-if="transferTargetType === 'stock'" class="p-8 border-2 border-dashed border-gray-100 dark:border-slate-700 rounded-3xl flex flex-col items-center justify-center text-center">
+                                    <div class="w-16 h-16 bg-gray-50 dark:bg-slate-800 rounded-full flex items-center justify-center text-gray-300 dark:text-slate-600 mb-4">
                                         <i class="fas fa-box-open text-2xl"></i>
                                     </div>
-                                    <p class="text-[13px] font-bold text-gray-500">Hedef Seçimi Gerekli Değil</p>
-                                    <p class="text-[11px] text-gray-400 mt-1">Hat doğrudan boş havuza aktarılacaktır.</p>
+                                    <p class="text-[13px] font-bold text-gray-500 dark:text-slate-400">Hedef Seçimi Gerekli Değil</p>
+                                    <p class="text-[11px] text-gray-400 dark:text-slate-500 mt-1">Hat doğrudan boş havuza aktarılacaktır.</p>
                                 </div>
 
                                 <div v-else class="space-y-2">
                                     <select v-if="transferTargetType === 'vehicle'" v-model="transferTargetId"
-                                        class="w-full h-14 px-5 bg-white border-2 border-gray-100 rounded-2xl outline-none focus:border-blue-600 text-[14px] font-bold text-gray-700 transition-all appearance-none">
+                                        class="w-full h-14 px-5 bg-white dark:bg-slate-800 border-2 border-gray-100 dark:border-slate-700 rounded-2xl outline-none focus:border-blue-600 dark:focus:border-blue-500 text-[14px] font-bold text-gray-700 dark:text-slate-300 transition-all appearance-none">
                                         <option value="">Araç Seçiniz...</option>
                                         <option v-for="v in masterData.vehicles" :key="v.id" :value="v.id">{{ v.plate_no }} ({{ v.vehicle_type }})</option>
                                     </select>
 
                                     <select v-if="transferTargetType === 'personnel'" v-model="transferTargetId"
-                                        class="w-full h-14 px-5 bg-white border-2 border-gray-100 rounded-2xl outline-none focus:border-blue-600 text-[14px] font-bold text-gray-700 transition-all appearance-none">
+                                        class="w-full h-14 px-5 bg-white dark:bg-slate-800 border-2 border-gray-100 dark:border-slate-700 rounded-2xl outline-none focus:border-blue-600 dark:focus:border-blue-500 text-[14px] font-bold text-gray-700 dark:text-slate-300 transition-all appearance-none">
                                         <option value="">Personel Seçiniz...</option>
                                         <option v-for="p in masterData.personnel" :key="p.id" :value="p.id">{{ p.first_name }} {{ p.last_name }} ({{ p.company_name }})</option>
                                     </select>
 
                                     <select v-if="transferTargetType === 'location'" v-model="transferTargetId"
-                                        class="w-full h-14 px-5 bg-white border-2 border-gray-100 rounded-2xl outline-none focus:border-blue-600 text-[14px] font-bold text-gray-700 transition-all appearance-none">
+                                        class="w-full h-14 px-5 bg-white dark:bg-slate-800 border-2 border-gray-100 dark:border-slate-700 rounded-2xl outline-none focus:border-blue-600 dark:focus:border-blue-500 text-[14px] font-bold text-gray-700 dark:text-slate-300 transition-all appearance-none">
                                         <option value="">Lokasyon Seçiniz...</option>
                                         <option v-for="l in masterData.locations" :key="l.id" :value="l.id">{{ l.name }}</option>
                                     </select>
 
-                                    <div class="p-4 bg-gray-50 rounded-xl flex items-start gap-3 mt-4">
-                                        <i class="fas fa-shield-alt text-blue-400 mt-0.5"></i>
-                                        <p class="text-[11px] text-gray-500 font-medium leading-relaxed">
+                                    <div class="p-4 bg-gray-50 dark:bg-slate-800 rounded-xl flex items-start gap-3 mt-4">
+                                        <i class="fas fa-shield-alt text-blue-400 dark:text-blue-500 mt-0.5"></i>
+                                        <p class="text-[11px] text-gray-500 dark:text-slate-400 font-medium leading-relaxed">
                                             Aktarım yapıldığında hattın tipi otomatik olarak hedefe göre (M2M/Ses/Data) güncellenecektir. Eski atama kayıtları silinir.
                                         </p>
                                     </div>
@@ -253,9 +253,9 @@ onMounted(fetchData)
                             </div>
                         </div>
 
-                        <div class="pt-8 border-t border-gray-100 flex justify-center">
+                        <div class="pt-8 border-t border-gray-100 dark:border-slate-700 flex justify-center">
                             <button @click="performTransfer" :disabled="transferTargetType !== 'stock' && !transferTargetId"
-                                class="h-16 px-12 bg-gray-900 text-white rounded-2xl text-[16px] font-black hover:bg-black disabled:opacity-30 disabled:grayscale transition-all shadow-2xl shadow-gray-200 flex items-center gap-3 active:scale-95">
+                                class="h-16 px-12 bg-gray-900 dark:bg-slate-700 text-white rounded-2xl text-[16px] font-black hover:bg-black dark:hover:bg-slate-600 disabled:opacity-30 disabled:grayscale transition-all shadow-2xl shadow-gray-200 dark:shadow-black/30 flex items-center gap-3 active:scale-95">
                                 <i class="fas fa-exchange-alt"></i> AKTARIMI TAMAMLA
                             </button>
                         </div>

@@ -7,6 +7,6 @@ const { hasPermission } = require("../../middleware/auth");
 router.get("/data", hasPermission('m365:view'), controller.getData);
 router.post("/save", hasPermission('m365:edit'), controller.saveData);
 router.get("/recommendations", hasPermission('m365:view'), controller.getRecommendations);
-router.post("/recommendations/apply", hasPermission('m365:edit'), controller.applyRecommendation);
+router.get("/summary", hasPermission('m365:view'), controller.getSummary);
 
 module.exports = router;

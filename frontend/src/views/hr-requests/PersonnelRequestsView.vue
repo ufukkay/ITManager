@@ -270,33 +270,33 @@ onMounted(() => {
   <div class="h-full flex flex-col overflow-hidden">
 
     <!-- ── Stats Bar ───────────────────────────────────────────────── -->
-    <div class="shrink-0 px-6 py-3 border-b border-gray-100 bg-[#fafafa] flex items-center gap-6">
+    <div class="shrink-0 px-6 py-3 border-b border-gray-100 dark:border-slate-700 bg-[#fafafa] dark:bg-slate-800 flex items-center gap-6">
       <div class="flex items-center gap-5">
         <div class="flex items-center gap-2">
-          <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Toplam</span>
-          <span class="text-[14px] font-bold text-gray-800">{{ stats.total }}</span>
+          <span class="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide">Toplam</span>
+          <span class="text-[14px] font-bold text-gray-800 dark:text-slate-200">{{ stats.total }}</span>
         </div>
-        <div class="w-px h-4 bg-gray-200"></div>
+        <div class="w-px h-4 bg-gray-200 dark:bg-slate-700"></div>
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-blue-400"></span>
-          <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Giriş</span>
-          <span class="text-[14px] font-bold text-blue-600">{{ stats.entry }}</span>
+          <span class="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide">Giriş</span>
+          <span class="text-[14px] font-bold text-blue-600 dark:text-blue-400">{{ stats.entry }}</span>
         </div>
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-red-400"></span>
-          <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Çıkış</span>
-          <span class="text-[14px] font-bold text-red-600">{{ stats.exit }}</span>
+          <span class="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide">Çıkış</span>
+          <span class="text-[14px] font-bold text-red-600 dark:text-red-400">{{ stats.exit }}</span>
         </div>
-        <div class="w-px h-4 bg-gray-200"></div>
+        <div class="w-px h-4 bg-gray-200 dark:bg-slate-700"></div>
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-          <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Bekleyen</span>
-          <span class="text-[14px] font-bold text-amber-600">{{ stats.pending }}</span>
+          <span class="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide">Bekleyen</span>
+          <span class="text-[14px] font-bold text-amber-600 dark:text-amber-400">{{ stats.pending }}</span>
         </div>
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Tamamlanan</span>
-          <span class="text-[14px] font-bold text-emerald-600">{{ stats.completed }}</span>
+          <span class="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide">Tamamlanan</span>
+          <span class="text-[14px] font-bold text-emerald-600 dark:text-emerald-400">{{ stats.completed }}</span>
         </div>
       </div>
     </div>

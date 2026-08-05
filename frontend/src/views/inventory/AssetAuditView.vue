@@ -1,15 +1,15 @@
 <template>
-  <div class="h-full w-full flex flex-col bg-gray-50 overflow-hidden">
+  <div class="h-full w-full flex flex-col bg-gray-50 dark:bg-slate-900 overflow-hidden">
 
     <!-- ── HEADER ─────────────────────────────────────────── -->
-    <header class="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between gap-3 shrink-0">
+    <header class="bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 px-4 py-3 flex items-center justify-between gap-3 shrink-0">
       <div class="flex items-center gap-2.5 min-w-0">
         <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm shrink-0">
           <i class="fas fa-clipboard-check"></i>
         </div>
         <div class="min-w-0">
-          <h1 class="text-[13px] font-bold text-gray-900 leading-tight truncate">Zimmet Stok Sayımı</h1>
-          <p class="text-[10px] text-gray-400 hidden sm:block">Periyodik saha denetimleri ve QR zimmet sayım doğrulaması</p>
+          <h1 class="text-[13px] font-bold text-gray-900 dark:text-slate-100 leading-tight truncate">Zimmet Stok Sayımı</h1>
+          <p class="text-[10px] text-gray-400 dark:text-slate-500 hidden sm:block">Periyodik saha denetimleri ve QR zimmet sayım doğrulaması</p>
         </div>
       </div>
 
@@ -27,7 +27,7 @@
         <!-- Ayarlar -->
         <button
           @click="openSettingsModal"
-          class="flex items-center gap-1.5 px-2.5 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold text-xs rounded-xl transition-colors"
+          class="flex items-center gap-1.5 px-2.5 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500 text-gray-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-colors"
           title="Sayım Periyodunu Düzenle"
         >
           <i class="fas fa-cog"></i>
@@ -37,7 +37,7 @@
         <!-- Yenile -->
         <button
           @click="fetchSummary"
-          class="flex items-center gap-1 px-2.5 py-2 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold text-xs rounded-xl transition-colors"
+          class="flex items-center gap-1 px-2.5 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500 text-gray-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-colors"
           title="Yenile"
         >
           <i class="fas fa-sync-alt"></i>
@@ -46,67 +46,67 @@
     </header>
 
     <!-- ── KPI CARDS ──────────────────────────────────────── -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 px-4 py-3 bg-white border-b border-gray-100 shrink-0">
-      <div class="bg-blue-50 rounded-xl p-3 flex items-center gap-2.5">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 px-4 py-3 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 shrink-0">
+      <div class="bg-blue-50 dark:bg-blue-500/10 rounded-xl p-3 flex items-center gap-2.5">
         <div class="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center text-sm shrink-0">
           <i class="fas fa-calendar-alt"></i>
         </div>
         <div class="min-w-0">
-          <div class="text-[10px] font-bold text-blue-600 uppercase">Periyot</div>
-          <div class="text-sm font-black text-gray-900 leading-tight">{{ auditPeriodDays }} Gün</div>
+          <div class="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase">Periyot</div>
+          <div class="text-sm font-black text-gray-900 dark:text-slate-100 leading-tight">{{ auditPeriodDays }} Gün</div>
         </div>
       </div>
 
-      <div class="bg-purple-50 rounded-xl p-3 flex items-center gap-2.5">
+      <div class="bg-purple-50 dark:bg-purple-500/10 rounded-xl p-3 flex items-center gap-2.5">
         <div class="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center text-sm shrink-0">
           <i class="fas fa-boxes"></i>
         </div>
         <div class="min-w-0">
-          <div class="text-[10px] font-bold text-purple-600 uppercase">Zimmetli</div>
-          <div class="text-sm font-black text-gray-900 leading-tight">{{ summaryData.totalAssigned || 0 }} Cihaz</div>
+          <div class="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase">Zimmetli</div>
+          <div class="text-sm font-black text-gray-900 dark:text-slate-100 leading-tight">{{ summaryData.totalAssigned || 0 }} Cihaz</div>
         </div>
       </div>
 
-      <div class="bg-emerald-50 rounded-xl p-3 flex items-center gap-2.5">
+      <div class="bg-emerald-50 dark:bg-emerald-500/10 rounded-xl p-3 flex items-center gap-2.5">
         <div class="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-sm shrink-0">
           <i class="fas fa-check-circle"></i>
         </div>
         <div class="min-w-0">
-          <div class="text-[10px] font-bold text-emerald-600 uppercase">Güncel</div>
-          <div class="text-sm font-black text-gray-900 leading-tight">{{ summaryData.auditedCount || 0 }} Cihaz</div>
+          <div class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Güncel</div>
+          <div class="text-sm font-black text-gray-900 dark:text-slate-100 leading-tight">{{ summaryData.auditedCount || 0 }} Cihaz</div>
         </div>
       </div>
 
-      <div class="bg-amber-50 rounded-xl p-3 flex items-center gap-2.5">
+      <div class="bg-amber-50 dark:bg-amber-500/10 rounded-xl p-3 flex items-center gap-2.5">
         <div class="w-9 h-9 rounded-lg bg-amber-500 text-white flex items-center justify-center text-sm shrink-0">
           <i class="fas fa-exclamation-triangle"></i>
         </div>
         <div class="min-w-0">
-          <div class="text-[10px] font-bold text-amber-600 uppercase">Gecikmiş</div>
-          <div class="text-sm font-black text-gray-900 leading-tight">{{ summaryData.overduePersonnelCount || 0 }} Kişi</div>
+          <div class="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase">Gecikmiş</div>
+          <div class="text-sm font-black text-gray-900 dark:text-slate-100 leading-tight">{{ summaryData.overduePersonnelCount || 0 }} Kişi</div>
         </div>
       </div>
     </div>
 
     <!-- ── FILTER / SEARCH BAR ────────────────────────────── -->
-    <div class="px-4 py-2.5 bg-white border-b border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+    <div class="px-4 py-2.5 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
       <!-- Tab Buttons -->
-      <div class="flex items-center gap-1 bg-gray-100 p-0.5 rounded-xl">
+      <div class="flex items-center gap-1 bg-gray-100 dark:bg-slate-700 p-0.5 rounded-xl">
         <button
           @click="activeTab = 'ALL'"
-          :class="['flex-1 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap', activeTab === 'ALL' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500']"
+          :class="['flex-1 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap', activeTab === 'ALL' ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-500 dark:text-slate-400']"
         >
           Tümü ({{ summaryData.allPersonnel?.length || 0 }})
         </button>
         <button
           @click="activeTab = 'OVERDUE'"
-          :class="['flex-1 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap flex items-center justify-center gap-1', activeTab === 'OVERDUE' ? 'bg-amber-500 text-white shadow-sm' : 'text-amber-600']"
+          :class="['flex-1 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap flex items-center justify-center gap-1', activeTab === 'OVERDUE' ? 'bg-amber-500 text-white shadow-sm' : 'text-amber-600 dark:text-amber-400']"
         >
           <i class="fas fa-clock text-[10px]"></i> Gecikmiş ({{ summaryData.overduePersonnelCount || 0 }})
         </button>
         <button
           @click="activeTab = 'UPTODATE'"
-          :class="['flex-1 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap flex items-center justify-center gap-1', activeTab === 'UPTODATE' ? 'bg-emerald-500 text-white shadow-sm' : 'text-emerald-600']"
+          :class="['flex-1 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap flex items-center justify-center gap-1', activeTab === 'UPTODATE' ? 'bg-emerald-500 text-white shadow-sm' : 'text-emerald-600 dark:text-emerald-400']"
         >
           <i class="fas fa-check text-[10px]"></i> Güncel
         </button>
@@ -114,12 +114,12 @@
 
       <!-- Search -->
       <div class="relative flex-1 sm:max-w-xs">
-        <i class="fas fa-search absolute left-3 top-2.5 text-gray-400 text-xs pointer-events-none"></i>
+        <i class="fas fa-search absolute left-3 top-2.5 text-gray-400 dark:text-slate-500 text-xs pointer-events-none"></i>
         <input
           v-model="searchQuery"
           type="text"
           placeholder="Personel ara..."
-          class="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold focus:bg-white focus:border-indigo-500 focus:outline-none"
+          class="w-full pl-8 pr-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 dark:text-slate-100 rounded-xl text-xs font-semibold focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-500 focus:outline-none"
         />
       </div>
     </div>
@@ -127,13 +127,13 @@
     <!-- ── CONTENT LIST ────────────────────────────────────── -->
     <main class="flex-1 overflow-y-auto p-3 sm:p-5">
       <!-- Loading -->
-      <div v-if="loading" class="flex flex-col items-center justify-center h-48 text-gray-400 gap-3">
-        <i class="fas fa-circle-notch fa-spin text-3xl text-indigo-500"></i>
+      <div v-if="loading" class="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-slate-500 gap-3">
+        <i class="fas fa-circle-notch fa-spin text-3xl text-indigo-500 dark:text-indigo-400"></i>
         <span class="text-sm font-medium">Yükleniyor...</span>
       </div>
 
       <!-- Empty -->
-      <div v-else-if="filteredPersonnel.length === 0" class="flex flex-col items-center justify-center h-48 text-gray-400 gap-3">
+      <div v-else-if="filteredPersonnel.length === 0" class="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-slate-500 gap-3">
         <i class="fas fa-user-slash text-4xl"></i>
         <p class="text-sm font-medium">Kriterlere uygun personel bulunamadı.</p>
       </div>
@@ -143,35 +143,35 @@
         <div
           v-for="p in filteredPersonnel"
           :key="p.id"
-          class="bg-white rounded-2xl border shadow-sm overflow-hidden"
-          :class="isOverdue(p.max_last_audit_date) ? 'border-amber-200' : 'border-gray-100'"
+          class="bg-white dark:bg-slate-800 rounded-2xl border shadow-sm overflow-hidden"
+          :class="isOverdue(p.max_last_audit_date) ? 'border-amber-200 dark:border-amber-500/20' : 'border-gray-100 dark:border-slate-700'"
         >
           <!-- Card Header -->
           <div class="p-4 flex items-start gap-3">
             <!-- Avatar -->
             <div
               class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0"
-              :class="isOverdue(p.max_last_audit_date) ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'"
+              :class="isOverdue(p.max_last_audit_date) ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400' : 'bg-indigo-100 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400'"
             >
               {{ (p.first_name || '?')[0] }}{{ (p.last_name || '')[0] }}
             </div>
 
             <!-- Info -->
             <div class="flex-1 min-w-0">
-              <div class="font-bold text-gray-900 text-sm leading-tight">
+              <div class="font-bold text-gray-900 dark:text-slate-100 text-sm leading-tight">
                 {{ p.first_name }} {{ p.last_name }}
               </div>
-              <div class="text-[11px] text-gray-500 mt-0.5 leading-tight">
+              <div class="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5 leading-tight">
                 {{ p.title || 'Görev Belirtilmemiş' }}
-                <span v-if="p.company_name" class="text-indigo-500 font-medium"> · {{ p.company_name }}</span>
+                <span v-if="p.company_name" class="text-indigo-500 dark:text-indigo-400 font-medium"> · {{ p.company_name }}</span>
               </div>
-              <div v-if="p.department_name" class="text-[10.5px] text-gray-400 mt-0.5">{{ p.department_name }}</div>
+              <div v-if="p.department_name" class="text-[10.5px] text-gray-400 dark:text-slate-500 mt-0.5">{{ p.department_name }}</div>
             </div>
 
             <!-- Status Badge -->
             <div class="shrink-0 text-right">
               <span
-                :class="['px-2 py-1 rounded-lg text-[10px] font-bold inline-flex items-center gap-1', isOverdue(p.max_last_audit_date) ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800']"
+                :class="['px-2 py-1 rounded-lg text-[10px] font-bold inline-flex items-center gap-1', isOverdue(p.max_last_audit_date) ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400' : 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400']"
               >
                 <i :class="isOverdue(p.max_last_audit_date) ? 'fas fa-exclamation-circle' : 'fas fa-check-circle'"></i>
                 {{ isOverdue(p.max_last_audit_date) ? 'Gecikti' : 'Güncel' }}
@@ -181,10 +181,10 @@
 
           <!-- Stats Row -->
           <div class="px-4 pb-3 flex items-center gap-2 flex-wrap">
-            <span class="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-bold text-[11px] flex items-center gap-1">
+            <span class="px-2.5 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-lg font-bold text-[11px] flex items-center gap-1">
               <i class="fas fa-laptop text-[10px]"></i> {{ p.assigned_asset_count }} Cihaz
             </span>
-            <span class="px-2.5 py-1 bg-gray-50 text-gray-600 rounded-lg font-semibold text-[11px] flex items-center gap-1">
+            <span class="px-2.5 py-1 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-slate-300 rounded-lg font-semibold text-[11px] flex items-center gap-1">
               <i class="fas fa-history text-[10px]"></i>
               {{ p.max_last_audit_date ? formatDate(p.max_last_audit_date) : 'Hiç sayılmadı' }}
             </span>
@@ -200,7 +200,7 @@
             </button>
             <button
               @click="showQR(p)"
-              class="w-10 h-10 flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 rounded-xl transition-colors"
+              class="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500 text-gray-700 dark:text-slate-300 rounded-xl transition-colors"
               title="Mobil Bağlantıyı Kopyala"
             >
               <i class="fas fa-qrcode text-sm"></i>
@@ -214,20 +214,20 @@
     <!-- SAHA STOK SAYIMI CHECKLIST MODAL                      -->
     <!-- ══════════════════════════════════════════════════════ -->
     <dialog ref="sessionModal" class="modal">
-      <div class="modal-box w-full max-w-lg bg-white rounded-2xl p-0 overflow-hidden flex flex-col max-h-[90vh] mx-3 sm:mx-auto">
+      <div class="modal-box w-full max-w-lg bg-white dark:bg-slate-800 rounded-2xl p-0 overflow-hidden flex flex-col max-h-[90vh] mx-3 sm:mx-auto">
 
         <!-- Modal Header -->
-        <div class="px-5 pt-5 pb-4 border-b border-gray-100 shrink-0">
+        <div class="px-5 pt-5 pb-4 border-b border-gray-100 dark:border-slate-700 shrink-0">
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-2.5 min-w-0">
               <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
                 <i class="fas fa-clipboard-check text-sm"></i>
               </div>
               <div class="min-w-0">
-                <h3 class="font-bold text-sm text-gray-900 leading-tight truncate">
+                <h3 class="font-bold text-sm text-gray-900 dark:text-slate-100 leading-tight truncate">
                   {{ activeSessionPerson?.first_name }} {{ activeSessionPerson?.last_name }}
                 </h3>
-                <p class="text-[10.5px] text-gray-400 truncate">
+                <p class="text-[10.5px] text-gray-400 dark:text-slate-500 truncate">
                   {{ activeSessionPerson?.title }} · {{ activeSessionPerson?.department_name }}
                 </p>
               </div>
@@ -244,16 +244,16 @@
 
           <!-- Progress Bar -->
           <div class="mt-3">
-            <div class="flex items-center justify-between text-[10.5px] font-bold text-gray-500 mb-1.5">
+            <div class="flex items-center justify-between text-[10.5px] font-bold text-gray-500 dark:text-slate-400 mb-1.5">
               <span>{{ selectedAuditAssetIds.length }} / {{ sessionAssets.length }} cihaz sayıldı</span>
               <span
                 class="font-bold"
-                :class="selectedAuditAssetIds.length === sessionAssets.length ? 'text-emerald-600' : 'text-indigo-600'"
+                :class="selectedAuditAssetIds.length === sessionAssets.length ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-600 dark:text-indigo-400'"
               >
                 %{{ sessionAssets.length > 0 ? Math.round((selectedAuditAssetIds.length / sessionAssets.length) * 100) : 0 }}
               </span>
             </div>
-            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
                 class="h-full rounded-full transition-all duration-500"
                 :class="selectedAuditAssetIds.length === sessionAssets.length ? 'bg-emerald-500' : 'bg-indigo-500'"
@@ -272,8 +272,8 @@
             :class="[
               'p-3.5 rounded-xl border transition-all cursor-pointer active:scale-[0.98]',
               selectedAuditAssetIds.includes(asset.id)
-                ? 'border-emerald-400 bg-emerald-50'
-                : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                ? 'border-emerald-400 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10'
+                : 'border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 hover:bg-gray-100 dark:hover:bg-slate-700'
             ]"
           >
             <div class="flex items-start gap-3">
@@ -283,7 +283,7 @@
                   'w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all',
                   selectedAuditAssetIds.includes(asset.id)
                     ? 'bg-emerald-500 border-emerald-500 text-white'
-                    : 'bg-white border-gray-300'
+                    : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600'
                 ]"
               >
                 <i v-if="selectedAuditAssetIds.includes(asset.id)" class="fas fa-check text-[10px]"></i>
@@ -291,14 +291,14 @@
 
               <!-- Asset Info -->
               <div class="flex-1 min-w-0">
-                <div class="font-bold text-gray-900 text-sm leading-tight">
+                <div class="font-bold text-gray-900 dark:text-slate-100 text-sm leading-tight">
                   {{ asset.brand_name }} {{ asset.model_name }}
                 </div>
-                <div class="text-[11px] text-gray-500 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                  <span><span class="text-gray-400">SN:</span> <span class="font-mono font-bold text-gray-700">{{ asset.serial_no }}</span></span>
-                  <span v-if="asset.barcode"><span class="text-gray-400">Barkod:</span> <span class="font-mono font-bold text-gray-700">{{ asset.barcode }}</span></span>
+                <div class="text-[11px] text-gray-500 dark:text-slate-400 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                  <span><span class="text-gray-400 dark:text-slate-500">SN:</span> <span class="font-mono font-bold text-gray-700 dark:text-slate-300">{{ asset.serial_no }}</span></span>
+                  <span v-if="asset.barcode"><span class="text-gray-400 dark:text-slate-500">Barkod:</span> <span class="font-mono font-bold text-gray-700 dark:text-slate-300">{{ asset.barcode }}</span></span>
                 </div>
-                <div v-if="asset.specs_json" class="text-[10.5px] text-indigo-600 mt-1 font-semibold">
+                <div v-if="asset.specs_json" class="text-[10.5px] text-indigo-600 dark:text-indigo-400 mt-1 font-semibold">
                   <i class="fas fa-microchip mr-1"></i>{{ formatSpecsBrief(asset.specs_json) }}
                 </div>
               </div>
@@ -309,13 +309,13 @@
                   :class="[
                     'px-2 py-1 rounded-lg text-[10px] font-bold',
                     selectedAuditAssetIds.includes(asset.id)
-                      ? 'bg-emerald-200 text-emerald-900'
-                      : 'bg-gray-200 text-gray-600'
+                      ? 'bg-emerald-200 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-400'
+                      : 'bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-slate-300'
                   ]"
                 >
                   {{ selectedAuditAssetIds.includes(asset.id) ? '✓ Sayıldı' : 'Bekliyor' }}
                 </span>
-                <div class="text-[10px] text-gray-400 mt-1">
+                <div class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
                   {{ asset.last_audit_date ? formatDate(asset.last_audit_date) : 'Sayılmadı' }}
                 </div>
               </div>
@@ -324,25 +324,25 @@
 
           <!-- Notes -->
           <div class="pt-2">
-            <label class="block text-xs font-bold text-gray-700 mb-1.5">
-              <i class="fas fa-sticky-note mr-1 text-gray-400"></i>Saha Notu (Opsiyonel):
+            <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1.5">
+              <i class="fas fa-sticky-note mr-1 text-gray-400 dark:text-slate-500"></i>Saha Notu (Opsiyonel):
             </label>
             <textarea
               v-model="auditNotes"
               rows="2"
               placeholder="Örn: Cihazlar sağlam görüldü, seri numaraları doğrulandı."
-              class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:bg-white focus:border-indigo-500 focus:outline-none resize-none"
+              class="w-full p-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 dark:text-slate-100 rounded-xl text-xs focus:bg-white dark:focus:bg-slate-800 focus:border-indigo-500 focus:outline-none resize-none"
             ></textarea>
           </div>
         </div>
 
         <!-- Modal Footer -->
-        <div class="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center gap-2 shrink-0">
-          <button @click="selectAllAuditAssets" class="text-xs text-indigo-600 font-bold px-2 py-2 hover:bg-indigo-50 rounded-lg transition-colors">
+        <div class="px-4 py-3 bg-gray-50 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-700 flex items-center gap-2 shrink-0">
+          <button @click="selectAllAuditAssets" class="text-xs text-indigo-600 dark:text-indigo-400 font-bold px-2 py-2 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-colors">
             Tümünü Seç
           </button>
           <div class="flex-1 flex gap-2 justify-end">
-            <button @click="closeSessionModal" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-xs rounded-xl transition-colors">
+            <button @click="closeSessionModal" class="px-4 py-2 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-colors">
               İptal
             </button>
             <button

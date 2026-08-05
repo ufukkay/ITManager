@@ -259,25 +259,25 @@ const saveRoleMatrix = async (roleId) => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-gray-50/50 p-6 overflow-y-auto">
+  <div class="h-full flex flex-col bg-gray-50/50 dark:bg-slate-900 p-6 overflow-y-auto">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
       <div>
-        <h1 class="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <i class="fas fa-user-shield text-blue-600"></i>
+        <h1 class="text-xl font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
+          <i class="fas fa-user-shield text-blue-600 dark:text-blue-400"></i>
           Kullanıcı ve Yetki Yönetimi
         </h1>
-        <p class="text-xs text-gray-500 mt-1">
+        <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
           Sistemdeki Admin, Teknisyen ve Personel hesaplarını ve rol erişim matrisini buradan yönetin.
         </p>
       </div>
 
       <!-- Actions / Tab Switcher -->
-      <div class="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-gray-200">
+      <div class="flex items-center gap-2 bg-white dark:bg-slate-800 p-1 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700">
         <button
           @click="onTabChange('users')"
           class="px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2"
-          :class="activeTab === 'users' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'"
+          :class="activeTab === 'users' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700'"
         >
           <i class="fas fa-users text-xs"></i>
           Kullanıcı Hesapları ({{ users.length }})
@@ -286,7 +286,7 @@ const saveRoleMatrix = async (roleId) => {
         <button
           @click="onTabChange('matrix')"
           class="px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2"
-          :class="activeTab === 'matrix' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'"
+          :class="activeTab === 'matrix' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700'"
         >
           <i class="fas fa-th-list text-xs"></i>
           Rol Yetki Matrisi
@@ -299,13 +299,13 @@ const saveRoleMatrix = async (roleId) => {
       <div
         v-if="notification.show"
         class="mb-4 p-4 rounded-xl text-xs font-bold flex items-center justify-between shadow-sm transition-all"
-        :class="notification.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'"
+        :class="notification.type === 'error' ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/30' : 'bg-emerald-50 dark:bg-green-500/10 text-emerald-700 dark:text-green-400 border border-emerald-200 dark:border-green-500/30'"
       >
         <div class="flex items-center gap-2">
           <i :class="notification.type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-check-circle'"></i>
           {{ notification.message }}
         </div>
-        <button @click="notification.show = false" class="text-gray-400 hover:text-gray-600">
+        <button @click="notification.show = false" class="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -314,23 +314,23 @@ const saveRoleMatrix = async (roleId) => {
     <!-- TAB 1: KULLANICI LİSTESİ -->
     <div v-if="activeTab === 'users'" class="flex-1 flex flex-col gap-4">
       <!-- Search & Filters -->
-      <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div class="flex items-center gap-3 w-full sm:w-auto flex-1">
           <!-- Search -->
           <div class="relative flex-1 max-w-md">
-            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 text-xs"></i>
             <input
               v-model="searchQuery"
               type="text"
               placeholder="İsim, e-posta veya kullanıcı adı ara..."
-              class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:border-blue-500 focus:bg-white transition-all"
+              class="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 dark:text-slate-100 rounded-xl text-xs outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all"
             />
           </div>
 
           <!-- Role Filter -->
           <select
             v-model="selectedRoleFilter"
-            class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500 focus:bg-white transition-all"
+            class="px-3 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 dark:text-slate-100 rounded-xl text-xs font-medium outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all"
           >
             <option value="ALL">Tüm Roller</option>
             <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
@@ -347,7 +347,7 @@ const saveRoleMatrix = async (roleId) => {
       </div>
 
       <!-- Users Table -->
-      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-1 flex flex-col">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden flex-1 flex flex-col">
         <AppTable
           :columns="tableColumns"
           :data="filteredUsers"
@@ -359,19 +359,19 @@ const saveRoleMatrix = async (roleId) => {
               <div
                 class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                 :class="{
-                  'bg-purple-100 text-purple-700': row.role_id === 1,
-                  'bg-blue-100 text-blue-700': row.role_id === 2,
-                  'bg-gray-100 text-gray-700': row.role_id === 3
+                  'bg-purple-100 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400': row.role_id === 1,
+                  'bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400': row.role_id === 2,
+                  'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300': row.role_id === 3
                 }"
               >
                 {{ (row.full_name || row.email).substring(0, 2).toUpperCase() }}
               </div>
               <div>
-                <div class="font-bold text-gray-900 text-xs flex items-center gap-1.5">
+                <div class="font-bold text-gray-900 dark:text-slate-100 text-xs flex items-center gap-1.5">
                   {{ row.full_name || 'İsimsiz Kullanıcı' }}
-                  <span v-if="row.role_id === 1" class="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold rounded">Admin</span>
+                  <span v-if="row.role_id === 1" class="px-1.5 py-0.5 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30 text-[10px] font-bold rounded">Admin</span>
                 </div>
-                <div class="text-[11px] text-gray-500 font-mono mt-0.5">{{ row.email }}</div>
+                <div class="text-[11px] text-gray-500 dark:text-slate-400 font-mono mt-0.5">{{ row.email }}</div>
               </div>
             </div>
           </template>
@@ -381,7 +381,7 @@ const saveRoleMatrix = async (roleId) => {
             <select
               :value="row.role_id"
               @change="handleRoleChange(row, $event.target.value)"
-              class="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs font-bold bg-gray-50 hover:bg-white focus:border-blue-500 outline-none transition-all"
+              class="px-2.5 py-1.5 border border-gray-200 dark:border-slate-700 rounded-lg text-xs font-bold bg-gray-50 dark:bg-slate-900 dark:text-slate-100 hover:bg-white dark:hover:bg-slate-800 focus:border-blue-500 outline-none transition-all"
               :disabled="row.id === 1"
             >
               <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
@@ -390,11 +390,11 @@ const saveRoleMatrix = async (roleId) => {
 
           <!-- Personnel Column -->
           <template #cell-personnel_name="{ row }">
-            <div v-if="row.personnel_name" class="text-xs text-gray-700 flex items-center gap-1.5 font-medium">
-              <i class="fas fa-id-card text-gray-400 text-xs"></i>
+            <div v-if="row.personnel_name" class="text-xs text-gray-700 dark:text-slate-300 flex items-center gap-1.5 font-medium">
+              <i class="fas fa-id-card text-gray-400 dark:text-slate-500 text-xs"></i>
               {{ row.personnel_name }}
             </div>
-            <span v-else class="text-[11px] text-gray-400 italic">Eşleşen Personel Yok</span>
+            <span v-else class="text-[11px] text-gray-400 dark:text-slate-500 italic">Eşleşen Personel Yok</span>
           </template>
 
           <!-- Status Column -->
@@ -403,9 +403,9 @@ const saveRoleMatrix = async (roleId) => {
               @click="handleToggleStatus(row)"
               :disabled="row.id === 1"
               class="px-3 py-1 rounded-full text-[11px] font-bold transition-all flex items-center gap-1.5"
-              :class="row.is_active === 1 
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100' 
-                : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'"
+              :class="row.is_active === 1
+                ? 'bg-emerald-50 dark:bg-green-500/10 text-emerald-700 dark:text-green-400 border border-emerald-200 dark:border-green-500/30 hover:bg-emerald-100 dark:hover:bg-green-500/20'
+                : 'bg-rose-50 dark:bg-red-500/10 text-rose-700 dark:text-red-400 border border-rose-200 dark:border-red-500/30 hover:bg-rose-100 dark:hover:bg-red-500/20'"
             >
               <span class="w-1.5 h-1.5 rounded-full" :class="row.is_active === 1 ? 'bg-emerald-500' : 'bg-rose-500'"></span>
               {{ row.is_active === 1 ? 'Aktif' : 'Pasif (Dondurulmuş)' }}
@@ -419,7 +419,7 @@ const saveRoleMatrix = async (roleId) => {
               <button
                 @click="openPasswordModal(row)"
                 title="Şifre Değiştir"
-                class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                class="p-1.5 text-gray-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all"
               >
                 <i class="fas fa-key text-xs"></i>
               </button>
@@ -428,7 +428,7 @@ const saveRoleMatrix = async (roleId) => {
               <button
                 @click="openPermissionsModal(row)"
                 title="Kullanıcıya Özel Yetkiler (Override)"
-                class="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                class="p-1.5 text-gray-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all"
               >
                 <i class="fas fa-sliders-h text-xs"></i>
               </button>
@@ -439,11 +439,11 @@ const saveRoleMatrix = async (roleId) => {
     </div>
 
     <!-- TAB 2: ROL YETKİ MATRİSİ -->
-    <div v-if="activeTab === 'matrix'" class="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col p-6 space-y-6">
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-100">
+    <div v-if="activeTab === 'matrix'" class="flex-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden flex flex-col p-6 space-y-6">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-100 dark:border-slate-700">
         <div>
-          <h2 class="text-base font-bold text-gray-900">Rol Bazlı İzin Matrisi (RBAC)</h2>
-          <p class="text-xs text-gray-500 mt-0.5">
+          <h2 class="text-base font-bold text-gray-900 dark:text-slate-100">Rol Bazlı İzin Matrisi (RBAC)</h2>
+          <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
             Sistemdeki Teknisyen ve Personel rollerine varsayılan olarak tanımlı yetkileri işaretleyin ve kaydedin.
           </p>
         </div>
@@ -462,12 +462,12 @@ const saveRoleMatrix = async (roleId) => {
       </div>
 
       <!-- Permission Matrix Table -->
-      <div class="overflow-x-auto border border-gray-100 rounded-xl">
+      <div class="overflow-x-auto border border-gray-100 dark:border-slate-700 rounded-xl">
         <table class="w-full text-left border-collapse">
           <thead>
-            <tr class="bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-600">
+            <tr class="bg-gray-50 dark:bg-slate-900 border-b border-gray-100 dark:border-slate-700 text-xs font-bold text-gray-600 dark:text-slate-400">
               <th class="py-3 px-4 w-1/3">Modül / İzin Tanımı</th>
-              <th class="py-3 px-4 w-1/6 text-center bg-purple-50/50 text-purple-900">
+              <th class="py-3 px-4 w-1/6 text-center bg-purple-50/50 dark:bg-purple-500/10 text-purple-900 dark:text-purple-400">
                 <i class="fas fa-crown text-purple-500 mr-1.5"></i> Admin
               </th>
               <th v-for="r in roles.filter(role => role.id !== 1)" :key="r.id" class="py-3 px-4 w-1/4 text-center">
@@ -475,25 +475,25 @@ const saveRoleMatrix = async (roleId) => {
               </th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100 text-xs">
+          <tbody class="divide-y divide-gray-100 dark:divide-slate-700 text-xs">
             <template v-for="(perms, moduleName) in groupedPermissions" :key="moduleName">
               <!-- Module Header Row -->
-              <tr class="bg-gray-100/70 font-bold text-gray-800">
-                <td colspan="4" class="py-2.5 px-4 text-xs uppercase tracking-wider text-gray-600">
+              <tr class="bg-gray-100/70 dark:bg-slate-700/50 font-bold text-gray-800 dark:text-slate-200">
+                <td colspan="4" class="py-2.5 px-4 text-xs uppercase tracking-wider text-gray-600 dark:text-slate-400">
                   <i class="fas fa-folder-open text-blue-500 mr-2"></i>
                   {{ moduleName }}
                 </td>
               </tr>
 
               <!-- Permission Rows -->
-              <tr v-for="p in perms" :key="p.id" class="hover:bg-gray-50/80 transition-colors">
+              <tr v-for="p in perms" :key="p.id" class="hover:bg-gray-50/80 dark:hover:bg-slate-700/50 transition-colors">
                 <td class="py-3 px-4">
-                  <div class="font-bold text-gray-900">{{ p.permission_key }}</div>
-                  <div class="text-[11px] text-gray-500 mt-0.5">{{ p.description }}</div>
+                  <div class="font-bold text-gray-900 dark:text-slate-100">{{ p.permission_key }}</div>
+                  <div class="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">{{ p.description }}</div>
                 </td>
 
                 <!-- Admin Column (Always checked & disabled) -->
-                <td class="py-3 px-4 text-center bg-purple-50/20">
+                <td class="py-3 px-4 text-center bg-purple-50/20 dark:bg-purple-500/5">
                   <input type="checkbox" checked disabled class="w-4 h-4 text-purple-600 rounded border-purple-300 opacity-60 cursor-not-allowed">
                 </td>
 
@@ -503,7 +503,7 @@ const saveRoleMatrix = async (roleId) => {
                     type="checkbox"
                     :checked="isPermissionChecked(r.id, p.id)"
                     @change="toggleMatrixPermission(r.id, p.id)"
-                    class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                    class="w-4 h-4 text-blue-600 rounded border-gray-300 dark:border-slate-600 focus:ring-blue-500 cursor-pointer"
                   />
                 </td>
               </tr>
@@ -515,41 +515,41 @@ const saveRoleMatrix = async (roleId) => {
 
     <!-- MODAL: YENİ KULLANICI OLUŞTUR -->
     <div v-if="showCreateModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
-        <h3 class="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-          <i class="fas fa-user-plus text-blue-600"></i>
+      <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 dark:border-slate-700 animate-in fade-in zoom-in-95 duration-150">
+        <h3 class="text-base font-bold text-gray-900 dark:text-slate-100 mb-4 flex items-center gap-2">
+          <i class="fas fa-user-plus text-blue-600 dark:text-blue-400"></i>
           Yeni Kullanıcı Hesabı Oluştur
         </h3>
 
         <div class="space-y-4 text-xs">
           <div>
-            <label class="block font-bold text-gray-700 mb-1">Ad Soyad</label>
-            <input v-model="newUser.full_name" type="text" placeholder="Örn: Ahmet Yılmaz" class="w-full px-3 py-2 border border-gray-200 rounded-xl outline-none focus:border-blue-500" />
+            <label class="block font-bold text-gray-700 dark:text-slate-300 mb-1">Ad Soyad</label>
+            <input v-model="newUser.full_name" type="text" placeholder="Örn: Ahmet Yılmaz" class="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl outline-none focus:border-blue-500" />
           </div>
 
           <div>
-            <label class="block font-bold text-gray-700 mb-1">E-posta Adresi</label>
-            <input v-model="newUser.email" type="email" placeholder="ahmet.yilmaz@itmanager.com" class="w-full px-3 py-2 border border-gray-200 rounded-xl outline-none focus:border-blue-500" />
+            <label class="block font-bold text-gray-700 dark:text-slate-300 mb-1">E-posta Adresi</label>
+            <input v-model="newUser.email" type="email" placeholder="ahmet.yilmaz@itmanager.com" class="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl outline-none focus:border-blue-500" />
           </div>
 
           <div>
-            <label class="block font-bold text-gray-700 mb-1">Rol</label>
-            <select v-model="newUser.role_id" class="w-full px-3 py-2 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
+            <label class="block font-bold text-gray-700 dark:text-slate-300 mb-1">Rol</label>
+            <select v-model="newUser.role_id" class="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-slate-100">
               <option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</option>
             </select>
           </div>
 
           <div>
-            <label class="block font-bold text-gray-700 mb-1">İlişkili Personel Kartı (İsteğe Bağlı)</label>
-            <select v-model="newUser.personnel_id" class="w-full px-3 py-2 border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
+            <label class="block font-bold text-gray-700 dark:text-slate-300 mb-1">İlişkili Personel Kartı (İsteğe Bağlı)</label>
+            <select v-model="newUser.personnel_id" class="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-slate-100">
               <option :value="null">-- Eşleşen Personel Seçilmedi --</option>
               <option v-for="p in personnelList" :key="p.id" :value="p.id">{{ p.first_name }} {{ p.last_name }} ({{ p.email }})</option>
             </select>
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-100">
-          <button @click="showCreateModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all">İptal</button>
+        <div class="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-100 dark:border-slate-700">
+          <button @click="showCreateModal = false" class="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all">İptal</button>
           <button @click="handleCreateUser" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm">Kullanıcıyı Kaydet</button>
         </div>
       </div>
@@ -557,22 +557,22 @@ const saveRoleMatrix = async (roleId) => {
 
     <!-- MODAL: ŞİFRE SIFIRLA -->
     <div v-if="showPasswordModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-gray-100">
-        <h3 class="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
+      <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-xl border border-gray-100 dark:border-slate-700">
+        <h3 class="text-base font-bold text-gray-900 dark:text-slate-100 mb-2 flex items-center gap-2">
           <i class="fas fa-key text-amber-500"></i>
           Şifre Sıfırla
         </h3>
-        <p class="text-xs text-gray-500 mb-4">
+        <p class="text-xs text-gray-500 dark:text-slate-400 mb-4">
           <strong>{{ selectedUserForPassword?.full_name || selectedUserForPassword?.email }}</strong> kullanıcısı için yeni şifre belirleyin.
         </p>
 
         <div>
-          <label class="block text-xs font-bold text-gray-700 mb-1">Yeni Şifre</label>
-          <input v-model="newPasswordInput" type="password" placeholder="En az 4 karakter" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs outline-none focus:border-blue-500" />
+          <label class="block text-xs font-bold text-gray-700 dark:text-slate-300 mb-1">Yeni Şifre</label>
+          <input v-model="newPasswordInput" type="password" placeholder="En az 4 karakter" class="w-full px-3 py-2 border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl text-xs outline-none focus:border-blue-500" />
         </div>
 
         <div class="flex justify-end gap-2 mt-6">
-          <button @click="showPasswordModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold">İptal</button>
+          <button @click="showPasswordModal = false" class="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 rounded-xl text-xs font-bold">İptal</button>
           <button @click="handleResetPassword" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm">Şifreyi Güncelle</button>
         </div>
       </div>
@@ -580,37 +580,37 @@ const saveRoleMatrix = async (roleId) => {
 
     <!-- MODAL: KULLANICIYA ÖZEL İZİNLER (OVERRIDE) -->
     <div v-if="showPermissionsModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-gray-100 max-h-[85vh] flex flex-col">
-        <h3 class="text-base font-bold text-gray-900 mb-1 flex items-center gap-2">
-          <i class="fas fa-sliders-h text-purple-600"></i>
+      <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-xl border border-gray-100 dark:border-slate-700 max-h-[85vh] flex flex-col">
+        <h3 class="text-base font-bold text-gray-900 dark:text-slate-100 mb-1 flex items-center gap-2">
+          <i class="fas fa-sliders-h text-purple-600 dark:text-purple-400"></i>
           Kullanıcıya Özel İzin Tanımlama
         </h3>
-        <p class="text-xs text-gray-500 mb-4">
+        <p class="text-xs text-gray-500 dark:text-slate-400 mb-4">
           <strong>{{ selectedUserForPerms?.full_name }}</strong> kullanıcısına genel rol haricinde ekstra yetkiler tanıyın.
         </p>
 
         <div class="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
-          <div v-for="(perms, mod) in groupedPermissions" :key="mod" class="bg-gray-50 p-3 rounded-xl border border-gray-100">
-            <div class="font-bold text-gray-800 mb-2">{{ mod }}</div>
+          <div v-for="(perms, mod) in groupedPermissions" :key="mod" class="bg-gray-50 dark:bg-slate-900 p-3 rounded-xl border border-gray-100 dark:border-slate-700">
+            <div class="font-bold text-gray-800 dark:text-slate-200 mb-2">{{ mod }}</div>
             <div class="space-y-2">
-              <label v-for="p in perms" :key="p.id" class="flex items-start gap-2.5 cursor-pointer hover:bg-white p-1.5 rounded-lg transition-all">
+              <label v-for="p in perms" :key="p.id" class="flex items-start gap-2.5 cursor-pointer hover:bg-white dark:hover:bg-slate-800 p-1.5 rounded-lg transition-all">
                 <input
                   type="checkbox"
                   :value="p.id"
                   v-model="userPermsGrantedIds"
-                  class="w-4 h-4 text-purple-600 rounded border-gray-300 mt-0.5"
+                  class="w-4 h-4 text-purple-600 rounded border-gray-300 dark:border-slate-600 mt-0.5"
                 />
                 <div>
-                  <div class="font-bold text-gray-900">{{ p.permission_key }}</div>
-                  <div class="text-[11px] text-gray-500">{{ p.description }}</div>
+                  <div class="font-bold text-gray-900 dark:text-slate-100">{{ p.permission_key }}</div>
+                  <div class="text-[11px] text-gray-500 dark:text-slate-400">{{ p.description }}</div>
                 </div>
               </label>
             </div>
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
-          <button @click="showPermissionsModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold">İptal</button>
+        <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100 dark:border-slate-700">
+          <button @click="showPermissionsModal = false" class="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 rounded-xl text-xs font-bold">İptal</button>
           <button @click="handleSaveUserPermissions" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-sm">Özel Yetkileri Kaydet</button>
         </div>
       </div>

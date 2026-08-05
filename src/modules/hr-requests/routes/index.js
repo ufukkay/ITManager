@@ -3,6 +3,7 @@ const router = express.Router();
 const { db } = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 const MailerService = require('../../../services/MailerService');
+const notificationService = require('../../../services/notificationService');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -138,6 +139,18 @@ router.post('/', hasPermission('hr:edit'), upload.single('photo'), async (req, r
             console.error('Mail trigger failed:', mailErr);
         }
 
+        try {
+            const adminIds = notificationService.getAdminUserIds();
+            notificationService.createForUsers(adminIds, {
+                type: 'hr_new',
+                title: `Yeni İK Talebi: ${first_name} ${last_name}`,
+                message: `${type === 'ENTRY' ? 'Giriş' : 'Çıkış'} talebi - ${creatorName} tarafından oluşturuldu.`,
+                link: '/hr-requests'
+            });
+        } catch (notifErr) {
+            console.error('HR notification trigger failed:', notifErr);
+        }
+
         res.status(201).json({ id: info.lastInsertRowid });
     } catch (err) {
         res.status(400).json({ error: err.message });
@@ -256,6 +269,18 @@ router.put('/:id', hasPermission('hr:edit'), upload.single('photo'), (req, res) 
                     WHERE id = ?
                 `).run(exitDate, newNotes, personnel.id);
             }
+        }
+
+        // Talebi açan kullanıcıya durum değişikliği bildirimi
+        if (body.status && body.status !== request.status && request.created_by_user_id) {
+            const fullName = `${body.first_name || request.first_name} ${body.last_name || request.last_name}`;
+            notificationService.create({
+                userId: request.created_by_user_id,
+                type: 'hr_status',
+                title: `İK talebiniz güncellendi: ${fullName}`,
+                message: `Yeni durum: ${body.status}`,
+                link: '/hr-requests'
+            });
         }
 
         res.json({ success: true });

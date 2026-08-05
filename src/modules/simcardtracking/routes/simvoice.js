@@ -1,185 +1,36 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
+const simAssetService = require('../services/simAssetService');
 
-const syncPersonnel = (fullName, department, company) => {
-  if (!fullName) return;
-  const nameParts = fullName.trim().split(' ');
-  const lastName = nameParts.length > 1 ? nameParts.pop() : '';
-  const firstName = nameParts.join(' ') || fullName;
+const TYPE = 'voice';
 
-  try {
-    const existing = db.prepare('SELECT id FROM personnel WHERE first_name = ? AND last_name = ?').get(firstName, lastName);
-    if (!existing) {
-      db.prepare('INSERT INTO personnel (first_name, last_name, department, company) VALUES (?, ?, ?, ?)').run(firstName, lastName, department || null, company || null);
-    }
-  } catch (e) {
-    console.error('Error syncing personnel:', e);
-  }
-};
-
-const parseId = (val) => {
-  if (val === null || val === undefined || val === '' || val === 'null' || val === 'undefined') return null;
-  const parsed = parseInt(val);
-  return isNaN(parsed) ? null : parsed;
-};
+// Ses hatları artık sadece Envanter üzerinden eklenir/düzenlenir (bkz. crud.controller.js
+// SIM dispatch). Bu route dosyası salt-okunur listeleme + silme için kalıyor.
 
 // GET /api/voice
 router.get('/', (req, res) => {
-  let query = `
-    SELECT sim_voice.*, 
-           p.name as package_name, 
-           (pers.first_name || ' ' || pers.last_name) as personnel_name,
-           comp.name as company_name,
-           dept.name as department_name
-    FROM sim_voice 
-    LEFT JOIN packages p ON sim_voice.package_id = p.id 
-    LEFT JOIN personnel pers ON sim_voice.personnel_id = pers.id
-    LEFT JOIN companies comp ON sim_voice.company_id = comp.id
-    LEFT JOIN departments dept ON sim_voice.department_id = dept.id
-    WHERE 1=1
-  `;
-  const params = [];
-  if (req.query.operator) { query += ' AND sim_voice.operator = ?'; params.push(req.query.operator); }
-  if (req.query.status)   { query += ' AND sim_voice.status = ?';   params.push(req.query.status); }
-  // You might want a filter by assigned_to or department as well, keep as is
-  if (req.query.search) {
-    query += ' AND (sim_voice.phone_no LIKE ? OR sim_voice.iccid LIKE ? OR pers.first_name LIKE ? OR pers.last_name LIKE ?)';
-    const s = `%${req.query.search}%`;
-    params.push(s, s, s, s);
+  try {
+    res.json(simAssetService.list(TYPE, req.query));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
-  query += ' ORDER BY sim_voice.id DESC';
-  res.json(db.prepare(query).all(...params));
 });
 
+// GET /api/voice/:id
 router.get('/:id', (req, res) => {
-  const row = db.prepare('SELECT * FROM sim_voice WHERE id = ?').get(req.params.id);
+  const row = simAssetService.getById(TYPE, req.params.id);
   if (!row) return res.status(404).json({ message: 'Kayıt bulunamadı.' });
   res.json(row);
 });
 
-router.post('/', hasPermission('sim:edit'), (req, res) => {
-  const { iccid, phone_no, operator, status, personnel_id, company_id, department_id, notes, package_id } = req.body;
-  if (!operator) return res.status(400).json({ message: 'Operatör zorunludur.' });
-
-  // Duplicate check
-  if (phone_no) {
-    const exists = db.prepare(`
-      SELECT 1 FROM sim_m2m   WHERE phone_no = ? UNION ALL
-      SELECT 1 FROM sim_data  WHERE phone_no = ? UNION ALL
-      SELECT 1 FROM sim_voice WHERE phone_no = ?
-      LIMIT 1
-    `).get(phone_no, phone_no, phone_no);
-    if (exists) return res.status(400).json({ message: 'Bu telefon numarası zaten kayıtlı.' });
-  }
-
-  try {
-    const p_id = parseId(personnel_id);
-    const c_id = parseId(company_id);
-    const d_id = parseId(department_id);
-    const pkg_id = parseId(package_id);
-
-    const result = db.prepare(`
-      INSERT INTO sim_voice (iccid, phone_no, operator, status, personnel_id, company_id, department_id, notes, package_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(iccid || null, phone_no || null, operator, status || 'Aktif',
-           p_id, c_id, d_id, notes || null, pkg_id);
-    
-    logActivity(req, 'CREATE', 'VOICE', result.lastInsertRowid, { iccid, phone_no, personnel_id: p_id });
-    res.status(201).json({ id: result.lastInsertRowid, message: 'Ses hattı eklendi.' });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-router.put('/:id', hasPermission('sim:edit'), (req, res) => {
-  const { iccid, phone_no, operator, status, personnel_id, company_id, department_id, notes, package_id } = req.body;
-  
-  // Duplicate check
-  if (phone_no) {
-    const exists = db.prepare(`
-      SELECT 1 FROM sim_m2m   WHERE phone_no = ? UNION ALL
-      SELECT 1 FROM sim_data  WHERE phone_no = ? UNION ALL
-      SELECT 1 FROM sim_voice WHERE phone_no = ? AND id != ?
-      LIMIT 1
-    `).get(phone_no, phone_no, phone_no, req.params.id);
-    if (exists) return res.status(400).json({ message: 'Bu telefon numarası zaten kayıtlı.' });
-  }
-
-  try {
-    const p_id = parseId(personnel_id);
-    const c_id = parseId(company_id);
-    const d_id = parseId(department_id);
-    const pkg_id = parseId(package_id);
-
-    const result = db.prepare(`
-      UPDATE sim_voice 
-      SET iccid=?, phone_no=?, operator=?, status=?, personnel_id=?, company_id=?, department_id=?, notes=?, package_id=?,
-      updated_at=CURRENT_TIMESTAMP WHERE id=?
-    `).run(iccid || null, phone_no || null, operator, status,
-           p_id, c_id, d_id, notes || null, pkg_id, req.params.id);
-    
-    if (result.changes === 0) return res.status(404).json({ message: 'Kayıt bulunamadı.' });
-
-    logActivity(req, 'UPDATE', 'VOICE', req.params.id, { iccid, phone_no, personnel_id: p_id });
-    res.json({ message: 'Ses hattı güncellendi.' });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
+// DELETE /api/voice/:id
 router.delete('/:id', hasPermission('sim:edit'), (req, res) => {
-  try {
-    const result = db.prepare('DELETE FROM sim_voice WHERE id = ?').run(req.params.id);
-    if (result.changes === 0) return res.status(404).json({ message: 'Kayıt bulunamadı.' });
-    
-    logActivity(req, 'DELETE', 'VOICE', req.params.id);
-    res.json({ message: 'Ses hattı silindi.' });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-});
-
-// POST /api/voice/bulk-delete
-router.post('/bulk-delete', hasPermission('sim:edit'), (req, res) => {
-  const { ids } = req.body;
-  if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: 'Geçersiz ID listesi.' });
-  const placeholders = ids.map(() => '?').join(',');
-  const result = db.prepare(`DELETE FROM sim_voice WHERE id IN (${placeholders})`).run(...ids);
-  
-  logActivity(req, 'BULK_DELETE', 'VOICE', ids.join(','), { count: result.changes });
-  ids.forEach(id => logActivity(req, 'DELETE', 'VOICE', id, { bulk: true }));
-  res.json({ message: `${result.changes} kayıt başarıyla silindi.` });
-});
-
-// POST /api/voice/bulk-update
-router.post('/bulk-update', hasPermission('sim:edit'), (req, res) => {
-  const { ids, data } = req.body;
-  if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ message: 'Geçersiz ID listesi.' });
-  if (!data || Object.keys(data).length === 0) return res.status(400).json({ message: 'Güncellenecek veri bulunamadı.' });
-
-  const fields = [];
-  const params = [];
-  const allowedFields = ['operator', 'status', 'personnel_id', 'company_id', 'department_id', 'notes', 'package_id'];
-  Object.keys(data).forEach(key => {
-    if (allowedFields.includes(key) && data[key] !== undefined) {
-      fields.push(`${key} = ?`);
-      params.push(data[key]);
-    }
-  });
-
-  if (fields.length === 0) return res.status(400).json({ message: 'Güncellenecek geçerli alan bulunamadı.' });
-  fields.push('updated_at = CURRENT_TIMESTAMP');
-  const placeholders = ids.map(() => '?').join(',');
-  const query = `UPDATE sim_voice SET ${fields.join(', ')} WHERE id IN (${placeholders})`;
-  const result = db.prepare(query).run(...params, ...ids);
-  
-  logActivity(req, 'BULK_UPDATE', 'VOICE', ids.join(','), { count: result.changes, updates: data });
-  ids.forEach(id => logActivity(req, 'UPDATE', 'VOICE', id, { ...data, bulk: true }));
-  res.json({ message: `${result.changes} kayıt başarıyla güncellendi.` });
+  const changes = simAssetService.remove(TYPE, req.params.id);
+  if (changes === 0) return res.status(404).json({ message: 'Kayıt bulunamadı.' });
+  logActivity(req, 'DELETE', 'VOICE', req.params.id);
+  res.json({ message: 'Ses hattı silindi.' });
 });
 
 module.exports = router;
-

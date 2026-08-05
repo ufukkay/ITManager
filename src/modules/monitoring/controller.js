@@ -4,6 +4,7 @@ const nodeDiskInfo = require('node-disk-info');
 const { db } = require('../../database/db');
 const { getPendingUpdateCount, checkOnline } = require('./utils');
 const MailerService = require('../../services/MailerService');
+const notificationService = require('../../services/notificationService');
 
 // In-memory cache for alerts to prevent spam (max 1 alert per server per hour for each type)
 const alertCache = {};
@@ -34,6 +35,18 @@ const sendAlertEmail = async (serverName, subject, message) => {
         console.log(`Alert email sent for ${serverName}: ${subject}`);
     } catch (err) {
         console.error('Failed to send alert email:', err.message);
+    }
+
+    try {
+        const adminIds = notificationService.getAdminUserIds();
+        notificationService.createForUsers(adminIds, {
+            type: 'monitoring_alert',
+            title: `🚨 ${serverName} - ${subject}`,
+            message,
+            link: '/monitoring'
+        });
+    } catch (err) {
+        console.error('Failed to create monitoring notification:', err.message);
     }
 };
 

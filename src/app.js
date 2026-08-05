@@ -65,6 +65,7 @@ app.use('/api/hr-requests', require('./modules/hr-requests/routes/index'));
 app.use('/api/m365', require('./modules/m365/routes'));
 app.use('/api/assets', require('./modules/assets/routes'));
 app.use('/api/master-data', require('./modules/core/routes'));
+app.use('/api/notifications', require('./modules/notifications/routes'));
 app.use('/api/update', require('./modules/update/routes'));
 
 // Frontend (Vue SPA) - production build'i statik olarak sun
@@ -107,5 +108,13 @@ app.listen(PORT, () => {
         if (photoReminder && typeof photoReminder.start === 'function') photoReminder.start();
     } catch (e) {
         console.error('PhotoReminderService failed to load:', e.message);
+    }
+
+    // M365 Sync Scheduler
+    try {
+        const m365SyncScheduler = require('./services/M365SyncScheduler');
+        if (m365SyncScheduler && typeof m365SyncScheduler.start === 'function') m365SyncScheduler.start();
+    } catch (e) {
+        console.error('M365SyncScheduler failed to load:', e.message);
     }
 });

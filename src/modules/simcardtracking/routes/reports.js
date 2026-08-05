@@ -3,45 +3,29 @@ const router = express.Router();
 const { db } = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 
+// SIM hatları artık `assets` tablosunda (bkz. simAssetService.js), tip ayrımı model üzerinden.
+const SIM_MODELS_SUBQUERY = `
+  SELECT am.id FROM asset_models am
+  JOIN asset_categories ac ON am.category_id = ac.id
+  WHERE ac.name = 'SIM Kart'
+`;
+const TYPE_BY_MODEL = `CASE am.name WHEN 'M2M Hattı' THEN 'm2m' WHEN 'Data Hattı' THEN 'data' WHEN 'Ses Hattı' THEN 'voice' END`;
+
 // GET /api/reports/summary - Genel özet istatistikler
 router.get('/summary', (req, res) => {
   try {
-    const totalLines = db.prepare(`
-      SELECT 
-        (SELECT COUNT(*) FROM sim_m2m) + 
-        (SELECT COUNT(*) FROM sim_data) + 
-        (SELECT COUNT(*) FROM sim_voice) as total
-    `).get().total;
-
-    const activeLines = db.prepare(`
-      SELECT 
-        (SELECT COUNT(*) FROM sim_m2m WHERE status = 'active') + 
-        (SELECT COUNT(*) FROM sim_data WHERE status = 'active') + 
-        (SELECT COUNT(*) FROM sim_voice WHERE status = 'active') as total
-    `).get().total;
-
-    const passiveLines = db.prepare(`
-      SELECT 
-        (SELECT COUNT(*) FROM sim_m2m WHERE status = 'passive') + 
-        (SELECT COUNT(*) FROM sim_data WHERE status = 'passive') + 
-        (SELECT COUNT(*) FROM sim_voice WHERE status = 'passive') as total
-    `).get().total;
-
-    const cancelledLines = db.prepare(`
-      SELECT 
-        (SELECT COUNT(*) FROM sim_m2m WHERE status = 'cancelled') + 
-        (SELECT COUNT(*) FROM sim_data WHERE status = 'cancelled') + 
-        (SELECT COUNT(*) FROM sim_voice WHERE status = 'cancelled') as total
-    `).get().total;
+    const totalLines = db.prepare(`SELECT COUNT(*) as total FROM assets WHERE model_id IN (${SIM_MODELS_SUBQUERY})`).get().total;
+    const activeLines = db.prepare(`SELECT COUNT(*) as total FROM assets WHERE model_id IN (${SIM_MODELS_SUBQUERY}) AND line_status = 'Aktif'`).get().total;
+    const passiveLines = db.prepare(`SELECT COUNT(*) as total FROM assets WHERE model_id IN (${SIM_MODELS_SUBQUERY}) AND line_status = 'Pasif'`).get().total;
+    const cancelledLines = db.prepare(`SELECT COUNT(*) as total FROM assets WHERE model_id IN (${SIM_MODELS_SUBQUERY}) AND line_status = 'İptal'`).get().total;
 
     const operatorDist = db.prepare(`
-      SELECT operator, COUNT(*) as count FROM (
-        SELECT operator FROM sim_m2m
-        UNION ALL
-        SELECT operator FROM sim_data
-        UNION ALL
-        SELECT operator FROM sim_voice
-      ) GROUP BY operator
+      SELECT op.name as operator, COUNT(*) as count
+      FROM assets a
+      JOIN asset_models am ON a.model_id = am.id
+      LEFT JOIN operators op ON a.operator_id = op.id
+      WHERE am.id IN (${SIM_MODELS_SUBQUERY})
+      GROUP BY op.name
     `).all().reduce((acc, row) => {
       acc[row.operator] = row.count;
       return acc;
@@ -62,83 +46,57 @@ router.get('/summary', (req, res) => {
 // POST /api/reports/advanced - Gelişmiş rapor oluştur
 router.post('/advanced', (req, res) => {
   const { startDate, endDate, operator, status } = req.body;
-  
-  let qM2m = 'SELECT * FROM sim_m2m WHERE 1=1';
-  let qData = 'SELECT * FROM sim_data WHERE 1=1';
-  let qVoice = 'SELECT * FROM sim_voice WHERE 1=1';
-  const p = [];
 
-  if (startDate) {
-    qM2m += ' AND created_at >= ?'; qData += ' AND created_at >= ?'; qVoice += ' AND created_at >= ?';
-    p.push(startDate + ' 00:00:00', startDate + ' 00:00:00', startDate + ' 00:00:00');
+  try {
+    let query = `
+      SELECT a.*, ${TYPE_BY_MODEL} as type, op.name as operator, a.line_status as status
+      FROM assets a
+      JOIN asset_models am ON a.model_id = am.id
+      LEFT JOIN operators op ON a.operator_id = op.id
+      WHERE am.id IN (${SIM_MODELS_SUBQUERY})
+    `;
+    const params = [];
+    if (startDate) { query += ' AND a.created_at >= ?'; params.push(startDate + ' 00:00:00'); }
+    if (endDate) { query += ' AND a.created_at <= ?'; params.push(endDate + ' 23:59:59'); }
+    if (operator) { query += ' AND op.name = ?'; params.push(operator); }
+    if (status) { query += ' AND a.line_status = ?'; params.push(status); }
+    query += ' ORDER BY a.created_at DESC';
+
+    const rows = db.prepare(query).all(...params);
+    const m2mList = rows.filter(r => r.type === 'm2m');
+    const dataList = rows.filter(r => r.type === 'data');
+    const voiceList = rows.filter(r => r.type === 'voice');
+
+    const groupBy = (list, field) => list.reduce((acc, r) => {
+      const key = r[field];
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const formatGroup = (obj) => Object.entries(obj).map(([k, v]) => ({ key: k, count: v }));
+
+    const pkgRows = db.prepare(`
+      SELECT p.id, p.name as package_name, p.type, o.name as operator_name,
+             COUNT(a.id) as count
+      FROM packages p
+      LEFT JOIN operators o ON p.operator_id = o.id
+      LEFT JOIN assets a ON a.package_id = p.id AND a.model_id IN (${SIM_MODELS_SUBQUERY})
+      GROUP BY p.id
+      HAVING count > 0
+      ORDER BY count DESC, p.name ASC
+    `).all();
+
+    res.json({
+      summary: {
+        totals: { m2m: m2mList.length, data: dataList.length, voice: voiceList.length, all: rows.length },
+        byOperator: { m2m: formatGroup(groupBy(m2mList, 'operator')), data: formatGroup(groupBy(dataList, 'operator')), voice: formatGroup(groupBy(voiceList, 'operator')) },
+        byStatus: { m2m: formatGroup(groupBy(m2mList, 'status')), data: formatGroup(groupBy(dataList, 'status')), voice: formatGroup(groupBy(voiceList, 'status')) },
+        byPackage: pkgRows
+      },
+      lists: { m2m: m2mList, data: dataList, voice: voiceList }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Gelişmiş rapor oluşturulamadı', error: error.message });
   }
-  if (endDate) {
-    qM2m += ' AND created_at <= ?'; qData += ' AND created_at <= ?'; qVoice += ' AND created_at <= ?';
-    p.push(endDate + ' 23:59:59', endDate + ' 23:59:59', endDate + ' 23:59:59');
-  }
-  if (operator) {
-    qM2m += ` AND operator = '${operator}'`; qData += ` AND operator = '${operator}'`; qVoice += ` AND operator = '${operator}'`;
-  }
-  if (status) {
-    qM2m += ` AND status = '${status}'`; qData += ` AND status = '${status}'`; qVoice += ` AND status = '${status}'`;
-  }
-
-  qM2m += ' ORDER BY created_at DESC';
-  qData += ' ORDER BY created_at DESC';
-  qVoice += ' ORDER BY created_at DESC';
-
-  // For the parameters, we need to pass them to each query. SQLite prepare doesn't support array spread easily for 3 duplicated parameter sets in one go if they vary, but here the params are identical if we do them sequentially.
-  
-  // Extract params per query (since p has 3x duplicates, we just slice them or rebuild)
-  const buildParams = () => {
-    let cp = [];
-    if (startDate) cp.push(startDate + ' 00:00:00');
-    if (endDate) cp.push(endDate + ' 23:59:59');
-    return cp;
-  };
-  const qParams = buildParams();
-
-  const m2mList = db.prepare(qM2m).all(...qParams);
-  const dataList = db.prepare(qData).all(...qParams);
-  const voiceList = db.prepare(qVoice).all(...qParams);
-
-  // Özet verileri dinamik olarak hesapla
-  const m2mTotal = m2mList.length;
-  const dataTotal = dataList.length;
-  const voiceTotal = voiceList.length;
-
-  const m2mByOp = {}; const dataByOp = {}; const voiceByOp = {};
-  const m2mByStatus = {}; const dataByStatus = {}; const voiceByStatus = {};
-
-  m2mList.forEach(r => { m2mByOp[r.operator] = (m2mByOp[r.operator] || 0) + 1; m2mByStatus[r.status] = (m2mByStatus[r.status] || 0) + 1; });
-  dataList.forEach(r => { dataByOp[r.operator] = (dataByOp[r.operator] || 0) + 1; dataByStatus[r.status] = (dataByStatus[r.status] || 0) + 1; });
-  voiceList.forEach(r => { voiceByOp[r.operator] = (voiceByOp[r.operator] || 0) + 1; voiceByStatus[r.status] = (voiceByStatus[r.status] || 0) + 1; });
-
-  const formatGroup = (obj) => Object.entries(obj).map(([k, v]) => ({ key: k, count: v }));
-
-  // Paket dağılımı — tüm tablolardaki paket kullanımını say
-  const pkgRows = db.prepare(`
-    SELECT p.id, p.name as package_name, p.type, o.name as operator_name,
-           (
-             (SELECT COUNT(*) FROM sim_m2m WHERE package_id = p.id) +
-             (SELECT COUNT(*) FROM sim_data WHERE package_id = p.id) +
-             (SELECT COUNT(*) FROM sim_voice WHERE package_id = p.id)
-           ) as count
-    FROM packages p
-    LEFT JOIN operators o ON p.operator_id = o.id
-    ORDER BY count DESC, p.name ASC
-  `).all().filter(r => r.count > 0);
-
-  res.json({
-    summary: {
-      totals: { m2m: m2mTotal, data: dataTotal, voice: voiceTotal, all: m2mTotal + dataTotal + voiceTotal },
-      byOperator: { m2m: formatGroup(m2mByOp), data: formatGroup(dataByOp), voice: formatGroup(voiceByOp) },
-      byStatus: { m2m: formatGroup(m2mByStatus), data: formatGroup(dataByStatus), voice: formatGroup(voiceByStatus) },
-      byPackage: pkgRows
-    },
-    lists: { m2m: m2mList, data: dataList, voice: voiceList }
-  });
 });
 
 module.exports = router;
-

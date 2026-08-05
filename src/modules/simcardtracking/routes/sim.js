@@ -3,6 +3,7 @@ const router = express.Router();
 const { db } = require('../../../database/db');
 const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
+const simAssetService = require('../services/simAssetService');
 
 // GET /api/sim/search?q=...
 router.get('/search', hasPermission('sim:view'), (req, res) => {
@@ -10,37 +11,39 @@ router.get('/search', hasPermission('sim:view'), (req, res) => {
   if (!q) return res.status(400).json({ message: 'Arama terimi gerekli.' });
 
   const queryTerm = `%${q}%`;
-  const activeClause = (active_only === 'true' || active_only === '1') ? " AND sim_m2m.status = 'active'" : "";
-  const activeClauseData = (active_only === 'true' || active_only === '1') ? " AND sim_data.status = 'active'" : "";
-  const activeClauseVoice = (active_only === 'true' || active_only === '1') ? " AND sim_voice.status = 'active'" : "";
-  
+  const activeOnly = active_only === 'true' || active_only === '1';
+  const activeClause = activeOnly ? " AND a.line_status = 'Aktif'" : '';
+
   try {
     const results = [];
 
     // Search M2M
     const m2m = db.prepare(`
-      SELECT 'm2m' as type, sim_m2m.*, v.plate_no 
-      FROM sim_m2m 
-      LEFT JOIN vehicles v ON sim_m2m.vehicle_id = v.id
-      WHERE (sim_m2m.phone_no LIKE ? OR sim_m2m.iccid LIKE ? OR v.plate_no LIKE ?)${activeClause}
+      SELECT 'm2m' as type, a.*, a.line_status as status, v.plate_no
+      FROM assets a
+      JOIN asset_models am ON a.model_id = am.id
+      LEFT JOIN vehicles v ON a.vehicle_id = v.id
+      WHERE am.name = 'M2M Hattı' AND (a.phone_no LIKE ? OR a.serial_no LIKE ? OR v.plate_no LIKE ?)${activeClause}
     `).all(queryTerm, queryTerm, queryTerm);
     results.push(...m2m);
 
     // Search Data
     const data = db.prepare(`
-      SELECT 'data' as type, sim_data.*, l.name as location_name 
-      FROM sim_data 
-      LEFT JOIN locations l ON sim_data.location_id = l.id
-      WHERE (sim_data.phone_no LIKE ? OR sim_data.iccid LIKE ? OR l.name LIKE ?)${activeClauseData}
+      SELECT 'data' as type, a.*, a.line_status as status, l.name as location_name
+      FROM assets a
+      JOIN asset_models am ON a.model_id = am.id
+      LEFT JOIN locations l ON a.location_id = l.id
+      WHERE am.name = 'Data Hattı' AND (a.phone_no LIKE ? OR a.serial_no LIKE ? OR l.name LIKE ?)${activeClause}
     `).all(queryTerm, queryTerm, queryTerm);
     results.push(...data);
 
     // Search Voice
     const voice = db.prepare(`
-      SELECT 'voice' as type, sim_voice.*, (p.first_name || ' ' || p.last_name) as personnel_name 
-      FROM sim_voice 
-      LEFT JOIN personnel p ON sim_voice.personnel_id = p.id
-      WHERE (sim_voice.phone_no LIKE ? OR sim_voice.iccid LIKE ? OR (p.first_name || ' ' || p.last_name) LIKE ?)${activeClauseVoice}
+      SELECT 'voice' as type, a.*, a.line_status as status, (p.first_name || ' ' || p.last_name) as personnel_name
+      FROM assets a
+      JOIN asset_models am ON a.model_id = am.id
+      LEFT JOIN personnel p ON a.personnel_id = p.id
+      WHERE am.name = 'Ses Hattı' AND (a.phone_no LIKE ? OR a.serial_no LIKE ? OR (p.first_name || ' ' || p.last_name) LIKE ?)${activeClause}
     `).all(queryTerm, queryTerm, queryTerm);
     results.push(...voice);
 
@@ -50,8 +53,17 @@ router.get('/search', hasPermission('sim:view'), (req, res) => {
   }
 });
 
+// Hedef tipte anlamlı olan zimmet (owner) kolonları — bkz. simAssetService.buildOwnerFields
+const TYPE_OWNER_FIELDS = {
+  m2m: ['vehicle_id', 'personnel_id', 'department_id'],
+  data: ['location_id', 'department_id'],
+  voice: ['personnel_id', 'department_id'],
+};
+const OWNER_COLUMNS = ['personnel_id', 'location_id', 'vehicle_id', 'department_id'];
 
 // POST /api/sim/transfer
+// SIM hatları artık `assets` tablosunda aynı satır olduğu için "tip değiştirme" artık
+// tablolar arası INSERT/DELETE değil, tek bir UPDATE (model_id + owner kolonları).
 router.post('/transfer', hasPermission('sim:edit'), (req, res) => {
   const { id, currentType, targetType, targetData } = req.body;
 
@@ -68,81 +80,40 @@ router.post('/transfer', hasPermission('sim:edit'), (req, res) => {
     return res.status(400).json({ message: 'Geçersiz hat tipi.' });
   }
 
-  const sourceTable = `sim_${currentType}`;
-  const targetTable = `sim_${targetType}`;
-
   try {
-    const transaction = db.transaction(() => {
-      // 1. Kaynak veriyi bul
-      const row = db.prepare(`SELECT * FROM ${sourceTable} WHERE id = ?`).get(id);
-      if (!row) throw new Error('Kaynak kayıt bulunamadı.');
+    const row = db.prepare('SELECT * FROM assets WHERE id = ?').get(id);
+    if (!row) throw new Error('Kaynak kayıt bulunamadı.');
 
-      let finalId = id;
+    const owner = { personnel_id: null, location_id: null, vehicle_id: null, department_id: null };
+    TYPE_OWNER_FIELDS[targetType].forEach(field => { owner[field] = row[field]; });
+    if (targetData) {
+      Object.keys(targetData).forEach(key => {
+        if (OWNER_COLUMNS.includes(key)) owner[key] = targetData[key];
+      });
+    }
 
-      if (currentType !== targetType) {
-        // 2. Hedef tablonun kolonlarını al
-        const targetColumns = db.prepare(`PRAGMA table_info(${targetTable})`).all().map(c => c.name);
+    const currentBrand = simAssetService.resolveBrandByModelId(row.model_id);
+    const targetModelId = currentBrand
+      ? simAssetService.resolveModelIdForBrandAndType(currentBrand.id, targetType)
+      : null;
+    if (!targetModelId) throw new Error(`Bu operatör markası altında "${targetType}" tipi tanımlı değil.`);
 
-        // 3. Ortak verileri hazırla
-        const transferData = {};
-        targetColumns.forEach(col => {
-          if (col === 'id' || col === 'created_at' || col === 'updated_at') return;
-          
-          if (row.hasOwnProperty(col)) {
-            transferData[col] = row[col];
-          } else {
-            transferData[col] = null;
-          }
-        });
+    db.prepare(`
+      UPDATE assets SET model_id = ?, personnel_id = ?, location_id = ?, vehicle_id = ?, department_id = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(targetModelId, owner.personnel_id, owner.location_id, owner.vehicle_id, owner.department_id, id);
 
-        // Overlay targetData if provided (e.g. new vehicle_id)
-        if (targetData) {
-          Object.keys(targetData).forEach(key => {
-            if (targetColumns.includes(key)) {
-              transferData[key] = targetData[key];
-            }
-          });
-        }
-
-        // 4. Hedef tabloya ekle
-        const cols = Object.keys(transferData);
-        const placeholders = cols.map(() => '?').join(', ');
-        const insertQuery = `INSERT INTO ${targetTable} (${cols.join(', ')}) VALUES (${placeholders})`;
-        const insertResult = db.prepare(insertQuery).run(...Object.values(transferData));
-        finalId = insertResult.lastInsertRowid;
-
-        // 5. Kaynak tablodan sil
-        db.prepare(`DELETE FROM ${sourceTable} WHERE id = ?`).run(id);
-      } else if (targetData) {
-        // Same table, just update columns (Owner shift)
-        const fields = [];
-        const params = [];
-        Object.keys(targetData).forEach(key => {
-            fields.push(`${key} = ?`);
-            params.push(targetData[key]);
-        });
-        fields.push('updated_at = CURRENT_TIMESTAMP');
-        db.prepare(`UPDATE ${targetTable} SET ${fields.join(', ')} WHERE id = ?`).run(...params, id);
-      }
-
-      return { newId: finalId, phone_no: row.phone_no };
-    });
-
-    const result = transaction();
-
-    // 6. Log kaydı
-    logActivity(req, 'TRANSFER', targetType.toUpperCase(), result.newId, { 
-      fromType: currentType, 
-      toType: targetType, 
-      phone_no: result.phone_no,
-      originalId: id,
+    logActivity(req, 'TRANSFER', targetType.toUpperCase(), id, {
+      fromType: currentType,
+      toType: targetType,
+      phone_no: row.phone_no,
       targetData
     });
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: `SIM kart başarıyla ${currentType !== targetType ? targetType.toUpperCase() + ' hattına dönüştürüldü ve ' : ''}aktarıldı.`,
-      newId: result.newId
+      newId: id
     });
 
   } catch (err) {
@@ -153,4 +124,3 @@ router.post('/transfer', hasPermission('sim:edit'), (req, res) => {
 
 
 module.exports = router;
-

@@ -1,20 +1,20 @@
 <template>
-  <div class="flex h-full bg-gray-50/50">
+  <div class="flex h-full bg-gray-50/50 dark:bg-slate-900">
     <!-- Sidebar -->
-    <div class="w-64 bg-white border-r border-gray-100 flex flex-col shrink-0">
-      <div class="h-14 flex items-center px-6 border-b border-gray-100 shrink-0">
-        <h2 class="text-[13px] font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+    <div class="w-64 bg-white dark:bg-slate-800 border-r border-gray-100 dark:border-slate-700 flex flex-col shrink-0">
+      <div class="h-14 flex items-center px-6 border-b border-gray-100 dark:border-slate-700 shrink-0">
+        <h2 class="text-[13px] font-bold text-gray-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
           <i class="fas fa-headset text-blue-500"></i> IT Destek
         </h2>
       </div>
-      
+
       <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
         <router-link
           to="/helpdesk/my-tickets"
           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors"
-          active-class="bg-blue-50 text-blue-700 font-bold"
-          exact-active-class="bg-blue-50 text-blue-700 font-bold"
-          :class="[$route.path.includes('/my-tickets') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-gray-600 hover:bg-gray-50']"
+          active-class="bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-bold"
+          exact-active-class="bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-bold"
+          :class="[$route.path.includes('/my-tickets') ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-bold' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50']"
         >
           <i class="fas fa-ticket-alt w-5 text-center"></i> Taleplerim
         </router-link>
@@ -23,9 +23,9 @@
           v-if="authStore.hasPermission('helpdesk:manage')"
           to="/helpdesk/pool"
           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors mt-4"
-          active-class="bg-amber-50 text-amber-700 font-bold"
-          exact-active-class="bg-amber-50 text-amber-700 font-bold"
-          :class="[$route.path.includes('/pool') ? 'bg-amber-50 text-amber-700 font-bold' : 'text-gray-600 hover:bg-gray-50']"
+          active-class="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold"
+          exact-active-class="bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold"
+          :class="[$route.path.includes('/pool') ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50']"
         >
           <i class="fas fa-inbox w-5 text-center"></i> Talep Havuzu
         </router-link>
@@ -34,9 +34,9 @@
           v-if="authStore.hasPermission('helpdesk:manage')"
           to="/helpdesk/csat"
           class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors mt-1"
-          active-class="bg-indigo-50 text-indigo-700 font-bold"
-          exact-active-class="bg-indigo-50 text-indigo-700 font-bold"
-          :class="[$route.path.includes('/csat') ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-gray-600 hover:bg-gray-50']"
+          active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-bold"
+          exact-active-class="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-bold"
+          :class="[$route.path.includes('/csat') ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 font-bold' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50']"
         >
           <i class="fas fa-smile w-5 text-center"></i> Memnuniyet (CSAT)
         </router-link>

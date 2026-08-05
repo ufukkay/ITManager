@@ -67,21 +67,21 @@ const togglePermission = (pId) => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-white rounded shadow-sm border border-gray-100 overflow-hidden">
+  <div class="flex flex-col h-full bg-white dark:bg-slate-800 rounded shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
       <!-- USER INFO BAR -->
-      <div v-if="!hideHeader" class="px-6 py-4 border-b border-gray-50 bg-[#fafafa] flex items-center justify-between shrink-0">
+      <div v-if="!hideHeader" class="px-6 py-4 border-b border-gray-50 dark:border-slate-700 bg-[#fafafa] dark:bg-slate-900 flex items-center justify-between shrink-0">
           <div class="flex items-center gap-4">
-              <div class="w-10 h-10 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center text-lg font-bold">
+              <div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 flex items-center justify-center text-lg font-bold">
                   {{ user?.full_name?.charAt(0) }}
               </div>
               <div>
-                  <h2 class="text-[15px] font-bold text-gray-900">{{ user?.full_name }}</h2>
-                  <p class="text-[11px] text-gray-400 font-medium">{{ user?.email }}</p>
+                  <h2 class="text-[15px] font-bold text-gray-900 dark:text-slate-100">{{ user?.full_name }}</h2>
+                  <p class="text-[11px] text-gray-400 dark:text-slate-500 font-medium">{{ user?.email }}</p>
               </div>
           </div>
           <div class="flex items-center gap-4">
                 <div class="flex flex-col items-end">
-                    <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Sistem Rolü</span>
+                    <span class="text-[9px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Sistem Rolü</span>
                     <select :value="user?.role_id" @change="emit('update:role', $event.target.value)" class="role-select-minimal">
                       <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
                     </select>
@@ -96,21 +96,21 @@ const togglePermission = (pId) => {
       <!-- MATRIX TABLE -->
       <div class="flex-1 overflow-x-auto min-h-0">
           <table class="w-full text-left border-collapse">
-              <thead class="sticky top-0 bg-gray-50 z-10">
+              <thead class="sticky top-0 bg-gray-50 dark:bg-slate-900 z-10">
                   <tr>
-                      <th class="px-6 py-3 border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider w-[350px]">Modül / Yetki Tanımı</th>
-                      <th class="px-6 py-3 border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">Görüntüleme</th>
-                      <th class="px-6 py-3 border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">Düzenleme</th>
-                      <th class="px-6 py-3 border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">Kaynak</th>
+                      <th class="px-6 py-3 border-b border-gray-100 dark:border-slate-700 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider w-[350px]">Modül / Yetki Tanımı</th>
+                      <th class="px-6 py-3 border-b border-gray-100 dark:border-slate-700 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider text-center">Görüntüleme</th>
+                      <th class="px-6 py-3 border-b border-gray-100 dark:border-slate-700 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider text-center">Düzenleme</th>
+                      <th class="px-6 py-3 border-b border-gray-100 dark:border-slate-700 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider text-center">Kaynak</th>
                   </tr>
               </thead>
-              <tbody class="divide-y divide-gray-50">
-                  <tr v-for="mod in modules" :key="mod.name" class="hover:bg-gray-50/50 transition-colors">
+              <tbody class="divide-y divide-gray-50 dark:divide-slate-700">
+                  <tr v-for="mod in modules" :key="mod.name" class="hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors">
                       <td class="px-6 py-3.5">
-                          <span class="text-[13px] font-bold text-gray-800 block">{{ mod.name }}</span>
-                          <span class="text-[11px] text-gray-400">{{ mod.view?.description || mod.edit?.description }}</span>
+                          <span class="text-[13px] font-bold text-gray-800 dark:text-slate-100 block">{{ mod.name }}</span>
+                          <span class="text-[11px] text-gray-400 dark:text-slate-500">{{ mod.view?.description || mod.edit?.description }}</span>
                       </td>
-                      
+
                       <td class="px-6 py-3.5 text-center">
                           <div class="flex justify-center">
                               <label class="sim-switch" :class="{ 'disabled': isInherited(mod.view?.id) || user?.role_id === 1 }">
@@ -127,7 +127,7 @@ const togglePermission = (pId) => {
                                   <span class="sim-slider"></span>
                               </label>
                           </div>
-                          <span v-else class="text-[10px] text-gray-200">—</span>
+                          <span v-else class="text-[10px] text-gray-200 dark:text-slate-700">—</span>
                       </td>
 
                       <td class="px-6 py-3.5">
@@ -135,7 +135,7 @@ const togglePermission = (pId) => {
                               <span v-if="user?.role_id === 1" class="tag-minimal purple">ADMIN</span>
                               <span v-else-if="isInherited(mod.view?.id) || isInherited(mod.edit?.id)" class="tag-minimal gray">ROL</span>
                               <span v-else-if="userOverrides.includes(mod.view?.id) || userOverrides.includes(mod.edit?.id)" class="tag-minimal blue">ÖZEL</span>
-                              <span v-else class="text-[10px] text-gray-200">YOK</span>
+                              <span v-else class="text-[10px] text-gray-200 dark:text-slate-700">YOK</span>
                           </div>
                       </td>
                   </tr>
@@ -144,15 +144,15 @@ const togglePermission = (pId) => {
       </div>
 
       <!-- FOOTER INFO -->
-      <div v-if="user?.role_id === 1" class="px-6 py-3 border-t border-gray-50 bg-gray-50/50 flex items-center gap-3 shrink-0">
-          <i class="fas fa-info-circle text-gray-400 text-[12px]"></i>
-          <span class="text-[11px] text-gray-500 font-medium">Bu kullanıcı Admin yetkilerine sahiptir ve tüm kısıtlamalardan muaftır.</span>
+      <div v-if="user?.role_id === 1" class="px-6 py-3 border-t border-gray-50 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900/50 flex items-center gap-3 shrink-0">
+          <i class="fas fa-info-circle text-gray-400 dark:text-slate-500 text-[12px]"></i>
+          <span class="text-[11px] text-gray-500 dark:text-slate-400 font-medium">Bu kullanıcı Admin yetkilerine sahiptir ve tüm kısıtlamalardan muaftır.</span>
       </div>
-      
+
       <!-- FOOTER ACTIONS FOR HIDE-HEADER MODE -->
-      <div v-if="hideHeader && !hideActions" class="px-6 py-3 border-t border-gray-50 bg-[#fafafa] flex items-center justify-between shrink-0">
+      <div v-if="hideHeader && !hideActions" class="px-6 py-3 border-t border-gray-50 dark:border-slate-700 bg-[#fafafa] dark:bg-slate-900 flex items-center justify-between shrink-0">
           <div class="flex items-center gap-3">
-               <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Rol Değiştir:</span>
+               <span class="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Rol Değiştir:</span>
                <select :value="user?.role_id" @change="emit('update:role', $event.target.value)" class="role-select-minimal">
                   <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
                </select>
@@ -168,7 +168,7 @@ const togglePermission = (pId) => {
 
 <style scoped>
 .role-select-minimal {
-    @apply h-7 rounded border border-gray-100 bg-white text-[12px] font-bold px-2 outline-none focus:border-blue-500 transition-all cursor-pointer;
+    @apply h-7 rounded border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-[12px] font-bold px-2 outline-none focus:border-blue-500 transition-all cursor-pointer;
 }
 
 .btn-save-minimal {
@@ -178,9 +178,9 @@ const togglePermission = (pId) => {
 .tag-minimal {
     @apply px-2 py-0.5 rounded text-[9px] font-bold border uppercase;
 }
-.tag-minimal.blue { @apply bg-blue-50 text-blue-600 border-blue-100; }
-.tag-minimal.purple { @apply bg-purple-50 text-purple-600 border-purple-100; }
-.tag-minimal.gray { @apply bg-gray-50 text-gray-400 border-gray-100; }
+.tag-minimal.blue { @apply bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/30; }
+.tag-minimal.purple { @apply bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/30; }
+.tag-minimal.gray { @apply bg-gray-50 text-gray-400 border-gray-100 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600; }
 
 /* SIM SWITCH */
 .sim-switch {
@@ -188,7 +188,7 @@ const togglePermission = (pId) => {
 }
 .sim-switch input { @apply opacity-0 w-0 h-0; }
 .sim-slider {
-    @apply absolute inset-0 bg-gray-200 rounded-full transition-all duration-200;
+    @apply absolute inset-0 bg-gray-200 dark:bg-slate-600 rounded-full transition-all duration-200;
 }
 .sim-slider:before {
     @apply absolute content-[''] h-3 w-3 left-0.5 bottom-0.5 bg-white rounded-full transition-all duration-200;

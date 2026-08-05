@@ -15,14 +15,14 @@ onMounted(() => masterData.fetchCompanies())
 </script>
 
 <template>
-  <div class="flex h-full overflow-hidden bg-white">
+  <div class="flex h-full overflow-hidden bg-white dark:bg-slate-900">
 
     <!-- ── Left Sidebar ───────────────────────────────────────────── -->
-    <aside class="w-52 bg-[#fbfbfb] border-r border-gray-100 flex flex-col shrink-0">
+    <aside class="w-52 bg-[#fbfbfb] dark:bg-slate-800 border-r border-gray-100 dark:border-slate-700 flex flex-col shrink-0">
 
       <!-- Header -->
-      <div class="px-4 py-5 border-b border-gray-100">
-        <h2 class="text-[12px] font-bold text-gray-800 uppercase tracking-widest flex items-center gap-2">
+      <div class="px-4 py-5 border-b border-gray-100 dark:border-slate-700">
+        <h2 class="text-[12px] font-bold text-gray-800 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2">
           <i class="fas fa-users text-[#1a73e8] text-[11px]"></i>
           İK Bildirimleri
         </h2>
@@ -32,7 +32,7 @@ onMounted(() => masterData.fetchCompanies())
 
         <!-- Bildirim Türü -->
         <div>
-          <p class="px-3 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Bildirim Türü</p>
+          <p class="px-3 mb-2 text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Bildirim Türü</p>
           <div class="flex flex-col gap-0.5">
             <button
               v-for="item in [
@@ -44,11 +44,11 @@ onMounted(() => masterData.fetchCompanies())
               @click="selectedType = item.type"
               class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all text-left w-full"
               :class="selectedType === item.type
-                ? 'bg-blue-50 text-blue-600'
-                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'"
+                ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-slate-100'"
             >
               <i :class="['fas', item.icon, 'w-4 text-center text-[12px]',
-                selectedType === item.type ? 'text-blue-500' : 'text-gray-400']"></i>
+                selectedType === item.type ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500']"></i>
               {{ item.label }}
             </button>
           </div>
@@ -56,17 +56,17 @@ onMounted(() => masterData.fetchCompanies())
 
         <!-- Şirketler -->
         <div>
-          <p class="px-3 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Şirketler</p>
+          <p class="px-3 mb-2 text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Şirketler</p>
           <div class="flex flex-col gap-0.5">
             <button
               @click="selectedCompanyId = null"
               class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all text-left w-full"
               :class="selectedCompanyId === null
-                ? 'bg-blue-50 text-blue-600'
-                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'"
+                ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-slate-100'"
             >
               <i :class="['fas fa-building w-4 text-center text-[12px]',
-                selectedCompanyId === null ? 'text-blue-500' : 'text-gray-400']"></i>
+                selectedCompanyId === null ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500']"></i>
               Tüm Şirketler
             </button>
             <button
@@ -75,11 +75,11 @@ onMounted(() => masterData.fetchCompanies())
               @click="selectedCompanyId = c.id"
               class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-all text-left w-full truncate"
               :class="selectedCompanyId === c.id
-                ? 'bg-blue-50 text-blue-600'
-                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'"
+                ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-slate-100'"
             >
               <i :class="['fas fa-building w-4 text-center text-[12px] shrink-0',
-                selectedCompanyId === c.id ? 'text-blue-500' : 'text-gray-300']"></i>
+                selectedCompanyId === c.id ? 'text-blue-500 dark:text-blue-400' : 'text-gray-300 dark:text-slate-600']"></i>
               <span class="truncate">{{ c.name }}</span>
             </button>
           </div>
@@ -89,7 +89,7 @@ onMounted(() => masterData.fetchCompanies())
     </aside>
 
     <!-- ── Content ─────────────────────────────────────────────────── -->
-    <main class="flex-1 overflow-hidden flex flex-col bg-white">
+    <main class="flex-1 overflow-hidden flex flex-col bg-white dark:bg-slate-900">
       <router-view v-slot="{ Component }">
         <component :is="Component" />
       </router-view>

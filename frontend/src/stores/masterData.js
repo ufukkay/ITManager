@@ -224,16 +224,6 @@ export const useMasterDataStore = defineStore('masterData', {
       }
     },
 
-    async assignLicense(personnelId, licenseId) {
-      await api.post('/api/master-data/licenses/assign', { personnelId, licenseId })
-    },
-
-    async unassignLicense(id) {
-      await api.delete(`/api/master-data/licenses/unassign/${id}`)
-    },
-    async bulkAssignLicenses(personnelIds, licenseIds) {
-      await api.post('/api/master-data/licenses/bulk-assign', { personnelIds, licenseIds })
-    },
     async fetchDashboardStats() {
       try {
         const response = await api.get('/auth/api/dashboard/stats')

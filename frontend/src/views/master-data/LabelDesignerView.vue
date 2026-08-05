@@ -1,22 +1,22 @@
 <template>
-  <div class="h-full flex flex-col bg-gray-50/50 overflow-hidden">
+  <div class="h-full flex flex-col bg-gray-50/50 dark:bg-slate-900 overflow-hidden">
     <!-- TOP BAR / HEADER -->
-    <header class="h-14 border-b border-gray-200 flex items-center justify-between px-6 bg-white shrink-0 shadow-sm">
+    <header class="h-14 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between px-6 bg-white dark:bg-slate-800 shrink-0 shadow-sm">
       <div class="flex items-center gap-3">
-        <RouterLink to="/master-data/asset-definitions" class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors">
+        <RouterLink to="/master-data/asset-definitions" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-slate-300 flex items-center justify-center transition-colors">
           <i class="fas fa-arrow-left text-sm"></i>
         </RouterLink>
         <div>
-          <h1 class="text-sm font-bold text-gray-900 flex items-center gap-2">
-            <i class="fas fa-ruler-combined text-blue-600"></i> Sürükle-Bırak Termal Etiket Studio
+          <h1 class="text-sm font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
+            <i class="fas fa-ruler-combined text-blue-600 dark:text-blue-400"></i> Sürükle-Bırak Termal Etiket Studio
           </h1>
-          <p class="text-[11px] text-gray-400">Milimetrik kanvas üzerinde etiket boyutunu, QR kodu ve metinleri özelleştirin</p>
+          <p class="text-[11px] text-gray-400 dark:text-slate-500">Milimetrik kanvas üzerinde etiket boyutunu, QR kodu ve metinleri özelleştirin</p>
         </div>
       </div>
 
       <!-- Action Buttons -->
       <div class="flex items-center gap-2">
-        <select v-model="selectedTemplateId" @change="loadSelectedTemplate" class="h-8 px-3 bg-gray-50 border border-gray-200 rounded text-xs font-bold text-gray-700 outline-none focus:border-blue-500 cursor-pointer">
+        <select v-model="selectedTemplateId" @change="loadSelectedTemplate" class="h-8 px-3 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded text-xs font-bold text-gray-700 dark:text-slate-300 outline-none focus:border-blue-500 cursor-pointer">
           <option value="">-- Kayıtlı Şablon Seçin --</option>
           <option v-for="t in savedTemplates" :key="t.id" :value="t.id">
             {{ t.name }} ({{ t.width_mm }}x{{ t.height_mm }}mm) {{ t.is_default ? '★ Varsayılan' : '' }}
@@ -32,36 +32,36 @@
     <!-- MAIN STUDIO WORKSPACE -->
     <div class="flex-1 flex overflow-hidden">
       <!-- LEFT PALETTE: COMPONENT LIBRARY & CANVAS DIMENSIONS -->
-      <aside class="w-72 bg-white border-r border-gray-200 flex flex-col p-4 shrink-0 overflow-y-auto">
+      <aside class="w-72 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 flex flex-col p-4 shrink-0 overflow-y-auto">
         <!-- Paper Size Controls -->
-        <div class="mb-5 pb-4 border-b border-gray-100">
-          <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <i class="fas fa-expand-alt text-blue-600"></i> Etiket Kağıt Boyutu
+        <div class="mb-5 pb-4 border-b border-gray-100 dark:border-slate-700">
+          <h3 class="text-xs font-bold text-gray-900 dark:text-slate-100 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i class="fas fa-expand-alt text-blue-600 dark:text-blue-400"></i> Etiket Kağıt Boyutu
           </h3>
           <div class="grid grid-cols-2 gap-2 mb-3">
             <div>
-              <label class="text-[10px] font-bold text-gray-500 uppercase">Genişlik (mm)</label>
-              <input v-model.number="canvasWidthMM" type="number" class="h-8 w-full px-2 bg-gray-50 border border-gray-200 rounded text-xs font-bold text-gray-800" min="20" max="200" />
+              <label class="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase">Genişlik (mm)</label>
+              <input v-model.number="canvasWidthMM" type="number" class="h-8 w-full px-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded text-xs font-bold text-gray-800 dark:text-slate-100" min="20" max="200" />
             </div>
             <div>
-              <label class="text-[10px] font-bold text-gray-500 uppercase">Yükseklik (mm)</label>
-              <input v-model.number="canvasHeightMM" type="number" class="h-8 w-full px-2 bg-gray-50 border border-gray-200 rounded text-xs font-bold text-gray-800" min="15" max="200" />
+              <label class="text-[10px] font-bold text-gray-500 dark:text-slate-500 uppercase">Yükseklik (mm)</label>
+              <input v-model.number="canvasHeightMM" type="number" class="h-8 w-full px-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded text-xs font-bold text-gray-800 dark:text-slate-100" min="15" max="200" />
             </div>
           </div>
           <!-- Presets -->
           <div class="flex items-center gap-1">
-            <button @click="setPreset(70, 35)" class="flex-1 py-1 bg-gray-100 hover:bg-gray-200 rounded text-[10.5px] font-bold text-gray-700">70x35 mm</button>
-            <button @click="setPreset(50, 25)" class="flex-1 py-1 bg-gray-100 hover:bg-gray-200 rounded text-[10.5px] font-bold text-gray-700">50x25 mm</button>
-            <button @click="setPreset(100, 50)" class="flex-1 py-1 bg-gray-100 hover:bg-gray-200 rounded text-[10.5px] font-bold text-gray-700">100x50 mm</button>
+            <button @click="setPreset(70, 35)" class="flex-1 py-1 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded text-[10.5px] font-bold text-gray-700 dark:text-slate-300">70x35 mm</button>
+            <button @click="setPreset(50, 25)" class="flex-1 py-1 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded text-[10.5px] font-bold text-gray-700 dark:text-slate-300">50x25 mm</button>
+            <button @click="setPreset(100, 50)" class="flex-1 py-1 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded text-[10.5px] font-bold text-gray-700 dark:text-slate-300">100x50 mm</button>
           </div>
         </div>
 
         <!-- Addable Element Palette -->
         <div>
-          <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <i class="fas fa-puzzle-piece text-emerald-600"></i> Bileşen Ekle
+          <h3 class="text-xs font-bold text-gray-900 dark:text-slate-100 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <i class="fas fa-puzzle-piece text-emerald-600 dark:text-green-400"></i> Bileşen Ekle
           </h3>
-          <p class="text-[11px] text-gray-400 mb-3">Kanvasa eklemek için tıklayın:</p>
+          <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-3">Kanvasa eklemek için tıklayın:</p>
 
           <div class="space-y-1.5">
             <button @click="addElement('qr')" class="palette-btn">
@@ -101,10 +101,10 @@
       </aside>
 
       <!-- CENTER: INTERACTIVE CANVAS WORKSPACE -->
-      <main class="flex-1 flex flex-col items-center justify-center p-8 bg-gray-100 overflow-auto relative">
-        <div class="text-xs font-bold text-gray-400 mb-3 flex items-center gap-2">
+      <main class="flex-1 flex flex-col items-center justify-center p-8 bg-gray-100 dark:bg-slate-950 overflow-auto relative">
+        <div class="text-xs font-bold text-gray-400 dark:text-slate-500 mb-3 flex items-center gap-2">
           <span>Termal Etiket Kanvası</span>
-          <span class="px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">{{ canvasWidthMM }} x {{ canvasHeightMM }} mm</span>
+          <span class="px-2 py-0.5 bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-full">{{ canvasWidthMM }} x {{ canvasHeightMM }} mm</span>
         </div>
 
         <!-- CANVAS BOX (Scaled 1mm = 4.5px for crisp DPI design) -->
@@ -171,10 +171,10 @@
       </main>
 
       <!-- RIGHT SIDEBAR: SELECTED ELEMENT PROPERTIES -->
-      <aside class="w-72 bg-white border-l border-gray-200 p-4 shrink-0 flex flex-col overflow-y-auto">
+      <aside class="w-72 bg-white dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 p-4 shrink-0 flex flex-col overflow-y-auto">
         <div v-if="activeElement">
-          <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-            <h3 class="text-xs font-bold text-gray-900 uppercase">Öğe Özellikleri</h3>
+          <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-700 mb-4">
+            <h3 class="text-xs font-bold text-gray-900 dark:text-slate-100 uppercase">Öğe Özellikleri</h3>
             <button @click="removeElement(activeElement.id)" class="text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1">
               <i class="fas fa-trash"></i> Sil
             </button>
@@ -191,21 +191,21 @@
             <div v-if="activeElement.type === 'qr'">
               <label class="form-label">QR Kod Boyutu (px)</label>
               <input v-model.number="activeElement.size" type="range" min="40" max="120" class="w-full" />
-              <div class="text-right text-[10px] text-gray-400 font-bold">{{ activeElement.size || 70 }}px</div>
+              <div class="text-right text-[10px] text-gray-400 dark:text-slate-500 font-bold">{{ activeElement.size || 70 }}px</div>
             </div>
 
             <!-- Height for Barcode 1D -->
             <div v-if="activeElement.type === 'barcode1d'">
               <label class="form-label">Barkod Yüksekliği (px)</label>
               <input v-model.number="activeElement.height" type="range" min="15" max="50" class="w-full" />
-              <div class="text-right text-[10px] text-gray-400 font-bold">{{ activeElement.height || 22 }}px</div>
+              <div class="text-right text-[10px] text-gray-400 dark:text-slate-500 font-bold">{{ activeElement.height || 22 }}px</div>
             </div>
 
             <!-- Font Size for Text -->
             <div v-if="['company', 'model', 'serial', 'barcode_text', 'category', 'custom_text'].includes(activeElement.type)">
               <label class="form-label">Yazı Puntosu (Font Size)</label>
               <input v-model.number="activeElement.fontSize" type="range" min="8" max="28" class="w-full" />
-              <div class="text-right text-[10px] text-gray-400 font-bold">{{ activeElement.fontSize || 12 }}px</div>
+              <div class="text-right text-[10px] text-gray-400 dark:text-slate-500 font-bold">{{ activeElement.fontSize || 12 }}px</div>
             </div>
 
             <!-- Font Weight -->
@@ -237,7 +237,7 @@
           </div>
         </div>
 
-        <div v-else class="flex flex-col items-center justify-center h-full text-gray-400 text-center gap-2">
+        <div v-else class="flex flex-col items-center justify-center h-full text-gray-400 dark:text-slate-500 text-center gap-2">
           <i class="fas fa-mouse-pointer text-2xl"></i>
           <p class="text-xs">Düzenlemek için kanvas üzerindeki bir öğeye tıklayın.</p>
         </div>
@@ -246,12 +246,12 @@
 
     <!-- SAVE TEMPLATE IN-APP MODAL DIALOG -->
     <div v-if="showSaveModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-        <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-          <h3 class="font-bold text-gray-900 text-sm flex items-center gap-2">
-            <i class="fas fa-save text-blue-600"></i> Termal Etiket Şablonunu Kaydet
+      <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+        <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-700 mb-4">
+          <h3 class="font-bold text-gray-900 dark:text-slate-100 text-sm flex items-center gap-2">
+            <i class="fas fa-save text-blue-600 dark:text-blue-400"></i> Termal Etiket Şablonunu Kaydet
           </h3>
-          <button @click="showSaveModal = false" class="text-gray-400 hover:text-gray-600 font-bold text-lg">
+          <button @click="showSaveModal = false" class="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 font-bold text-lg">
             &times;
           </button>
         </div>
@@ -259,29 +259,29 @@
         <form @submit.prevent="confirmSaveTemplate" class="space-y-4">
           <div>
             <label class="form-label">Şablon Adı *</label>
-            <input 
-              v-model="templateForm.name" 
-              type="text" 
-              placeholder="Örn: Özel 70x35mm Kurumsal Rulo" 
-              class="form-input" 
-              required 
+            <input
+              v-model="templateForm.name"
+              type="text"
+              placeholder="Örn: Özel 70x35mm Kurumsal Rulo"
+              class="form-input"
+              required
             />
           </div>
 
           <div class="flex items-center gap-2 pt-2">
-            <input 
-              v-model="templateForm.is_default" 
-              type="checkbox" 
+            <input
+              v-model="templateForm.is_default"
+              type="checkbox"
               id="is_default_check"
-              class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" 
+              class="rounded border-gray-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
             />
-            <label for="is_default_check" class="text-xs font-bold text-gray-700 cursor-pointer">
+            <label for="is_default_check" class="text-xs font-bold text-gray-700 dark:text-slate-300 cursor-pointer">
               Varsayılan Baskı Şablonu Yap (Varsayılan etiket baskısı olarak seçilir)
             </label>
           </div>
 
-          <div class="flex justify-end gap-2 pt-4 border-t border-gray-100">
-            <button type="button" @click="showSaveModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-lg transition-colors">
+          <div class="flex justify-end gap-2 pt-4 border-t border-gray-100 dark:border-slate-700">
+            <button type="button" @click="showSaveModal = false" class="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-bold text-xs rounded-lg transition-colors">
               İptal
             </button>
             <button type="submit" :disabled="saving" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors shadow-md flex items-center gap-1.5">
@@ -467,15 +467,15 @@ onMounted(() => {
 
 <style scoped>
 .palette-btn {
-  @apply w-full py-2 px-3 bg-gray-50 hover:bg-blue-50 hover:text-blue-700 text-gray-700 font-bold text-xs rounded-lg flex items-center gap-2 border border-gray-200 hover:border-blue-300 transition-all text-left;
+  @apply w-full py-2 px-3 bg-gray-50 dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-700 dark:hover:text-blue-400 text-gray-700 dark:text-slate-300 font-bold text-xs rounded-lg flex items-center gap-2 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-500/50 transition-all text-left;
 }
 .form-label {
-  @apply block text-[10.5px] font-bold text-gray-500 uppercase tracking-wider mb-1;
+  @apply block text-[10.5px] font-bold text-gray-500 dark:text-slate-500 uppercase tracking-wider mb-1;
 }
 .form-input {
-  @apply h-8 w-full px-2.5 bg-gray-50 border border-gray-200 rounded text-xs font-medium text-gray-800 outline-none focus:border-blue-500;
+  @apply h-8 w-full px-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded text-xs font-medium text-gray-800 dark:text-slate-100 outline-none focus:border-blue-500;
 }
 .form-select {
-  @apply h-8 w-full px-2 bg-gray-50 border border-gray-200 rounded text-xs font-medium text-gray-800 outline-none focus:border-blue-500 cursor-pointer;
+  @apply h-8 w-full px-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded text-xs font-medium text-gray-800 dark:text-slate-100 outline-none focus:border-blue-500 cursor-pointer;
 }
 </style>

@@ -1,4 +1,5 @@
 const { db } = require('../../database/db');
+const { formatPlate } = require('../../utils/formatters');
 
 class MasterDataService {
     // --- COMPANIES ---
@@ -404,16 +405,16 @@ class MasterDataService {
     }
 
     static async createVehicle(data) {
-        const { plate_no, vehicle_type, notes } = data;
+        const { vehicle_type, notes } = data;
         const info = db.prepare("INSERT INTO vehicles (plate_no, vehicle_type, notes) VALUES (?, ?, ?)")
-            .run(plate_no, vehicle_type, notes);
+            .run(formatPlate(data.plate_no), vehicle_type, notes);
         return info.lastInsertRowid;
     }
 
     static async updateVehicle(id, data) {
-        const { plate_no, vehicle_type, notes } = data;
+        const { vehicle_type, notes } = data;
         db.prepare("UPDATE vehicles SET plate_no = ?, vehicle_type = ?, notes = ? WHERE id = ?")
-            .run(plate_no, vehicle_type, notes, id);
+            .run(formatPlate(data.plate_no), vehicle_type, notes, id);
     }
 
     static async deleteVehicle(id) {
@@ -447,13 +448,29 @@ class MasterDataService {
         return db.prepare("SELECT * FROM operators ORDER BY name ASC").all();
     }
 
+    // Her operatörün Envanter tarafında kendi Markası ve bu marka altında 3 SIM hat tipi
+    // modeli (Ses/Data/M2M Hattı) olmasını sağlar — SIM kartı eklerken Marka=operatör,
+    // Model=hat tipi seçilebilsin diye (bkz. simcardtracking/services/simAssetService.js).
+    static syncOperatorBrandModels(name) {
+        db.prepare('INSERT OR IGNORE INTO asset_brands (name) VALUES (?)').run(name);
+        const brand = db.prepare('SELECT id FROM asset_brands WHERE name = ?').get(name);
+        const category = db.prepare("SELECT id FROM asset_categories WHERE name = 'SIM Kart'").get();
+        if (!brand || !category) return;
+        ['Ses Hattı', 'Data Hattı', 'M2M Hattı'].forEach(modelName => {
+            db.prepare('INSERT OR IGNORE INTO asset_models (name, category_id, brand_id) VALUES (?, ?, ?)')
+                .run(modelName, category.id, brand.id);
+        });
+    }
+
     static async createOperator(name) {
         const info = db.prepare("INSERT INTO operators (name) VALUES (?)").run(name);
+        MasterDataService.syncOperatorBrandModels(name);
         return info.lastInsertRowid;
     }
 
     static async updateOperator(id, name) {
         db.prepare("UPDATE operators SET name = ? WHERE id = ?").run(name, id);
+        MasterDataService.syncOperatorBrandModels(name);
     }
 
     static async deleteOperator(id) {
@@ -812,7 +829,12 @@ class MasterDataService {
                 SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as m365_total,
                 SUM(i.total_amount) as grand_total,
                 GROUP_CONCAT(DISTINCT i.operator) as operators,
-                COUNT(DISTINCT i.id) as invoice_count
+                COUNT(DISTINCT i.id) as invoice_count,
+                (SELECT COALESCE(SUM(ml.unit_price), 0)
+                    FROM m365_allocation_users mau
+                    JOIN m365_allocations ma ON mau.allocation_id = ma.id
+                    JOIN m365_licenses ml ON ma.license_id = ml.id
+                    WHERE mau.personnel_id = p.id) as m365_live_license_total
             FROM invoices i
             LEFT JOIN personnel p ON i.personnel_id = p.id
             LEFT JOIN companies c ON p.company_id = c.id
@@ -825,7 +847,7 @@ class MasterDataService {
 
         // Toplamlar
         const totals = db.prepare(`
-            SELECT 
+            SELECT
                 COUNT(DISTINCT i.personnel_id) as total_personnel,
                 SUM(CASE WHEN i.invoice_type = 'gsm' THEN i.total_amount ELSE 0 END) as total_gsm,
                 SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as total_m365,
@@ -835,6 +857,22 @@ class MasterDataService {
             LEFT JOIN personnel p ON i.personnel_id = p.id
             WHERE ${whereSQL}
         `).get(...params);
+
+        // Canlı M365 lisans maliyeti — faturalanan m365_total'dan bağımsız, Azure atamasından hesaplanan
+        // güncel durum (dönem/operatör filtresi uygulanmaz, sadece şirket/masraf merkezi filtrelenir).
+        const liveWhere = ['1=1'];
+        const liveParams = [];
+        if (filters.company_id) { liveWhere.push('p.company_id = ?'); liveParams.push(filters.company_id); }
+        if (filters.cost_center_id) { liveWhere.push('p.cost_center_id = ?'); liveParams.push(filters.cost_center_id); }
+        const liveTotal = db.prepare(`
+            SELECT COALESCE(SUM(ml.unit_price), 0) as total
+            FROM m365_allocation_users mau
+            JOIN m365_allocations ma ON mau.allocation_id = ma.id
+            JOIN m365_licenses ml ON ma.license_id = ml.id
+            JOIN personnel p ON mau.personnel_id = p.id
+            WHERE ${liveWhere.join(' AND ')}
+        `).get(...liveParams);
+        totals.total_m365_live = parseFloat((liveTotal.total || 0).toFixed(2));
 
         return { rows, totals };
     }
@@ -955,7 +993,12 @@ class MasterDataService {
                 SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as m365_total,
                 SUM(i.total_amount) as grand_total,
                 COUNT(DISTINCT i.personnel_id) as personnel_count,
-                COUNT(DISTINCT i.id) as invoice_count
+                COUNT(DISTINCT i.id) as invoice_count,
+                (SELECT COALESCE(SUM(ml.unit_price), 0)
+                    FROM m365_allocation_users mau
+                    JOIN m365_allocations ma ON mau.allocation_id = ma.id
+                    JOIN m365_licenses ml ON ma.license_id = ml.id
+                    WHERE ma.company_id = p.company_id) as m365_live_license_total
             FROM invoices i
             LEFT JOIN personnel p ON i.personnel_id = p.id
             LEFT JOIN companies c ON p.company_id = c.id
@@ -1089,103 +1132,6 @@ class MasterDataService {
             JOIN companies c ON p.company_id = c.id
             ORDER BY personnel_name ASC
         `).all();
-    }
-
-    static async assignLicenseToPersonnel(personnelId, licenseId) {
-        const personnel = db.prepare("SELECT company_id FROM personnel WHERE id = ?").get(personnelId);
-        if (!personnel) throw new Error("Personel bulunamadı.");
-        if (!personnel.company_id) throw new Error("Personelin bağlı olduğu bir şirket bulunamadı. Önce şirket ataması yapınız.");
-
-        const transaction = db.transaction(() => {
-            // 1. Şirket için bu lisansın bir tahsisi var mı bak (yoksa oluştur)
-            let allocation = db.prepare("SELECT id FROM m365_allocations WHERE company_id = ? AND license_id = ?")
-                .get(personnel.company_id, licenseId);
-            
-            if (!allocation) {
-                const info = db.prepare("INSERT INTO m365_allocations (company_id, license_id, quantity) VALUES (?, ?, ?)")
-                    .run(personnel.company_id, licenseId, 0);
-                allocation = { id: info.lastInsertRowid };
-            }
-
-            // 2. Personelin zaten bu lisansı var mı bak
-            const existing = db.prepare("SELECT id FROM m365_allocation_users WHERE allocation_id = ? AND personnel_id = ?")
-                .get(allocation.id, personnelId);
-            
-            if (existing) throw new Error("Bu personel zaten bu lisansa sahip.");
-
-            // 3. Atamayı yap
-            db.prepare("INSERT INTO m365_allocation_users (allocation_id, personnel_id) VALUES (?, ?)")
-                .run(allocation.id, personnelId);
-            
-            // 4. Şirket bazlı toplam adedi güncelle
-            db.prepare("UPDATE m365_allocations SET quantity = (SELECT COUNT(*) FROM m365_allocation_users WHERE allocation_id = ?) WHERE id = ?")
-                .run(allocation.id, allocation.id);
-        });
-        transaction();
-    }
-
-    static async unassignLicense(allocationUserId) {
-        const transaction = db.transaction(() => {
-            const row = db.prepare("SELECT allocation_id FROM m365_allocation_users WHERE id = ?").get(allocationUserId);
-            if (row) {
-                db.prepare("DELETE FROM m365_allocation_users WHERE id = ?").run(allocationUserId);
-                db.prepare("UPDATE m365_allocations SET quantity = (SELECT COUNT(*) FROM m365_allocation_users WHERE allocation_id = ?) WHERE id = ?")
-                    .run(row.allocation_id, row.allocation_id);
-            }
-        });
-        transaction();
-    }
-
-    static async bulkAssignLicenses(personnelIds, licenseIds) {
-        const transaction = db.transaction(() => {
-            for (const pId of personnelIds) {
-                const personnel = db.prepare("SELECT company_id FROM personnel WHERE id = ?").get(pId);
-                if (!personnel || !personnel.company_id) continue;
-
-                for (const lId of licenseIds) {
-                    // 1. Şirket tahsisi kontrol
-                    let alloc = db.prepare("SELECT id FROM m365_allocations WHERE company_id = ? AND license_id = ?")
-                        .get(personnel.company_id, lId);
-                    
-                    if (!alloc) {
-                        const info = db.prepare("INSERT INTO m365_allocations (company_id, license_id, quantity) VALUES (?, ?, 0)")
-                            .run(personnel.company_id, lId);
-                        alloc = { id: info.lastInsertRowid };
-                    }
-
-                    // 2. Mükerrer kontrol
-                    const existing = db.prepare("SELECT id FROM m365_allocation_users WHERE allocation_id = ? AND personnel_id = ?")
-                        .get(alloc.id, pId);
-                    
-                    if (!existing) {
-                        db.prepare("INSERT INTO m365_allocation_users (allocation_id, personnel_id) VALUES (?, ?)")
-                            .run(alloc.id, pId);
-                        
-                        db.prepare("UPDATE m365_allocations SET quantity = (SELECT COUNT(*) FROM m365_allocation_users WHERE allocation_id = ?) WHERE id = ?")
-                            .run(alloc.id, alloc.id);
-                    }
-                }
-            }
-        });
-        transaction();
-    }
-
-    static async unassignLicenseByPersonnel(personnelId, licenseId) {
-        const transaction = db.transaction(() => {
-            const row = db.prepare(`
-                SELECT mau.id, mau.allocation_id 
-                FROM m365_allocation_users mau
-                JOIN m365_allocations ma ON mau.allocation_id = ma.id
-                WHERE mau.personnel_id = ? AND ma.license_id = ?
-            `).get(personnelId, licenseId);
-
-            if (row) {
-                db.prepare("DELETE FROM m365_allocation_users WHERE id = ?").run(row.id);
-                db.prepare("UPDATE m365_allocations SET quantity = (SELECT COUNT(*) FROM m365_allocation_users WHERE allocation_id = ?) WHERE id = ?")
-                    .run(row.allocation_id, row.allocation_id);
-            }
-        });
-        transaction();
     }
 
     // --- PERSONNEL BENEFITS (Aylik Destekler) ---

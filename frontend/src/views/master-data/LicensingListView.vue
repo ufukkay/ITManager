@@ -23,7 +23,7 @@ const fetchData = async () => {
 const licenseColumns = [
   { key: 'category',      label: 'Kategori',    sortable: true, width: '120px' },
   { key: 'name',          label: 'Lisans Adı',  sortable: true, nowrap: false },
-  { key: 'quantity',      label: 'Aktif Atama', sortable: true, width: '120px' },
+  { key: 'usage',         label: 'Kullanılan / Toplam', sortable: false, filterable: false, width: '150px' },
   { key: 'unit_price',    label: 'Birim Fiyat', sortable: true, width: '140px' },
   { key: 'currency',      label: 'Para Birimi', sortable: true, width: '100px' },
 ]
@@ -73,14 +73,14 @@ onMounted(fetchData)
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-0 p-0 bg-white">
+  <div class="h-full flex flex-col gap-0 p-0 bg-white dark:bg-slate-900">
     <!-- Header -->
-    <div class="px-8 py-6 border-b border-gray-100 flex items-center justify-between shrink-0">
+    <div class="px-8 py-6 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between shrink-0">
       <div>
-        <h1 class="text-[18px] font-black text-gray-900 tracking-tight leading-none mb-1">Lisans Paket Tanımları</h1>
-        <p class="text-[12px] text-gray-400 font-medium">Sistemde kullanılan yazılım lisanslarının birim fiyat ve kategori tanımları</p>
+        <h1 class="text-[18px] font-black text-gray-900 dark:text-slate-100 tracking-tight leading-none mb-1">Lisans Paket Tanımları</h1>
+        <p class="text-[12px] text-gray-400 dark:text-slate-500 font-medium">Sistemde kullanılan yazılım lisanslarının birim fiyat ve kategori tanımları</p>
       </div>
-      
+
       <div class="flex items-center gap-3">
         <button type="button"
           class="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-[12px] font-bold rounded-xl hover:bg-blue-700 shadow-sm transition-all active:scale-95"
@@ -103,39 +103,40 @@ onMounted(fetchData)
       >
         <template #cell-name="{ value }">
           <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 shrink-0 flex items-center justify-center">
+              <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400 shrink-0 flex items-center justify-center">
                   <i class="fas fa-key text-[12px]"></i>
               </div>
-              <div class="font-bold text-gray-900">{{ value }}</div>
+              <div class="font-bold text-gray-900 dark:text-slate-100">{{ value }}</div>
           </div>
         </template>
         <template #cell-category="{ value }">
-          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase" 
-            :class="value === 'M365' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'">
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider uppercase"
+            :class="value === 'M365' ? 'bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400' : 'bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400'">
             {{ value }}
           </span>
         </template>
-        <template #cell-quantity="{ value }">
-          <span class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-[11px] font-black">{{ value || 0 }} Adet</span>
+        <template #cell-usage="{ row }">
+          <span class="px-3 py-1 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-full text-[11px] font-black">{{ row.consumed_units ?? 0 }} / {{ row.quantity ?? 0 }}</span>
         </template>
         <template #cell-unit_price="{ row }">
-          <span class="font-bold text-gray-900">{{ row.unit_price }} {{ row.currency }}</span>
+          <span v-if="row.unit_price" class="font-bold text-gray-900 dark:text-slate-100">{{ row.unit_price }} {{ row.currency }}</span>
+          <span v-else class="font-bold text-amber-500 dark:text-amber-400">Fiyat girilmedi</span>
         </template>
       </AppTable>
     </div>
 
     <!-- Modals -->
     <dialog class="modal" :class="{ 'modal-open': isLicenseModalOpen }">
-      <div class="modal-box bg-white p-0 rounded-2xl shadow-2xl border-none max-w-md overflow-hidden">
-        <div class="px-7 py-5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-          <h3 class="font-black text-[15px] text-gray-900 uppercase tracking-tight">{{ selectedLicense ? 'Lisans Düzenle' : 'Yeni Lisans Paketi' }}</h3>
-          <button @click="isLicenseModalOpen = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+      <div class="modal-box bg-white dark:bg-slate-800 p-0 rounded-2xl shadow-2xl border-none max-w-md overflow-hidden">
+        <div class="px-7 py-5 bg-gray-50 dark:bg-slate-900/50 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+          <h3 class="font-black text-[15px] text-gray-900 dark:text-slate-100 uppercase tracking-tight">{{ selectedLicense ? 'Lisans Düzenle' : 'Yeni Lisans Paketi' }}</h3>
+          <button @click="isLicenseModalOpen = false" class="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300"><i class="fas fa-times"></i></button>
         </div>
         <div class="p-7 space-y-5">
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">KATEGORİ</label>
-              <select v-model="licenseForm.category" class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none bg-white text-[13px]">
+              <label class="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-2">KATEGORİ</label>
+              <select v-model="licenseForm.category" class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 rounded-xl outline-none bg-white dark:bg-slate-900 dark:text-slate-100 text-[13px]">
                 <option value="M365">Microsoft 365</option>
                 <option value="Adobe">Adobe Creative</option>
                 <option value="CAD">CAD / Engineering</option>
@@ -145,8 +146,8 @@ onMounted(fetchData)
               </select>
             </div>
             <div>
-              <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">PARA BİRİMİ</label>
-              <select v-model="licenseForm.currency" class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none bg-white text-[13px]">
+              <label class="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-2">PARA BİRİMİ</label>
+              <select v-model="licenseForm.currency" class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 rounded-xl outline-none bg-white dark:bg-slate-900 dark:text-slate-100 text-[13px]">
                 <option value="USD">USD ($)</option>
                 <option value="EUR">EUR (€)</option>
                 <option value="TRY">TRY (₺)</option>
@@ -154,21 +155,21 @@ onMounted(fetchData)
             </div>
           </div>
           <div>
-            <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">LİSANS ADI</label>
+            <label class="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-2">LİSANS ADI</label>
             <input v-model="licenseForm.name" type="text" placeholder="Örn: Business Premium"
-              class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none focus:border-blue-500 transition-all text-[13px]">
+              class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl outline-none focus:border-blue-500 transition-all text-[13px]">
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">BİRİM FİYAT</label>
+              <label class="block text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-2">BİRİM FİYAT</label>
               <input v-model="licenseForm.unit_price" type="number" step="0.01"
-                class="w-full h-11 px-4 border border-gray-200 rounded-xl outline-none text-[13px]">
+                class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-xl outline-none text-[13px]">
             </div>
           </div>
         </div>
-        <div class="px-7 py-5 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-          <button type="button" @click="isLicenseModalOpen = false" class="px-4 py-2 font-bold text-gray-400 hover:text-gray-600 text-[11px] uppercase tracking-widest">İPTAL</button>
-          <button type="button" @click="saveLicense" class="px-8 py-2 bg-blue-600 text-white rounded-xl font-black shadow-lg shadow-blue-100 text-[11px] uppercase tracking-widest active:scale-95 transition-all">KAYDET</button>
+        <div class="px-7 py-5 bg-gray-50 dark:bg-slate-900/50 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-3">
+          <button type="button" @click="isLicenseModalOpen = false" class="px-4 py-2 font-bold text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-[11px] uppercase tracking-widest">İPTAL</button>
+          <button type="button" @click="saveLicense" class="px-8 py-2 bg-blue-600 text-white rounded-xl font-black shadow-lg shadow-blue-100 dark:shadow-blue-900/30 text-[11px] uppercase tracking-widest active:scale-95 transition-all">KAYDET</button>
         </div>
       </div>
     </dialog>

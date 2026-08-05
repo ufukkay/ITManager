@@ -1,16 +1,16 @@
 <template>
-  <div class="h-full flex flex-col bg-white overflow-hidden">
+  <div class="h-full flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
     <!-- HEADER -->
-    <header class="h-14 border-b border-gray-100 flex items-center px-6 gap-4 bg-white shrink-0">
+    <header class="h-14 border-b border-gray-100 dark:border-slate-700 flex items-center px-6 gap-4 bg-white dark:bg-slate-800 shrink-0">
       <div class="flex items-center gap-2 shrink-0">
-        <i class="fas fa-chart-bar text-gray-400"></i>
-        <h1 class="text-[15px] font-bold text-gray-900">Raporlar & Analiz</h1>
+        <i class="fas fa-chart-bar text-gray-400 dark:text-slate-500"></i>
+        <h1 class="text-[15px] font-bold text-gray-900 dark:text-slate-100">Raporlar & Analiz</h1>
       </div>
       <!-- TABS -->
-      <div class="flex items-center gap-1 ml-4 bg-gray-100 rounded-lg p-1">
+      <div class="flex items-center gap-1 ml-4 bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
         <button v-for="tab in tabs" :key="tab.key"
           @click="activeTab = tab.key"
-          :class="['px-4 py-1.5 rounded-md text-[12px] font-bold transition-all', activeTab === tab.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700']">
+          :class="['px-4 py-1.5 rounded-md text-[12px] font-bold transition-all', activeTab === tab.key ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200']">
           <i :class="tab.icon + ' mr-1.5'"></i>{{ tab.label }}
         </button>
       </div>
@@ -39,21 +39,21 @@
     </header>
 
     <!-- KPI BAR -->
-    <div class="grid grid-cols-4 gap-px bg-gray-100 border-b border-gray-100 shrink-0">
-      <div v-for="kpi in kpiCards" :key="kpi.label" class="bg-white px-6 py-3 flex items-center gap-3">
+    <div class="grid grid-cols-4 gap-px bg-gray-100 dark:bg-slate-700 border-b border-gray-100 dark:border-slate-700 shrink-0">
+      <div v-for="kpi in kpiCards" :key="kpi.label" class="bg-white dark:bg-slate-800 px-6 py-3 flex items-center gap-3">
         <div :class="['w-9 h-9 rounded-lg flex items-center justify-center text-sm', kpi.bg]">
           <i :class="[kpi.icon, kpi.color]"></i>
         </div>
         <div>
-          <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ kpi.label }}</div>
-          <div class="text-[16px] font-black text-gray-900">{{ kpi.value }}</div>
+          <div class="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">{{ kpi.label }}</div>
+          <div class="text-[16px] font-black text-gray-900 dark:text-slate-100">{{ kpi.value }}</div>
         </div>
       </div>
     </div>
 
     <!-- CONTENT -->
-    <main class="flex-1 overflow-y-auto bg-gray-50/40 p-6 space-y-6">
-      <div v-if="loading" class="flex items-center justify-center h-64 text-gray-300">
+    <main class="flex-1 overflow-y-auto bg-gray-50/40 dark:bg-slate-900 p-6 space-y-6">
+      <div v-if="loading" class="flex items-center justify-center h-64 text-gray-300 dark:text-slate-600">
         <i class="fas fa-circle-notch fa-spin text-3xl"></i>
       </div>
 
@@ -72,32 +72,35 @@
                   <th>Şirket</th>
                   <th>Masraf Kalemi</th>
                   <th class="text-right">GSM</th>
-                  <th class="text-right">M365</th>
+                  <th class="text-right">M365 (Fatura)</th>
+                  <th class="text-right" title="Azure'daki güncel lisans atamasından hesaplanır, faturalanan tutardan bağımsızdır">M365 Lisans (Canlı) <i class="fas fa-circle-info text-gray-300"></i></th>
                   <th class="text-right">Toplam</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="!personnelData.rows?.length">
-                  <td colspan="6" class="text-center py-8 text-gray-300 text-sm">Veri bulunamadı</td>
+                  <td colspan="7" class="text-center py-8 text-gray-300 dark:text-slate-600 text-sm">Veri bulunamadı</td>
                 </tr>
-                <tr v-for="row in personnelData.rows" :key="row.personnel_id" class="hover:bg-gray-50">
+                <tr v-for="row in personnelData.rows" :key="row.personnel_id" class="hover:bg-gray-50 dark:hover:bg-slate-700/50">
                   <td>
-                    <div class="font-semibold text-gray-900 text-[12.5px]">{{ row.personnel_name || 'Eşleşmemiş' }}</div>
-                    <div class="text-[10px] text-gray-400">{{ row.operators }}</div>
+                    <div class="font-semibold text-gray-900 dark:text-slate-100 text-[12.5px]">{{ row.personnel_name || 'Eşleşmemiş' }}</div>
+                    <div class="text-[10px] text-gray-400 dark:text-slate-500">{{ row.operators }}</div>
                   </td>
-                  <td class="text-[12px] text-gray-600">{{ row.company_name }}</td>
-                  <td class="text-[11px] text-gray-500">{{ row.cost_center_name }}</td>
-                  <td class="text-right text-[12px] font-semibold text-blue-600">{{ fmt(row.gsm_total) }}</td>
-                  <td class="text-right text-[12px] font-semibold text-emerald-600">{{ fmt(row.m365_total) }}</td>
-                  <td class="text-right text-[13px] font-black text-gray-900">{{ fmt(row.grand_total) }}</td>
+                  <td class="text-[12px] text-gray-600 dark:text-slate-400">{{ row.company_name }}</td>
+                  <td class="text-[11px] text-gray-500 dark:text-slate-400">{{ row.cost_center_name }}</td>
+                  <td class="text-right text-[12px] font-semibold text-blue-600 dark:text-blue-400">{{ fmt(row.gsm_total) }}</td>
+                  <td class="text-right text-[12px] font-semibold text-emerald-600 dark:text-green-400">{{ fmt(row.m365_total) }}</td>
+                  <td class="text-right text-[12px] font-semibold text-purple-600 dark:text-purple-400">{{ fmt(row.m365_live_license_total) }}</td>
+                  <td class="text-right text-[13px] font-black text-gray-900 dark:text-slate-100">{{ fmt(row.grand_total) }}</td>
                 </tr>
               </tbody>
               <tfoot v-if="personnelData.totals">
-                <tr class="bg-gray-50 font-bold">
-                  <td colspan="3" class="px-4 py-2 text-[11px] text-gray-500 uppercase">TOPLAM ({{ personnelData.totals.total_personnel }} personel)</td>
-                  <td class="text-right px-4 py-2 text-blue-700">{{ fmt(personnelData.totals.total_gsm) }}</td>
-                  <td class="text-right px-4 py-2 text-emerald-700">{{ fmt(personnelData.totals.total_m365) }}</td>
-                  <td class="text-right px-4 py-2 text-gray-900 text-[14px]">{{ fmt(personnelData.totals.total_amount) }}</td>
+                <tr class="bg-gray-50 dark:bg-slate-900 font-bold">
+                  <td colspan="3" class="px-4 py-2 text-[11px] text-gray-500 dark:text-slate-400 uppercase">TOPLAM ({{ personnelData.totals.total_personnel }} personel)</td>
+                  <td class="text-right px-4 py-2 text-blue-700 dark:text-blue-400">{{ fmt(personnelData.totals.total_gsm) }}</td>
+                  <td class="text-right px-4 py-2 text-emerald-700 dark:text-green-400">{{ fmt(personnelData.totals.total_m365) }}</td>
+                  <td class="text-right px-4 py-2 text-purple-700 dark:text-purple-400">{{ fmt(personnelData.totals.total_m365_live) }}</td>
+                  <td class="text-right px-4 py-2 text-gray-900 dark:text-slate-100 text-[14px]">{{ fmt(personnelData.totals.total_amount) }}</td>
                 </tr>
               </tfoot>
             </table>
@@ -118,14 +121,14 @@
               </tr></thead>
               <tbody>
                 <tr v-if="!serviceData.byType?.length">
-                  <td colspan="5" class="text-center py-8 text-gray-300 text-sm">Veri bulunamadı</td>
+                  <td colspan="5" class="text-center py-8 text-gray-300 dark:text-slate-600 text-sm">Veri bulunamadı</td>
                 </tr>
-                <tr v-for="row in serviceData.byType" :key="row.invoice_type+row.operator" class="hover:bg-gray-50">
-                  <td><span :class="['badge-type', row.invoice_type === 'gsm' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700']">{{ row.invoice_type.toUpperCase() }}</span></td>
-                  <td class="text-[12px] text-gray-700 font-medium">{{ row.operator }}</td>
-                  <td class="text-right text-[12px]">{{ fmt(row.net_amount) }}</td>
-                  <td class="text-right text-[11px] text-gray-400">{{ fmt(row.total_kdv) }}</td>
-                  <td class="text-right font-bold text-[12px]">{{ fmt(row.total_amount) }}</td>
+                <tr v-for="row in serviceData.byType" :key="row.invoice_type+row.operator" class="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                  <td><span :class="['badge-type', row.invoice_type === 'gsm' ? 'bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400' : 'bg-emerald-100 dark:bg-green-500/10 text-emerald-700 dark:text-green-400']">{{ row.invoice_type.toUpperCase() }}</span></td>
+                  <td class="text-[12px] text-gray-700 dark:text-slate-300 font-medium">{{ row.operator }}</td>
+                  <td class="text-right text-[12px] dark:text-slate-300">{{ fmt(row.net_amount) }}</td>
+                  <td class="text-right text-[11px] text-gray-400 dark:text-slate-500">{{ fmt(row.total_kdv) }}</td>
+                  <td class="text-right font-bold text-[12px] dark:text-slate-100">{{ fmt(row.total_amount) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -139,13 +142,13 @@
               </tr></thead>
               <tbody>
                 <tr v-if="!serviceData.byCostCenter?.length">
-                  <td colspan="4" class="text-center py-8 text-gray-300 text-sm">Veri bulunamadı</td>
+                  <td colspan="4" class="text-center py-8 text-gray-300 dark:text-slate-600 text-sm">Veri bulunamadı</td>
                 </tr>
-                <tr v-for="row in serviceData.byCostCenter" :key="row.cost_center_id" class="hover:bg-gray-50">
-                  <td class="text-[12px] font-medium text-gray-800">{{ row.cost_center_name }}</td>
-                  <td class="text-right text-[12px] text-blue-600">{{ fmt(row.gsm_total) }}</td>
-                  <td class="text-right text-[12px] text-emerald-600">{{ fmt(row.m365_total) }}</td>
-                  <td class="text-right font-bold text-[12px]">{{ fmt(row.grand_total) }}</td>
+                <tr v-for="row in serviceData.byCostCenter" :key="row.cost_center_id" class="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                  <td class="text-[12px] font-medium text-gray-800 dark:text-slate-200">{{ row.cost_center_name }}</td>
+                  <td class="text-right text-[12px] text-blue-600 dark:text-blue-400">{{ fmt(row.gsm_total) }}</td>
+                  <td class="text-right text-[12px] text-emerald-600 dark:text-green-400">{{ fmt(row.m365_total) }}</td>
+                  <td class="text-right font-bold text-[12px] dark:text-slate-100">{{ fmt(row.grand_total) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -156,7 +159,7 @@
           <div class="rcard-head"><span class="rtitle">Dönemsel Maliyet Trendi</span></div>
           <div class="flex-1 p-4 min-h-0">
             <Bar v-if="serviceData.monthlyTrend?.length" :data="trendChartData" :options="barOpts" />
-            <div v-else class="h-full flex items-center justify-center text-gray-200 text-sm">Trend verisi yok</div>
+            <div v-else class="h-full flex items-center justify-center text-gray-200 dark:text-slate-700 text-sm">Trend verisi yok</div>
           </div>
         </div>
       </template>
@@ -168,18 +171,19 @@
             <div class="rcard-head"><span class="rtitle">Şirket Bazlı Maliyet</span></div>
             <table class="rtable">
               <thead><tr>
-                <th>Şirket</th><th class="text-right">Personel</th><th class="text-right">GSM</th><th class="text-right">M365</th><th class="text-right">Toplam</th>
+                <th>Şirket</th><th class="text-right">Personel</th><th class="text-right">GSM</th><th class="text-right">M365 (Fatura)</th><th class="text-right">M365 Lisans (Canlı)</th><th class="text-right">Toplam</th>
               </tr></thead>
               <tbody>
                 <tr v-if="!companyData.byCompany?.length">
-                  <td colspan="5" class="text-center py-8 text-gray-300 text-sm">Veri bulunamadı</td>
+                  <td colspan="6" class="text-center py-8 text-gray-300 dark:text-slate-600 text-sm">Veri bulunamadı</td>
                 </tr>
-                <tr v-for="row in companyData.byCompany" :key="row.company_id" class="hover:bg-gray-50 cursor-pointer" @click="filters.company_id = row.company_id; load()">
-                  <td class="font-semibold text-[12.5px] text-gray-900">{{ row.company_name }}</td>
-                  <td class="text-right text-[12px] text-gray-500">{{ row.personnel_count }}</td>
-                  <td class="text-right text-[12px] text-blue-600">{{ fmt(row.gsm_total) }}</td>
-                  <td class="text-right text-[12px] text-emerald-600">{{ fmt(row.m365_total) }}</td>
-                  <td class="text-right font-black text-[13px]">{{ fmt(row.grand_total) }}</td>
+                <tr v-for="row in companyData.byCompany" :key="row.company_id" class="hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer" @click="filters.company_id = row.company_id; load()">
+                  <td class="font-semibold text-[12.5px] text-gray-900 dark:text-slate-100">{{ row.company_name }}</td>
+                  <td class="text-right text-[12px] text-gray-500 dark:text-slate-400">{{ row.personnel_count }}</td>
+                  <td class="text-right text-[12px] text-blue-600 dark:text-blue-400">{{ fmt(row.gsm_total) }}</td>
+                  <td class="text-right text-[12px] text-emerald-600 dark:text-green-400">{{ fmt(row.m365_total) }}</td>
+                  <td class="text-right text-[12px] text-purple-600 dark:text-purple-400">{{ fmt(row.m365_live_license_total) }}</td>
+                  <td class="text-right font-black text-[13px] dark:text-slate-100">{{ fmt(row.grand_total) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -187,19 +191,19 @@
           <div class="rcard">
             <div class="rcard-head">
               <span class="rtitle">Masraf Merkezi Detayı</span>
-              <span class="text-[10px] text-gray-400">{{ filters.company_id ? '' : 'Şirket seçin' }}</span>
+              <span class="text-[10px] text-gray-400 dark:text-slate-500">{{ filters.company_id ? '' : 'Şirket seçin' }}</span>
             </div>
             <table class="rtable">
               <thead><tr><th>Masraf Kalemi</th><th class="text-right">GSM</th><th class="text-right">M365</th><th class="text-right">Toplam</th></tr></thead>
               <tbody>
                 <tr v-if="!companyData.costCenterDetail?.length">
-                  <td colspan="4" class="text-center py-8 text-gray-300 text-sm">{{ filters.company_id ? 'Veri yok' : 'Soldan şirket seçin' }}</td>
+                  <td colspan="4" class="text-center py-8 text-gray-300 dark:text-slate-600 text-sm">{{ filters.company_id ? 'Veri yok' : 'Soldan şirket seçin' }}</td>
                 </tr>
-                <tr v-for="row in companyData.costCenterDetail" :key="row.cost_center_id" class="hover:bg-gray-50">
-                  <td class="text-[12px] font-medium text-gray-800">{{ row.cost_center_name }}</td>
-                  <td class="text-right text-[12px] text-blue-600">{{ fmt(row.gsm_total) }}</td>
-                  <td class="text-right text-[12px] text-emerald-600">{{ fmt(row.m365_total) }}</td>
-                  <td class="text-right font-bold text-[12px]">{{ fmt(row.grand_total) }}</td>
+                <tr v-for="row in companyData.costCenterDetail" :key="row.cost_center_id" class="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                  <td class="text-[12px] font-medium text-gray-800 dark:text-slate-200">{{ row.cost_center_name }}</td>
+                  <td class="text-right text-[12px] text-blue-600 dark:text-blue-400">{{ fmt(row.gsm_total) }}</td>
+                  <td class="text-right text-[12px] text-emerald-600 dark:text-green-400">{{ fmt(row.m365_total) }}</td>
+                  <td class="text-right font-bold text-[12px] dark:text-slate-100">{{ fmt(row.grand_total) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -209,7 +213,7 @@
           <div class="rcard-head"><span class="rtitle">Dönemsel Maliyet Trendi</span></div>
           <div class="flex-1 p-4 min-h-0">
             <Bar v-if="companyData.monthlyTrend?.length" :data="companyTrendData" :options="barOpts" />
-            <div v-else class="h-full flex items-center justify-center text-gray-200 text-sm">Trend verisi yok</div>
+            <div v-else class="h-full flex items-center justify-center text-gray-200 dark:text-slate-700 text-sm">Trend verisi yok</div>
           </div>
         </div>
       </template>
@@ -251,26 +255,26 @@ const kpiCards = computed(() => {
   if (t === 'personnel') {
     const tot = personnelData.value.totals
     return [
-      { label: 'Toplam Personel', value: tot?.total_personnel || 0, icon: 'fas fa-users', bg: 'bg-blue-50', color: 'text-blue-600' },
-      { label: 'GSM Toplam', value: fmt(tot?.total_gsm), icon: 'fas fa-sim-card', bg: 'bg-blue-50', color: 'text-blue-600' },
-      { label: 'M365 Toplam', value: fmt(tot?.total_m365), icon: 'fas fa-microsoft', bg: 'bg-emerald-50', color: 'text-emerald-600' },
-      { label: 'Genel Toplam', value: fmt(tot?.total_amount), icon: 'fas fa-wallet', bg: 'bg-slate-50', color: 'text-slate-600' }
+      { label: 'Toplam Personel', value: tot?.total_personnel || 0, icon: 'fas fa-users', bg: 'bg-blue-50 dark:bg-blue-500/10', color: 'text-blue-600 dark:text-blue-400' },
+      { label: 'GSM Toplam', value: fmt(tot?.total_gsm), icon: 'fas fa-sim-card', bg: 'bg-blue-50 dark:bg-blue-500/10', color: 'text-blue-600 dark:text-blue-400' },
+      { label: 'M365 Toplam', value: fmt(tot?.total_m365), icon: 'fas fa-microsoft', bg: 'bg-emerald-50 dark:bg-green-500/10', color: 'text-emerald-600 dark:text-green-400' },
+      { label: 'Genel Toplam', value: fmt(tot?.total_amount), icon: 'fas fa-wallet', bg: 'bg-slate-50 dark:bg-slate-700', color: 'text-slate-600 dark:text-slate-300' }
     ]
   } else if (t === 'service') {
     const tot = serviceData.value.totals
     return [
-      { label: 'Personel Sayısı', value: tot?.total_personnel || 0, icon: 'fas fa-users', bg: 'bg-blue-50', color: 'text-blue-600' },
-      { label: 'Net Tutar', value: fmt(tot?.net_amount), icon: 'fas fa-receipt', bg: 'bg-slate-50', color: 'text-slate-600' },
-      { label: 'KDV', value: fmt(tot?.total_kdv), icon: 'fas fa-percent', bg: 'bg-amber-50', color: 'text-amber-600' },
-      { label: 'Ödenecek Toplam', value: fmt(tot?.total_amount), icon: 'fas fa-wallet', bg: 'bg-purple-50', color: 'text-purple-600' }
+      { label: 'Personel Sayısı', value: tot?.total_personnel || 0, icon: 'fas fa-users', bg: 'bg-blue-50 dark:bg-blue-500/10', color: 'text-blue-600 dark:text-blue-400' },
+      { label: 'Net Tutar', value: fmt(tot?.net_amount), icon: 'fas fa-receipt', bg: 'bg-slate-50 dark:bg-slate-700', color: 'text-slate-600 dark:text-slate-300' },
+      { label: 'KDV', value: fmt(tot?.total_kdv), icon: 'fas fa-percent', bg: 'bg-amber-50 dark:bg-amber-500/10', color: 'text-amber-600 dark:text-amber-400' },
+      { label: 'Ödenecek Toplam', value: fmt(tot?.total_amount), icon: 'fas fa-wallet', bg: 'bg-purple-50 dark:bg-purple-500/10', color: 'text-purple-600 dark:text-purple-400' }
     ]
   } else {
     const tot = companyData.value.totals
     return [
-      { label: 'Şirket Sayısı', value: tot?.total_companies || 0, icon: 'fas fa-building', bg: 'bg-blue-50', color: 'text-blue-600' },
-      { label: 'Personel Sayısı', value: tot?.total_personnel || 0, icon: 'fas fa-users', bg: 'bg-slate-50', color: 'text-slate-600' },
-      { label: 'Toplam Maliyet', value: fmt(tot?.total_amount), icon: 'fas fa-wallet', bg: 'bg-purple-50', color: 'text-purple-600' },
-      { label: 'Yıllık Projeksiyon', value: fmt((tot?.total_amount || 0) * 12), icon: 'fas fa-chart-line', bg: 'bg-emerald-50', color: 'text-emerald-600' }
+      { label: 'Şirket Sayısı', value: tot?.total_companies || 0, icon: 'fas fa-building', bg: 'bg-blue-50 dark:bg-blue-500/10', color: 'text-blue-600 dark:text-blue-400' },
+      { label: 'Personel Sayısı', value: tot?.total_personnel || 0, icon: 'fas fa-users', bg: 'bg-slate-50 dark:bg-slate-700', color: 'text-slate-600 dark:text-slate-300' },
+      { label: 'Toplam Maliyet', value: fmt(tot?.total_amount), icon: 'fas fa-wallet', bg: 'bg-purple-50 dark:bg-purple-500/10', color: 'text-purple-600 dark:text-purple-400' },
+      { label: 'Yıllık Projeksiyon', value: fmt((tot?.total_amount || 0) * 12), icon: 'fas fa-chart-line', bg: 'bg-emerald-50 dark:bg-green-500/10', color: 'text-emerald-600 dark:text-green-400' }
     ]
   }
 })
@@ -355,18 +359,18 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.filter-select { @apply h-8 px-2 bg-gray-50 border border-gray-200 rounded text-[12px] font-medium text-gray-700 outline-none focus:border-blue-500 cursor-pointer; }
-.btn-icon { @apply w-8 h-8 rounded border border-gray-200 text-gray-400 hover:text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-all; }
+.filter-select { @apply h-8 px-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded text-[12px] font-medium text-gray-700 dark:text-slate-300 outline-none focus:border-blue-500 cursor-pointer; }
+.btn-icon { @apply w-8 h-8 rounded border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center justify-center transition-all; }
 .btn-primary { @apply h-8 px-4 bg-blue-600 text-white rounded text-[11px] font-bold hover:bg-blue-700 flex items-center transition-all; }
-.rcard { @apply bg-white border border-gray-100 rounded-lg shadow-sm overflow-hidden; }
-.rcard-head { @apply px-5 py-3 border-b border-gray-50 flex items-center justify-between; }
-.rtitle { @apply text-[12px] font-bold text-gray-700 uppercase tracking-tight; }
-.badge { @apply px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] font-bold rounded; }
+.rcard { @apply bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-lg shadow-sm overflow-hidden; }
+.rcard-head { @apply px-5 py-3 border-b border-gray-50 dark:border-slate-700 flex items-center justify-between; }
+.rtitle { @apply text-[12px] font-bold text-gray-700 dark:text-slate-300 uppercase tracking-tight; }
+.badge { @apply px-2 py-0.5 bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 text-[10px] font-bold rounded; }
 .badge-type { @apply px-2 py-0.5 text-[10px] font-bold rounded uppercase; }
 .rtable { @apply w-full text-left; }
-.rtable thead tr { @apply border-b border-gray-50; }
-.rtable thead th { @apply px-4 py-2.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest; }
-.rtable tbody tr { @apply border-b border-gray-50 transition-colors; }
+.rtable thead tr { @apply border-b border-gray-50 dark:border-slate-700; }
+.rtable thead th { @apply px-4 py-2.5 text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest; }
+.rtable tbody tr { @apply border-b border-gray-50 dark:border-slate-700 transition-colors; }
 .rtable tbody td { @apply px-4 py-2.5; }
 .rtable tfoot td { @apply px-4 py-2.5 text-[11px]; }
 </style>

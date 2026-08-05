@@ -2,6 +2,7 @@ const { db } = require('../../database/db');
 const path = require('path');
 const fs = require('fs');
 const MailerService = require('../../services/MailerService');
+const notificationService = require('../../services/notificationService');
 
 exports.getMetadata = (req, res) => {
     try {
@@ -290,6 +291,20 @@ exports.addMessage = async (req, res) => {
         
         db.prepare('UPDATE helpdesk_tickets SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(id);
 
+        // Uygulama içi bildirim: mesajı yazmayan tarafa haber ver (Gizli not hariç)
+        if (internalFlag === 0) {
+            const notifyUserId = (userId === ticket.user_id) ? ticket.assigned_to : ticket.user_id;
+            if (notifyUserId && notifyUserId !== userId) {
+                notificationService.create({
+                    userId: notifyUserId,
+                    type: 'ticket_message',
+                    title: `${ticket.ticket_no} talebine yeni mesaj`,
+                    message: `${senderName}: ${message}`.slice(0, 200),
+                    link: `/helpdesk/ticket/${id}`
+                });
+            }
+        }
+
         // Kullanıcıya e-posta bildirimi gönder (Gizli not değilse ve mesajı yazan başkasıysa)
         if (internalFlag === 0 && ticket.user_email && userId !== ticket.user_id) {
             const mailHtml = `
@@ -344,6 +359,17 @@ exports.assignTicket = (req, res) => {
 
         db.prepare(`INSERT INTO helpdesk_messages (ticket_id, user_id, message, is_internal) VALUES (?, NULL, ?, 0)`).run(id, msgText);
 
+        if (targetUserId !== currentUserId) {
+            const ticketRow = db.prepare('SELECT ticket_no, title FROM helpdesk_tickets WHERE id = ?').get(id);
+            notificationService.create({
+                userId: targetUserId,
+                type: 'ticket_assigned',
+                title: `Yeni talep atandı: ${ticketRow?.ticket_no || ''}`,
+                message: `${currentUserName} size "${ticketRow?.title || ''}" talebini devretti.`,
+                link: `/helpdesk/ticket/${id}`
+            });
+        }
+
         res.json({ success: true, message: (targetUserId === currentUserId) ? 'Talep üzerinize alındı.' : `Talep ${targetUser.full_name} kullanıcısına atandı.` });
     } catch (err) {
         console.error('assignTicket error:', err);
@@ -355,7 +381,8 @@ exports.updateStatus = (req, res) => {
     try {
         const { id } = req.params;
         const { status, resolution_note } = req.body;
-        
+        const currentUserId = req.session.user ? req.session.user.id : null;
+
         let query = `UPDATE helpdesk_tickets SET status = ?, updated_at = CURRENT_TIMESTAMP`;
         const params = [status];
         
@@ -382,6 +409,18 @@ exports.updateStatus = (req, res) => {
 
         // Kullanıcıya çözüm maili gönder
         const ticket = db.prepare(`SELECT t.*, u.email as user_email, u.full_name as user_name FROM helpdesk_tickets t LEFT JOIN users u ON t.user_id = u.id WHERE t.id = ?`).get(id);
+
+        // Uygulama içi bildirim: talep sahibine durum güncellemesi
+        if (ticket && ticket.user_id && ticket.user_id !== currentUserId) {
+            notificationService.create({
+                userId: ticket.user_id,
+                type: 'ticket_status',
+                title: `${ticket.ticket_no} talebiniz güncellendi`,
+                message: status === 'Çözüldü' ? `Talebiniz çözüldü: ${resolution_note}` : `Talep durumu: ${status}`,
+                link: `/helpdesk/ticket/${id}`
+            });
+        }
+
         if (status === 'Çözüldü' && ticket && ticket.user_email) {
             const mailHtml = `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #dadce0; border-radius: 8px;">

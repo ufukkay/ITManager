@@ -1,19 +1,19 @@
 <template>
   <div v-if="show" class="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center" @click.self="closeModal">
-    <div class="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl shadow-2xl overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl shadow-2xl overflow-hidden">
 
       <!-- ── Header ─────────────────────────────────────── -->
-      <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+      <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 dark:border-slate-700">
         <div class="flex items-center gap-2.5">
           <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
             <i class="fas fa-camera text-sm"></i>
           </div>
           <div>
-            <h3 class="font-bold text-gray-900 text-sm leading-tight">QR / Barkod Tarama</h3>
-            <p class="text-[10.5px] text-gray-400">Kamerayı koda hizalayın</p>
+            <h3 class="font-bold text-gray-900 dark:text-slate-100 text-sm leading-tight">QR / Barkod Tarama</h3>
+            <p class="text-[10.5px] text-gray-400 dark:text-slate-500">Kamerayı koda hizalayın</p>
           </div>
         </div>
-        <button @click="closeModal" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 active:bg-gray-200 text-gray-500 transition-colors text-xl font-bold">
+        <button @click="closeModal" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 active:bg-gray-200 dark:active:bg-slate-600 text-gray-500 dark:text-slate-400 transition-colors text-xl font-bold">
           &times;
         </button>
       </div>
@@ -25,20 +25,20 @@
       <!-- ── AŞAMA 1: İzin İsteme & Tarama Seçimi ───────── -->
       <div v-if="stage === 'permission'" class="px-5 py-6 flex flex-col items-center gap-4 text-center">
 
-        <div class="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center">
-          <i class="fas fa-qrcode text-blue-600 text-2xl"></i>
+        <div class="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+          <i class="fas fa-qrcode text-blue-600 dark:text-blue-400 text-2xl"></i>
         </div>
         <div>
-          <div class="font-bold text-gray-900 text-base mb-1">QR Kod / Barkod Taraması</div>
-          <p class="text-xs text-gray-500 leading-relaxed">
+          <div class="font-bold text-gray-900 dark:text-slate-100 text-base mb-1">QR Kod / Barkod Taraması</div>
+          <p class="text-xs text-gray-500 dark:text-slate-400 leading-relaxed">
             Aşağıdaki yöntemlerden biriyle cihaz QR kodunu okutabilirsiniz.
           </p>
         </div>
 
         <!-- Non-HTTPS Notice -->
-        <div v-if="!isSecure" class="w-full bg-amber-50 border border-amber-200 rounded-xl p-3 text-left flex items-start gap-2.5">
-          <i class="fas fa-exclamation-triangle text-amber-600 text-sm mt-0.5 shrink-0"></i>
-          <div class="text-[11px] text-amber-900 leading-normal">
+        <div v-if="!isSecure" class="w-full bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl p-3 text-left flex items-start gap-2.5">
+          <i class="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400 text-sm mt-0.5 shrink-0"></i>
+          <div class="text-[11px] text-amber-900 dark:text-amber-300 leading-normal">
             <strong>HTTP Yerel Ağ Bağlantısı:</strong> Mobil tarayıcılar (Safari/Chrome) HTTP adresinde canlı video yayını kısıtlar. <strong>'Fotoğraf Çek / QR Oku'</strong> butonuna dokunarak telefonunuzun kendi kamerasıyla 1 saniyede QR okutabilirsiniz!
           </div>
         </div>
@@ -64,15 +64,15 @@
 
           <!-- Manuel giriş -->
           <div class="relative my-1">
-            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200"></div></div>
-            <div class="relative flex justify-center"><span class="bg-white px-3 text-[11px] text-gray-400 font-medium">veya manuel</span></div>
+            <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-200 dark:border-slate-700"></div></div>
+            <div class="relative flex justify-center"><span class="bg-white dark:bg-slate-800 px-3 text-[11px] text-gray-400 dark:text-slate-500 font-medium">veya manuel</span></div>
           </div>
           <div class="flex gap-2">
             <input
               v-model="manualCode"
               type="text"
               placeholder="Barkod / seri no manuel gir..."
-              class="flex-1 h-10 px-3 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500 bg-gray-50 focus:bg-white"
+              class="flex-1 h-10 px-3 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-medium outline-none focus:border-blue-500 bg-gray-50 dark:bg-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900"
               @keyup.enter="handleManualSubmit"
             />
             <button
@@ -85,7 +85,7 @@
 
           <button
             @click="closeModal"
-            class="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-2xl transition-colors mt-1"
+            class="w-full py-2.5 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-bold text-sm rounded-2xl transition-colors mt-1"
           >
             İptal
           </button>
@@ -128,10 +128,10 @@
 
         <!-- Kamera Değiştir Butonu -->
         <div class="px-5 pt-3 pb-2 flex items-center justify-between">
-          <p class="text-xs text-gray-500">Kodu kareye hizalayın, otomatik okuyacak.</p>
+          <p class="text-xs text-gray-500 dark:text-slate-400">Kodu kareye hizalayın, otomatik okuyacak.</p>
           <button
             @click="switchCamera"
-            class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-bold text-xs rounded-xl transition-colors"
+            class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 active:bg-gray-300 dark:active:bg-slate-500 text-gray-700 dark:text-slate-300 font-bold text-xs rounded-xl transition-colors"
           >
             <i class="fas fa-sync-alt"></i>
             {{ currentFacing === 'environment' ? 'Ön Kamera' : 'Arka Kamera' }}
@@ -139,14 +139,14 @@
         </div>
 
         <!-- Manuel Giriş -->
-        <div class="px-5 pb-5 border-t border-gray-100 pt-3">
-          <div class="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-2">Manuel Giriş</div>
+        <div class="px-5 pb-5 border-t border-gray-100 dark:border-slate-700 pt-3">
+          <div class="text-[10.5px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">Manuel Giriş</div>
           <div class="flex gap-2">
             <input
               v-model="manualCode"
               type="text"
               placeholder="Barkod veya seri no yaz..."
-              class="flex-1 h-10 px-3 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500 bg-gray-50 focus:bg-white"
+              class="flex-1 h-10 px-3 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-medium outline-none focus:border-blue-500 bg-gray-50 dark:bg-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900"
               @keyup.enter="handleManualSubmit"
             />
             <button
@@ -165,24 +165,24 @@
         <!-- İzin Reddedildi ekranı -->
         <div v-if="errorType === 'permission-denied'" class="flex flex-col gap-4">
           <div class="flex flex-col items-center gap-3 text-center">
-            <div class="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center">
-              <i class="fas fa-ban text-red-500 text-2xl"></i>
+            <div class="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-500/10 flex items-center justify-center">
+              <i class="fas fa-ban text-red-500 dark:text-red-400 text-2xl"></i>
             </div>
             <div>
-              <div class="font-bold text-gray-900 text-base mb-1">Kamera İzni Verilmemiş</div>
-              <p class="text-sm text-gray-500">Kamera iznini tarayıcı ayarlarından manuel olarak açmanız gerekiyor.</p>
+              <div class="font-bold text-gray-900 dark:text-slate-100 text-base mb-1">Kamera İzni Verilmemiş</div>
+              <p class="text-sm text-gray-500 dark:text-slate-400">Kamera iznini tarayıcı ayarlarından manuel olarak açmanız gerekiyor.</p>
             </div>
           </div>
 
           <!-- iOS Safari Adımları -->
-          <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4 space-y-3">
-            <div class="font-bold text-blue-800 text-xs flex items-center gap-2">
+          <div class="bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/30 rounded-2xl p-4 space-y-3">
+            <div class="font-bold text-blue-800 dark:text-blue-300 text-xs flex items-center gap-2">
               <i class="fab fa-apple"></i> iPhone / iPad — Safari için:
             </div>
-            <ol class="space-y-2.5 text-xs text-gray-700">
+            <ol class="space-y-2.5 text-xs text-gray-700 dark:text-slate-300">
               <li class="flex items-start gap-2.5">
                 <span class="w-5 h-5 rounded-full bg-blue-600 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">1</span>
-                <span>iPhone'unuzun <strong>Ayarlar</strong> uygulamasını açın <i class="fas fa-cog text-gray-400 ml-0.5"></i></span>
+                <span>iPhone'unuzun <strong>Ayarlar</strong> uygulamasını açın <i class="fas fa-cog text-gray-400 dark:text-slate-500 ml-0.5"></i></span>
               </li>
               <li class="flex items-start gap-2.5">
                 <span class="w-5 h-5 rounded-full bg-blue-600 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">2</span>
@@ -200,11 +200,11 @@
           </div>
 
           <!-- Android Chrome Adımları -->
-          <div class="bg-green-50 border border-green-100 rounded-2xl p-4 space-y-3">
-            <div class="font-bold text-green-800 text-xs flex items-center gap-2">
+          <div class="bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/30 rounded-2xl p-4 space-y-3">
+            <div class="font-bold text-green-800 dark:text-green-300 text-xs flex items-center gap-2">
               <i class="fab fa-android"></i> Android — Chrome için:
             </div>
-            <ol class="space-y-2.5 text-xs text-gray-700">
+            <ol class="space-y-2.5 text-xs text-gray-700 dark:text-slate-300">
               <li class="flex items-start gap-2.5">
                 <span class="w-5 h-5 rounded-full bg-green-600 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">1</span>
                 <span>Adres çubuğunun solundaki <strong>🔒 kilit</strong> veya <strong>ⓘ bilgi</strong> simgesine dokunun</span>
@@ -221,30 +221,30 @@
           </div>
 
           <!-- Görsel ipucu (Safari adres çubuğu) -->
-          <div class="bg-gray-50 border border-dashed border-gray-200 rounded-xl p-3 flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
-              <i class="fas fa-lightbulb text-amber-500 text-sm"></i>
+          <div class="bg-gray-50 dark:bg-slate-900 border border-dashed border-gray-200 dark:border-slate-700 rounded-xl p-3 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-gray-200 dark:bg-slate-700 flex items-center justify-center shrink-0">
+              <i class="fas fa-lightbulb text-amber-500 dark:text-amber-400 text-sm"></i>
             </div>
-            <p class="text-[11px] text-gray-600 leading-relaxed">
-              <strong>İpucu:</strong> Safari'de adres çubuğuna <span class="font-mono bg-white border border-gray-200 px-1 rounded text-[10px]">aa</span> harflerine dokunup <strong>Web Sitesi Ayarları</strong> → <strong>Kamera → İzin Ver</strong> diyebilirsiniz.
+            <p class="text-[11px] text-gray-600 dark:text-slate-400 leading-relaxed">
+              <strong>İpucu:</strong> Safari'de adres çubuğuna <span class="font-mono bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-1 rounded text-[10px]">aa</span> harflerine dokunup <strong>Web Sitesi Ayarları</strong> → <strong>Kamera → İzin Ver</strong> diyebilirsiniz.
             </p>
           </div>
         </div>
 
         <!-- Diğer hatalar -->
         <div v-else class="flex flex-col items-center gap-3 text-center">
-          <div class="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center">
-            <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+          <div class="w-14 h-14 rounded-2xl bg-red-50 dark:bg-red-500/10 flex items-center justify-center">
+            <i class="fas fa-exclamation-triangle text-red-500 dark:text-red-400 text-xl"></i>
           </div>
           <div>
-            <div class="font-bold text-gray-900 text-sm mb-1">Kamera Açılamadı</div>
-            <p class="text-xs text-gray-500">{{ errorMessage }}</p>
+            <div class="font-bold text-gray-900 dark:text-slate-100 text-sm mb-1">Kamera Açılamadı</div>
+            <p class="text-xs text-gray-500 dark:text-slate-400">{{ errorMessage }}</p>
           </div>
         </div>
 
         <!-- Manuel giriş (her iki hata türünde de görünür) -->
-        <div class="border-t border-gray-100 pt-4">
-          <div class="text-[10.5px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+        <div class="border-t border-gray-100 dark:border-slate-700 pt-4">
+          <div class="text-[10.5px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">
             <i class="fas fa-keyboard mr-1"></i>Alternatif: Manuel Giriş
           </div>
           <div class="flex gap-2">
@@ -252,7 +252,7 @@
               v-model="manualCode"
               type="text"
               placeholder="Barkod veya seri no girin..."
-              class="flex-1 h-10 px-3 border border-gray-200 rounded-xl text-xs font-medium outline-none focus:border-blue-500 bg-gray-50 focus:bg-white"
+              class="flex-1 h-10 px-3 border border-gray-200 dark:border-slate-700 rounded-xl text-xs font-medium outline-none focus:border-blue-500 bg-gray-50 dark:bg-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900"
               @keyup.enter="handleManualSubmit"
             />
             <button
@@ -274,7 +274,7 @@
           </button>
           <button
             @click="closeModal"
-            class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-2xl transition-colors"
+            class="flex-1 py-3 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 font-bold text-sm rounded-2xl transition-colors"
           >
             Kapat
           </button>

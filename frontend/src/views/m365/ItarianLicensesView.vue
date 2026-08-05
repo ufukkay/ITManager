@@ -127,14 +127,14 @@ onMounted(() => {
       <template #toolbar>
         <template v-if="selectedIds.length > 0">
           <span class="text-[13px] font-bold text-[#1a73e8]">{{ selectedIds.length }} Seçili</span>
-          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg text-[12px] font-bold hover:bg-blue-100">
+          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 rounded-lg text-[12px] font-bold hover:bg-blue-100 dark:hover:bg-blue-500/20">
             <i class="fas fa-edit"></i> Toplu Düzenle
           </button>
-          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[12px] font-bold hover:bg-emerald-100"
+          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-lg text-[12px] font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
             @click="exportSelected">
             <i class="fas fa-file-excel"></i> Seçilenleri İndir
           </button>
-          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[12px] font-bold hover:bg-red-100">
+          <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-500/20 rounded-lg text-[12px] font-bold hover:bg-red-100 dark:hover:bg-red-500/20">
             <i class="fas fa-trash"></i> Toplu Sil
           </button>
         </template>
@@ -142,22 +142,22 @@ onMounted(() => {
 
       <!-- Custom Cells -->
       <template #cell-personnel_name="{ value }">
-        <span class="font-bold text-gray-900">{{ value }}</span>
+        <span class="font-bold text-gray-900 dark:text-slate-100">{{ value }}</span>
       </template>
 
       <template #cell-license_name="{ value }">
         <div class="flex items-center gap-2">
-           <i class="fas fa-shield-alt text-emerald-500 text-[12px]"></i>
-           <span class="font-semibold text-gray-700">{{ value }}</span>
+           <i class="fas fa-shield-alt text-emerald-500 dark:text-emerald-400 text-[12px]"></i>
+           <span class="font-semibold text-gray-700 dark:text-slate-300">{{ value }}</span>
         </div>
       </template>
 
       <template #cell-cost="{ row }">
-         <span class="font-bold text-gray-900 tabular-nums">{{ row.cost.toLocaleString() }} {{ row.currency }}</span>
+         <span class="font-bold text-gray-900 dark:text-slate-100 tabular-nums">{{ row.cost.toLocaleString() }} {{ row.currency }}</span>
       </template>
 
       <template #cell-status="{ value }">
-        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-100 dark:ring-emerald-500/20">
           {{ value }}
         </span>
       </template>

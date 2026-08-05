@@ -28,11 +28,7 @@ const fetchData = async () => {
     const currentApi = apiInstances[activeTab.value]
     await Promise.all([
       currentApi.fetchList(),
-      masterData.fetchOperators(),
-      masterData.fetchPersonnel(),
-      masterData.fetchCompanies(),
-      masterData.fetchDepartments(),
-      masterData.fetchPackages(activeTab.value)
+      masterData.fetchOperators()
     ])
   } finally {
     loading.value = false
@@ -50,7 +46,7 @@ const columns = computed(() => {
     { key: 'iccid',          label: 'ICCID',      sortable: true, width: '220px' },
     { key: 'operator',       label: 'Operatör',   sortable: true, width: '140px' },
   ]
-  
+
   if (activeTab.value === 'voice') {
     return [
       ...base,
@@ -58,7 +54,7 @@ const columns = computed(() => {
       { key: 'status',         label: 'Durum',      sortable: true, width: '130px' },
     ]
   }
-  
+
   if (activeTab.value === 'data') {
     return [
       ...base,
@@ -85,17 +81,6 @@ const quickFilters = computed(() => [
   { key: 'status',   label: 'Durum',    options: ['Aktif', 'Pasif', 'İptal'] }
 ])
 
-// Modal Logic
-const isModalOpen = ref(false)
-const selectedItem = ref(null)
-const statuses = ['Aktif', 'Pasif', 'İptal']
-const form = ref({
-  iccid: '', phone_no: '', operator: '', company_id: '',
-  department_id: '', package_id: '', personnel_id: '',
-  location_id: '', vehicle_id: '', plate_no: '',
-  status: 'Aktif', notes: ''
-})
-
 // History Modal
 const isHistoryModalOpen = ref(false)
 const historyResourceId = ref(null)
@@ -103,39 +88,6 @@ const historyResourceId = ref(null)
 const openHistory = (row) => {
   historyResourceId.value = row.id
   isHistoryModalOpen.value = true
-}
-
-const openAddModal = () => {
-  selectedItem.value = null
-  form.value = { 
-    iccid: '', phone_no: '', operator: '', company_id: '', 
-    department_id: '', package_id: '', personnel_id: '', 
-    location_id: '', vehicle_id: '', plate_no: '',
-    status: 'Aktif', notes: '' 
-  }
-  isModalOpen.value = true
-}
-
-const openEditModal = (item) => {
-  selectedItem.value = item
-  form.value = { ...item }
-  isModalOpen.value = true
-}
-
-const saveItem = async () => {
-  try {
-    if (selectedItem.value) {
-      await currentApi.value.updateItem(selectedItem.value.id, form.value)
-      showToast('Kayıt başarıyla güncellendi', 'success')
-    } else {
-      await currentApi.value.createItem(form.value)
-      showToast('Yeni kayıt başarıyla eklendi', 'success')
-    }
-    isModalOpen.value = false
-    fetchData()
-  } catch (err) { 
-    showToast('Hata: ' + err.message, 'error') 
-  }
 }
 
 const handleDelete = async (row) => {
@@ -171,129 +123,27 @@ const exportToExcel = () => {
   XLSX.writeFile(wb, `SIM_Kartlar_${activeTab.value}.xlsx`)
 }
 
-const downloadTemplate = () => {
-  let headers = [['Telefon No', 'ICCID', 'Operatör', 'Şirket Adı', 'Departman Adı', 'Durum', 'Notlar']]
-  let example = [['0532XXXXXXX', '8990XXXXXXXXXXXXXXX', 'Turkcell', 'Talay Lojistik', 'BT', 'Aktif', 'Test Notu']]
-  
-  if (activeTab.value === 'voice') {
-    headers[0].push('Personel Adı Soyadı')
-    example[0].push('Ahmet Yılmaz')
-  } else if (activeTab.value === 'data') {
-    headers[0].push('Lokasyon Adı')
-    example[0].push('Tuzla Antrepo')
-  } else if (activeTab.value === 'm2m') {
-    headers[0].push('Plaka')
-    example[0].push('34 ABC 123')
-  }
-
-  const ws = XLSX.utils.aoa_to_sheet([...headers, ...example])
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Sablon')
-  XLSX.writeFile(wb, `SIM_Yukleme_Sablonu_${activeTab.value}.xlsx`)
-}
-
-const handleExcelImport = (e) => {
-  const file = e.target.files[0]
-  if (!file) return
-
-  const reader = new FileReader()
-  reader.onload = async (evt) => {
-    try {
-      loading.value = true
-      const bstr = evt.target.result
-      const wb = XLSX.read(bstr, { type: 'binary' })
-      const ws = wb.Sheets[wb.SheetNames[0]]
-      const jsonRows = XLSX.utils.sheet_to_json(ws)
-      
-      let successCount = 0
-      let errorCount = 0
-
-      for (const row of jsonRows) {
-        try {
-          const payload = {
-            phone_no: String(row['Telefon No'] || ''),
-            iccid: String(row['ICCID'] || ''),
-            operator: row['Operatör'] || '',
-            status: row['Durum'] || 'Aktif',
-            notes: row['Notlar'] || ''
-          }
-
-          // Map Company
-          if (row['Şirket Adı']) {
-            const comp = masterData.companies.find(c => c.name.toLowerCase().includes(row['Şirket Adı'].toLowerCase()))
-            if (comp) payload.company_id = comp.id
-          }
-
-          // Map Department
-          if (row['Departman Adı']) {
-            const dept = masterData.departments.find(d => d.name.toLowerCase().includes(row['Departman Adı'].toLowerCase()))
-            if (dept) payload.department_id = dept.id
-          }
-
-          // Category Specific Mapping
-          if (activeTab.value === 'voice' && row['Personel Adı Soyadı']) {
-            const pers = masterData.personnel.find(p => `${p.first_name} ${p.last_name}`.toLowerCase().includes(row['Personel Adı Soyadı'].toLowerCase()))
-            if (pers) payload.personnel_id = pers.id
-          } else if (activeTab.value === 'data' && row['Lokasyon Adı']) {
-            const loc = masterData.locations.find(l => l.name.toLowerCase().includes(row['Lokasyon Adı'].toLowerCase()))
-            if (loc) payload.location_id = loc.id
-          } else if (activeTab.value === 'm2m' && row['Plaka']) {
-            const veh = masterData.vehicles.find(v => v.plate_no.toLowerCase().replace(/ /g, '') === row['Plaka'].toLowerCase().replace(/ /g, ''))
-            if (veh) payload.vehicle_id = veh.id
-          }
-
-          await currentApi.value.createItem(payload)
-          successCount++
-        } catch (err) {
-          errorCount++
-        }
-      }
-      if (errorCount > 0) {
-        showToast(`${successCount} kayıt eklendi, ${errorCount} hata oluştu. Lütfen Excel başlıklarını ve zorunlu alanları kontrol edin.`, 'warning')
-      } else {
-        showToast(`${successCount} kayıt başarıyla eklendi.`, 'success')
-      }
-      fetchData()
-    } catch (err) {
-      showToast('Excel işlenirken hata oluştu', 'error')
-    } finally {
-      loading.value = false
-      e.target.value = ''
-    }
-  }
-  reader.readAsBinaryString(file)
-}
-
 onMounted(fetchData)
 </script>
 
 <template>
-  <div class="h-full flex flex-col p-6 overflow-hidden">
+  <div class="h-full flex flex-col p-6 overflow-hidden bg-white dark:bg-slate-900">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6 shrink-0">
       <div>
-        <h1 class="text-[20px] font-bold text-gray-900 tracking-tight">SIM Kart Havuzu</h1>
-        <p class="text-[13px] text-gray-400 mt-1">Tüm SIM kartları ve hatları merkezi olarak yönetin</p>
+        <h1 class="text-[20px] font-bold text-gray-900 dark:text-slate-100 tracking-tight">SIM Kart Havuzu</h1>
+        <p class="text-[13px] text-gray-400 dark:text-slate-500 mt-1">Tüm SIM kartları ve hatları merkezi olarak yönetin</p>
       </div>
-      <div class="flex items-center gap-2">
-        <button @click="downloadTemplate" class="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl text-[12px] font-bold text-gray-500 hover:bg-gray-50 transition-all">
-          <i class="fas fa-download text-gray-400"></i> Şablon
-        </button>
-        <label class="cursor-pointer flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl text-[12px] font-bold hover:bg-emerald-100 transition-all">
-          <i class="fas fa-file-excel"></i> Excel Yükle
-          <input type="file" @change="handleExcelImport" class="hidden" accept=".xlsx,.xls">
-        </label>
-        <button @click="exportToExcel" class="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl text-[12px] font-bold text-gray-500 hover:bg-gray-50 transition-all">
-          <i class="fas fa-file-export text-gray-400"></i> Dışa Aktar
-        </button>
-        <button @click="openAddModal" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-[12px] font-bold hover:bg-blue-700 shadow-sm transition-all ml-1">
-          <i class="fas fa-plus"></i> Yeni SIM Ekle
+      <div class="flex items-center gap-3">
+        <span class="text-[11px] text-gray-400 dark:text-slate-500 italic">Ekleme/düzenleme için Envanter → Varlık Listesi'ni kullanın</span>
+        <button @click="exportToExcel" class="flex items-center gap-2 px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-xl text-[12px] font-bold text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all">
+          <i class="fas fa-file-export text-gray-400 dark:text-slate-500"></i> Dışa Aktar
         </button>
       </div>
     </div>
 
     <!-- Tabs -->
-    <div class="flex gap-1.5 p-1.5 bg-gray-100 rounded-2xl w-fit mb-6 border border-gray-200/50 shrink-0">
+    <div class="flex gap-1.5 p-1.5 bg-gray-100 dark:bg-slate-800 rounded-2xl w-fit mb-6 border border-gray-200/50 dark:border-slate-700 shrink-0">
       <button
         v-for="tab in [
           { key: 'voice', label: 'Ses Hattı', icon: 'fa-phone' },
@@ -303,17 +153,17 @@ onMounted(fetchData)
         :key="tab.key"
         @click="activeTab = tab.key"
         class="flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-[13px] font-bold transition-all duration-200"
-        :class="activeTab === tab.key 
-          ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black/[0.05]' 
-          : 'text-gray-500 hover:text-gray-800 hover:bg-gray-200/50'"
+        :class="activeTab === tab.key
+          ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/[0.05] dark:ring-white/[0.05]'
+          : 'text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 hover:bg-gray-200/50 dark:hover:bg-slate-700/50'"
       >
-        <i :class="['fas', tab.icon, 'text-[12px]', activeTab === tab.key ? 'text-blue-500' : 'text-gray-400']"></i>
+        <i :class="['fas', tab.icon, 'text-[12px]', activeTab === tab.key ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500']"></i>
         {{ tab.label }}
       </button>
     </div>
 
     <!-- Table Section -->
-    <div class="flex-1 min-h-0 bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+    <div class="flex-1 min-h-0 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-2xl overflow-hidden shadow-sm">
       <AppTable
         :key="activeTab"
         :columns="columns"
@@ -321,158 +171,43 @@ onMounted(fetchData)
         :loading="loading"
         :quick-filters="quickFilters"
         empty-text="Bu kategoride henüz SIM kart kaydı bulunmuyor."
-        @row-edit="openEditModal"
-        @row-delete="handleDelete"
-        @row-history="openHistory"
       >
+        <template #actions="{ row }">
+          <div class="at-row-actions">
+            <button type="button" class="at-row-btn" title="Geçmişi Göster" @click="openHistory(row)"><i class="fas fa-clock-rotate-left"></i></button>
+            <button type="button" class="at-row-btn at-row-btn-del" title="Sil" @click="handleDelete(row)"><i class="fas fa-trash"></i></button>
+          </div>
+        </template>
+
         <!-- Cell Templates -->
         <template #cell-phone_no="{ value }">
-          <span class="font-bold text-gray-900">{{ value || '—' }}</span>
+          <span class="font-bold text-gray-900 dark:text-slate-100">{{ value || '—' }}</span>
         </template>
-        
+
         <template #cell-iccid="{ value }">
-          <span class="font-mono text-[12px] text-gray-500">{{ value || '—' }}</span>
+          <span class="font-mono text-[12px] text-gray-500 dark:text-slate-400">{{ value || '—' }}</span>
         </template>
 
         <template #cell-operator="{ value }">
-          <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-gray-50 text-gray-500 border border-gray-100 uppercase tracking-tight">
+          <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-gray-50 dark:bg-slate-700 text-gray-500 dark:text-slate-300 border border-gray-100 dark:border-slate-600 uppercase tracking-tight">
             {{ value || '—' }}
           </span>
         </template>
 
         <template #cell-status="{ value }">
           <div class="flex items-center gap-2">
-            <span v-if="value === 'Aktif' || value === 'active'" class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
+            <span v-if="value === 'Aktif' || value === 'active'" class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
               AKTİF
             </span>
-            <span v-else class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-gray-50 text-gray-400 border border-gray-100">
-              <span class="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+            <span v-else class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-gray-50 dark:bg-slate-700 text-gray-400 dark:text-slate-500 border border-gray-100 dark:border-slate-600">
+              <span class="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-slate-500"></span>
               {{ value?.toUpperCase() || '—' }}
             </span>
           </div>
         </template>
       </AppTable>
     </div>
-
-    <!-- Modal -->
-    <Teleport to="body">
-      <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" @click.self="isModalOpen = false">
-        <div class="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
-          <div class="px-7 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <div>
-              <h2 class="text-[16px] font-bold text-gray-900">
-                {{ selectedItem ? 'SIM Kartı Düzenle' : 'Yeni SIM Kart Ekle' }}
-              </h2>
-              <p class="text-[11px] text-gray-400 mt-0.5">Kategori: {{ activeTab.toUpperCase() }}</p>
-            </div>
-            <button type="button" @click="isModalOpen = false" class="text-gray-400 hover:text-gray-700 w-8 h-8 rounded-lg hover:bg-gray-100 inline-flex items-center justify-center">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-
-          <form @submit.prevent="saveItem">
-            <div class="p-7 grid grid-cols-2 gap-5">
-              <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Telefon No</label>
-                <input v-model="form.phone_no" type="text" required placeholder="5XX XXX XX XX"
-                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50/50 transition-all font-bold">
-              </div>
-              <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">ICCID</label>
-                <input v-model="form.iccid" type="text" placeholder="8990..."
-                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 font-mono">
-              </div>
-
-              <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Operatör</label>
-                <select v-model="form.operator" required
-                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
-                  <option value="">Seçiniz</option>
-                  <option v-for="op in masterData.operators" :key="op.id" :value="op.name">{{ op.name }}</option>
-                </select>
-              </div>
-
-              <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Paket</label>
-                <select v-model="form.package_id"
-                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
-                  <option :value="null">Seçiniz</option>
-                  <option v-for="p in masterData.packages" :key="p.id" :value="p.id">{{ p.name }}</option>
-                </select>
-              </div>
-
-              <!-- Conditional Fields -->
-              <div v-if="activeTab === 'voice'" class="space-y-1.5">
-                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Atanan Personel</label>
-                <select v-model="form.personnel_id"
-                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
-                  <option :value="null">Seçiniz</option>
-                  <option v-for="p in masterData.personnel" :key="p.id" :value="p.id">{{ p.first_name }} {{ p.last_name }}</option>
-                </select>
-              </div>
-
-              <div v-if="activeTab === 'data'" class="space-y-1.5">
-                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Lokasyon</label>
-                <select v-model="form.location_id"
-                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
-                  <option :value="null">Seçiniz</option>
-                  <option v-for="l in masterData.locations" :key="l.id" :value="l.id">{{ l.name }}</option>
-                </select>
-              </div>
-
-              <div v-if="activeTab === 'm2m'" class="space-y-1.5">
-                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Araç / Plaka</label>
-                <select v-model="form.vehicle_id"
-                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
-                  <option :value="null">Seçiniz</option>
-                  <option v-for="v in masterData.vehicles" :key="v.id" :value="v.id">{{ v.plate_no }}</option>
-                </select>
-              </div>
-
-              <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Durum</label>
-                <select v-model="form.status" required
-                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
-                  <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
-                </select>
-              </div>
-
-              <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Şirket</label>
-                <select v-model="form.company_id"
-                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
-                  <option :value="null">Seçiniz</option>
-                  <option v-for="c in masterData.companies" :key="c.id" :value="c.id">{{ c.name }}</option>
-                </select>
-              </div>
-
-              <div class="space-y-1.5">
-                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Departman</label>
-                <select v-model="form.department_id"
-                  class="w-full h-11 px-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 bg-white">
-                  <option :value="null">Seçiniz</option>
-                  <option v-for="d in masterData.departments" :key="d.id" :value="d.id">{{ d.name }}</option>
-                </select>
-              </div>
-
-              <div class="col-span-2 space-y-1.5">
-                <label class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Notlar</label>
-                <textarea v-model="form.notes" rows="2"
-                  class="w-full p-4 text-[13px] border border-gray-200 rounded-xl outline-none focus:border-blue-500 resize-none"></textarea>
-              </div>
-            </div>
-
-            <div class="px-7 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3">
-              <button type="button" @click="isModalOpen = false" class="px-4 py-2 text-[13px] font-bold text-gray-500 hover:text-gray-700">İptal</button>
-              <button type="submit" class="px-8 py-2 bg-blue-600 text-white text-[13px] font-bold rounded-xl hover:bg-blue-700 shadow-sm transition-all">
-                {{ selectedItem ? 'Güncelle' : 'Oluştur' }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </Teleport>
 
     <!-- History Modal -->
     <HistoryModal

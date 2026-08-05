@@ -39,13 +39,13 @@ const formatCurrency = (val) => {
       </div>
     </div>
 
-    <div v-if="loading" class="h-32 flex items-center justify-center text-gray-400 text-[12px]">
+    <div v-if="loading" class="h-32 flex items-center justify-center text-gray-400 dark:text-slate-500 text-[12px]">
       <i class="fas fa-spinner fa-spin mr-2"></i> Veriler yükleniyor...
     </div>
 
-    <div v-else-if="history.length === 0" class="h-32 flex flex-col items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
-      <i class="fas fa-file-invoice-dollar text-gray-300 text-xl mb-2"></i>
-      <span class="text-gray-400 text-[12px]">Bu personel için henüz maliyet kaydı bulunamadı.</span>
+    <div v-else-if="history.length === 0" class="h-32 flex flex-col items-center justify-center bg-gray-50 dark:bg-slate-800 rounded-xl border border-dashed border-gray-200 dark:border-slate-700">
+      <i class="fas fa-file-invoice-dollar text-gray-300 dark:text-slate-600 text-xl mb-2"></i>
+      <span class="text-gray-400 dark:text-slate-500 text-[12px]">Bu personel için henüz maliyet kaydı bulunamadı.</span>
     </div>
 
     <div v-else class="space-y-3">
@@ -68,14 +68,14 @@ const formatCurrency = (val) => {
             <div :style="{ height: `${(h.gsm_amount / Math.max(...history.map(x => x.total_amount))) * 100}%` }" 
               class="w-full bg-emerald-400 rounded-sm opacity-80 group-hover:opacity-100 transition-all"></div>
           </div>
-          <span class="text-[8px] text-gray-400 mt-2 rotate-45 origin-left whitespace-nowrap">{{ h.period }}</span>
+          <span class="text-[8px] text-gray-400 dark:text-slate-500 mt-2 rotate-45 origin-left whitespace-nowrap">{{ h.period }}</span>
         </div>
       </div>
 
       <!-- Data Table -->
-      <div class="mt-8 border border-gray-100 rounded-xl overflow-hidden bg-white shadow-sm">
+      <div class="mt-8 border border-gray-100 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm">
         <table class="w-full text-left text-[12px]">
-          <thead class="bg-gray-50 text-gray-400 uppercase text-[10px] font-bold">
+          <thead class="bg-gray-50 dark:bg-slate-900 text-gray-400 dark:text-slate-500 uppercase text-[10px] font-bold">
             <tr>
               <th class="px-4 py-2">Dönem</th>
               <th class="px-4 py-2">GSM</th>
@@ -83,12 +83,12 @@ const formatCurrency = (val) => {
               <th class="px-4 py-2 text-right">Toplam</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-50">
-            <tr v-for="h in history" :key="h.period" class="hover:bg-blue-50/30 transition-colors">
-              <td class="px-4 py-2 font-medium text-gray-700">{{ h.period }}</td>
-              <td class="px-4 py-2 text-emerald-600 font-medium">{{ formatCurrency(h.gsm_amount) }}</td>
-              <td class="px-4 py-2 text-blue-600 font-medium">{{ formatCurrency(h.m365_amount) }}</td>
-              <td class="px-4 py-2 text-right font-bold text-gray-900">{{ formatCurrency(h.total_amount) }}</td>
+          <tbody class="divide-y divide-gray-50 dark:divide-slate-700">
+            <tr v-for="h in history" :key="h.period" class="hover:bg-blue-50/30 dark:hover:bg-slate-700/50 transition-colors">
+              <td class="px-4 py-2 font-medium text-gray-700 dark:text-slate-300">{{ h.period }}</td>
+              <td class="px-4 py-2 text-emerald-600 dark:text-green-400 font-medium">{{ formatCurrency(h.gsm_amount) }}</td>
+              <td class="px-4 py-2 text-blue-600 dark:text-blue-400 font-medium">{{ formatCurrency(h.m365_amount) }}</td>
+              <td class="px-4 py-2 text-right font-bold text-gray-900 dark:text-slate-100">{{ formatCurrency(h.total_amount) }}</td>
             </tr>
           </tbody>
         </table>

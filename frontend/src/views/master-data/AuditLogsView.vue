@@ -60,13 +60,13 @@ const fetchLogs = async () => {
 const getActionBadgeClass = (action) => {
   switch (action) {
     case 'CREATE':
-      return 'bg-emerald-50 text-emerald-700 border-emerald-100'
+      return 'bg-emerald-50 dark:bg-green-500/10 text-emerald-700 dark:text-green-400 border-emerald-100 dark:border-green-500/30'
     case 'UPDATE':
-      return 'bg-blue-50 text-blue-700 border-blue-100'
+      return 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-500/30'
     case 'DELETE':
-      return 'bg-rose-50 text-rose-700 border-rose-100'
+      return 'bg-rose-50 dark:bg-red-500/10 text-rose-700 dark:text-red-400 border-rose-100 dark:border-red-500/30'
     default:
-      return 'bg-gray-50 text-gray-700 border-gray-100'
+      return 'bg-gray-50 dark:bg-slate-700 text-gray-700 dark:text-slate-300 border-gray-100 dark:border-slate-600'
   }
 }
 
@@ -123,37 +123,37 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col overflow-hidden bg-white">
+  <div class="h-full flex flex-col overflow-hidden bg-white dark:bg-slate-900">
     <!-- Header -->
-    <header class="h-16 border-b border-gray-100 flex items-center justify-between px-6 bg-white shrink-0">
+    <header class="h-16 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between px-6 bg-white dark:bg-slate-800 shrink-0">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
           <i class="fas fa-history text-lg"></i>
         </div>
         <div>
-          <h1 class="text-[16px] font-bold text-gray-900">Aktivite Günlüğü</h1>
-          <p class="text-[11px] text-gray-400 mt-0.5">Sistemde gerçekleştirilen tüm ekleme, silme ve düzenleme hareketleri</p>
+          <h1 class="text-[16px] font-bold text-gray-900 dark:text-slate-100">Aktivite Günlüğü</h1>
+          <p class="text-[11px] text-gray-400 dark:text-slate-500 mt-0.5">Sistemde gerçekleştirilen tüm ekleme, silme ve düzenleme hareketleri</p>
         </div>
       </div>
     </header>
 
     <!-- Filters -->
-    <div class="shrink-0 px-6 py-4 border-b border-gray-100 bg-[#fafafa] flex flex-wrap items-center gap-4">
+    <div class="shrink-0 px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-[#fafafa] dark:bg-slate-900 flex flex-wrap items-center gap-4">
       <!-- Search -->
       <div class="relative w-64">
         <input
           v-model="filters.search"
           type="text"
           placeholder="İşlem veya hedef ara..."
-          class="w-full h-9 pl-9 pr-3 text-[13px] border border-gray-200 rounded-lg outline-none focus:border-blue-500 bg-white"
+          class="w-full h-9 pl-9 pr-3 text-[13px] border border-gray-200 dark:border-slate-700 rounded-lg outline-none focus:border-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100"
         />
-        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-[12px]"></i>
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 text-[12px]"></i>
       </div>
 
       <!-- Module Filter -->
       <select
         v-model="filters.module"
-        class="h-9 px-3 border border-gray-200 rounded-lg text-[13px] outline-none focus:border-blue-500 bg-white min-w-[140px]"
+        class="h-9 px-3 border border-gray-200 dark:border-slate-700 rounded-lg text-[13px] outline-none focus:border-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 min-w-[140px]"
       >
         <option value="">Tüm Modüller</option>
         <option v-for="m in modules" :key="m.value" :value="m.value">{{ m.label }}</option>
@@ -162,7 +162,7 @@ onMounted(() => {
       <!-- Action Filter -->
       <select
         v-model="filters.action"
-        class="h-9 px-3 border border-gray-200 rounded-lg text-[13px] outline-none focus:border-blue-500 bg-white min-w-[140px]"
+        class="h-9 px-3 border border-gray-200 dark:border-slate-700 rounded-lg text-[13px] outline-none focus:border-blue-500 bg-white dark:bg-slate-800 dark:text-slate-100 min-w-[140px]"
       >
         <option value="">Tüm İşlemler</option>
         <option v-for="a in actions" :key="a.value" :value="a.value">{{ a.label }}</option>
@@ -171,15 +171,15 @@ onMounted(() => {
       <!-- Sync Button -->
       <button
         @click="fetchLogs"
-        class="w-9 h-9 border border-gray-200 rounded-lg flex items-center justify-center text-gray-500 hover:text-gray-900 bg-white transition-all hover:bg-gray-50"
+        class="w-9 h-9 border border-gray-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100 bg-white dark:bg-slate-800 transition-all hover:bg-gray-50 dark:hover:bg-slate-700"
         title="Yenile"
       >
         <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i>
       </button>
 
       <!-- Results Count -->
-      <div class="ml-auto text-[12px] font-medium text-gray-400">
-        Toplam <span class="font-bold text-gray-700">{{ total }}</span> aktivite bulundu
+      <div class="ml-auto text-[12px] font-medium text-gray-400 dark:text-slate-500">
+        Toplam <span class="font-bold text-gray-700 dark:text-slate-300">{{ total }}</span> aktivite bulundu
       </div>
     </div>
 
@@ -187,7 +187,7 @@ onMounted(() => {
     <div class="flex-1 min-h-0 overflow-y-auto">
       <table class="w-full text-sm border-collapse">
         <thead>
-          <tr class="bg-[#f8f9fa] border-b border-gray-200 text-[11px] font-bold text-gray-400 uppercase tracking-wider sticky top-0 z-10">
+          <tr class="bg-[#f8f9fa] dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider sticky top-0 z-10">
             <th class="px-6 py-3.5 text-left font-semibold">Tarih</th>
             <th class="px-6 py-3.5 text-left font-semibold">Kullanıcı</th>
             <th class="px-6 py-3.5 text-left font-semibold">Modül</th>
@@ -197,27 +197,27 @@ onMounted(() => {
             <th class="px-6 py-3.5 text-right font-semibold">İşlem Detayı</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100">
+        <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
           <tr v-if="loading" class="text-center">
-            <td colspan="7" class="py-12 text-gray-400">
+            <td colspan="7" class="py-12 text-gray-400 dark:text-slate-500">
               <i class="fas fa-circle-notch fa-spin text-2xl mb-2 text-blue-500"></i>
               <p class="text-xs">Yükleniyor...</p>
             </td>
           </tr>
           <tr v-else-if="logs.length === 0" class="text-center">
-            <td colspan="7" class="py-12 text-gray-400 italic text-xs">
+            <td colspan="7" class="py-12 text-gray-400 dark:text-slate-500 italic text-xs">
               Aktivite kaydı bulunamadı.
             </td>
           </tr>
-          <tr v-for="log in logs" :key="log.id" class="hover:bg-gray-50/50 transition-colors">
-            <td class="px-6 py-3.5 text-[12.5px] font-mono text-gray-500">
+          <tr v-for="log in logs" :key="log.id" class="hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors">
+            <td class="px-6 py-3.5 text-[12.5px] font-mono text-gray-500 dark:text-slate-400">
               {{ new Date(log.created_at).toLocaleString('tr-TR') }}
             </td>
             <td class="px-6 py-3.5">
-              <div class="font-bold text-gray-900 text-[13px]">{{ log.user_name || 'Sistem' }}</div>
-              <div class="text-[11px] text-gray-400 font-medium">{{ log.user_email || 'system@itmanager.com' }}</div>
+              <div class="font-bold text-gray-900 dark:text-slate-100 text-[13px]">{{ log.user_name || 'Sistem' }}</div>
+              <div class="text-[11px] text-gray-400 dark:text-slate-500 font-medium">{{ log.user_email || 'system@itmanager.com' }}</div>
             </td>
-            <td class="px-6 py-3.5 text-[12.5px] font-semibold text-gray-700">
+            <td class="px-6 py-3.5 text-[12.5px] font-semibold text-gray-700 dark:text-slate-300">
               {{ getModuleLabel(log.module) }}
             </td>
             <td class="px-6 py-3.5">
@@ -225,16 +225,16 @@ onMounted(() => {
                 {{ getActionLabel(log.action) }}
               </span>
             </td>
-            <td class="px-6 py-3.5 text-[12px] font-mono text-gray-400">
+            <td class="px-6 py-3.5 text-[12px] font-mono text-gray-400 dark:text-slate-500">
               #{{ log.resource_id || '—' }}
             </td>
-            <td class="px-6 py-3.5 text-[12px] font-mono text-gray-500">
+            <td class="px-6 py-3.5 text-[12px] font-mono text-gray-500 dark:text-slate-400">
               {{ log.ip_address || '—' }}
             </td>
             <td class="px-6 py-3.5 text-right">
               <button
                 @click="openDetails(log)"
-                class="px-2.5 py-1 text-[11.5px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50/50 hover:bg-blue-50 border border-blue-100/50 rounded transition-all"
+                class="px-2.5 py-1 text-[11.5px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 bg-blue-50/50 dark:bg-blue-500/10 hover:bg-blue-50 dark:hover:bg-blue-500/20 border border-blue-100/50 dark:border-blue-500/30 rounded transition-all"
               >
                 Görüntüle
               </button>
@@ -245,10 +245,10 @@ onMounted(() => {
     </div>
 
     <!-- Pagination Footer -->
-    <div class="shrink-0 h-14 px-6 border-t border-gray-100 flex items-center justify-between bg-white">
+    <div class="shrink-0 h-14 px-6 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between bg-white dark:bg-slate-800">
       <div class="flex items-center gap-2">
-        <span class="text-[12px] text-gray-400">Sayfa başı satır:</span>
-        <select v-model="filters.limit" class="h-8 border border-gray-200 rounded text-[12px] px-1 outline-none bg-white font-medium">
+        <span class="text-[12px] text-gray-400 dark:text-slate-500">Sayfa başı satır:</span>
+        <select v-model="filters.limit" class="h-8 border border-gray-200 dark:border-slate-700 rounded text-[12px] px-1 outline-none bg-white dark:bg-slate-900 dark:text-slate-100 font-medium">
           <option :value="15">15</option>
           <option :value="30">30</option>
           <option :value="50">50</option>
@@ -256,21 +256,21 @@ onMounted(() => {
       </div>
 
       <div class="flex items-center gap-4">
-        <span class="text-[12px] font-semibold text-gray-500">
+        <span class="text-[12px] font-semibold text-gray-500 dark:text-slate-400">
           {{ (filters.page - 1) * filters.limit + 1 }}-{{ Math.min(filters.page * filters.limit, total) }} / {{ total }}
         </span>
         <div class="flex items-center gap-1">
           <button
             @click="changePage(filters.page - 1)"
             :disabled="filters.page === 1"
-            class="w-8 h-8 rounded-lg border border-gray-100 flex items-center justify-center hover:bg-gray-50 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all bg-white"
+            class="w-8 h-8 rounded-lg border border-gray-100 dark:border-slate-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all bg-white dark:bg-slate-800"
           >
             <i class="fas fa-chevron-left text-[11px]"></i>
           </button>
           <button
             @click="changePage(filters.page + 1)"
             :disabled="filters.page >= Math.ceil(total / filters.limit)"
-            class="w-8 h-8 rounded-lg border border-gray-100 flex items-center justify-center hover:bg-gray-50 text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all bg-white"
+            class="w-8 h-8 rounded-lg border border-gray-100 dark:border-slate-700 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all bg-white dark:bg-slate-800"
           >
             <i class="fas fa-chevron-right text-[11px]"></i>
           </button>
@@ -285,20 +285,20 @@ onMounted(() => {
         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
         @click.self="showDetailModal = false"
       >
-        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-          <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <h3 class="text-sm font-bold text-gray-900 flex items-center gap-2">
+        <div class="bg-white dark:bg-slate-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+          <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between bg-gray-50/50 dark:bg-slate-900/50">
+            <h3 class="text-sm font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
               <i class="fas fa-info-circle text-blue-500"></i>
               İşlem Veri Detayları
             </h3>
-            <button @click="showDetailModal = false" class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100">
+            <button @click="showDetailModal = false" class="w-8 h-8 flex items-center justify-center text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-300 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700">
               <i class="fas fa-times"></i>
             </button>
           </div>
           <div class="p-6 flex-1 overflow-y-auto max-h-[60vh] bg-slate-950">
             <pre class="text-[12px] font-mono text-emerald-400 whitespace-pre-wrap leading-relaxed">{{ JSON.stringify(selectedLogDetails, null, 2) }}</pre>
           </div>
-          <div class="px-6 py-3.5 border-t border-gray-100 flex justify-end bg-gray-50/50">
+          <div class="px-6 py-3.5 border-t border-gray-100 dark:border-slate-700 flex justify-end bg-gray-50/50 dark:bg-slate-900/50">
             <button
               @click="showDetailModal = false"
               class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[12px] font-bold shadow-sm transition-all"
