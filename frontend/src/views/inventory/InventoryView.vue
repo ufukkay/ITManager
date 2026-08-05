@@ -541,11 +541,8 @@
 
           <!-- Technical & Dynamic Specs Section -->
           <div class="border-t border-b border-gray-100 dark:border-slate-800 py-3 my-2 space-y-3">
-            <h4 class="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider flex items-center justify-between">
-              <span class="flex items-center gap-1.5"><i class="fas fa-microchip text-blue-500 dark:text-blue-400"></i> Kategoriye Özel & Teknik Özellikler</span>
-              <button type="button" @click="addCustomSpecRow" class="text-[10px] text-blue-600 hover:text-blue-800 dark:hover:text-blue-300 font-bold flex items-center gap-1">
-                <i class="fas fa-plus"></i> Özel Özellik Ekle
-              </button>
+            <h4 class="text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fas fa-microchip text-blue-500 dark:text-blue-400"></i> Kategoriye Özel & Teknik Özellikler
             </h4>
 
             <!-- Category-Defined Custom Dynamic Fields -->
@@ -1166,10 +1163,6 @@ const categoryDynamicInputs = ref({})
 
 const toggleExpand = (id) => {
   expandedAssetId.value = expandedAssetId.value === id ? null : id
-}
-
-const addCustomSpecRow = () => {
-  customSpecsList.value.push({ key: '', value: '' })
 }
 
 const removeCustomSpecRow = (idx) => {
