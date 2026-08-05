@@ -49,27 +49,33 @@ function findPersonnelByPhone(phoneNo) {
       };
     }
 
-    // 2. M2M hattında ara (Araç plakası + Paket bilgisi)
+    // 2. M2M hattında ara (Araç plakası + Atanan Sürücü Personel + Masraf Merkezi)
     res = db.prepare(`
       SELECT
-        v.plate_no as name,
+        p.id as personnel_id,
+        (p.first_name || ' ' || p.last_name) as personnel_name,
+        cc.id as cost_center_id,
+        cc.name as cost_center_name,
+        v.plate_no as plate_no,
         comp.id as company_id,
         comp.name as company_name,
         pk.name as package_name
       FROM assets a
       JOIN asset_models am ON a.model_id = am.id
       LEFT JOIN vehicles v ON a.vehicle_id = v.id
-      LEFT JOIN companies comp ON a.company_id = comp.id
+      LEFT JOIN personnel p ON COALESCE(a.personnel_id, v.personnel_id) = p.id
+      LEFT JOIN cost_centers cc ON p.cost_center_id = cc.id
+      LEFT JOIN companies comp ON COALESCE(p.company_id, a.company_id) = comp.id
       LEFT JOIN packages pk ON a.package_id = pk.id
       WHERE am.name = 'M2M Hattı' AND ${ASSET_PHONE_EXPR} = ? LIMIT 1
     `).get(cleanPhone);
 
     if (res) return {
-        personnel_id: null,
+        personnel_id: res.personnel_id || null,
         company_id: res.company_id,
-        cost_center_id: null,
-        name: res.name || '',
-        costCenter: res.company_name || '',
+        cost_center_id: res.cost_center_id || null,
+        name: res.personnel_name ? `${res.personnel_name} (${res.plate_no || 'Araç'})` : (res.plate_no || ''),
+        costCenter: res.cost_center_name || res.company_name || '',
         company: res.company_name || '',
         tariff: res.package_name || '',
         isMatched: true

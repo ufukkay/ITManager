@@ -401,20 +401,26 @@ class MasterDataService {
 
     // --- VEHICLES ---
     static async getAllVehicles() {
-        return db.prepare("SELECT * FROM vehicles ORDER BY plate_no ASC").all();
+        return db.prepare(`
+            SELECT v.*, 
+                   p.first_name || ' ' || p.last_name as personnel_name 
+            FROM vehicles v 
+            LEFT JOIN personnel p ON v.personnel_id = p.id 
+            ORDER BY v.plate_no ASC
+        `).all();
     }
 
     static async createVehicle(data) {
-        const { vehicle_type, notes } = data;
-        const info = db.prepare("INSERT INTO vehicles (plate_no, vehicle_type, notes) VALUES (?, ?, ?)")
-            .run(formatPlate(data.plate_no), vehicle_type, notes);
+        const { vehicle_type, notes, personnel_id } = data;
+        const info = db.prepare("INSERT INTO vehicles (plate_no, vehicle_type, notes, personnel_id) VALUES (?, ?, ?, ?)")
+            .run(formatPlate(data.plate_no), vehicle_type, notes, personnel_id || null);
         return info.lastInsertRowid;
     }
 
     static async updateVehicle(id, data) {
-        const { vehicle_type, notes } = data;
-        db.prepare("UPDATE vehicles SET plate_no = ?, vehicle_type = ?, notes = ? WHERE id = ?")
-            .run(formatPlate(data.plate_no), vehicle_type, notes, id);
+        const { vehicle_type, notes, personnel_id } = data;
+        db.prepare("UPDATE vehicles SET plate_no = ?, vehicle_type = ?, notes = ?, personnel_id = ? WHERE id = ?")
+            .run(formatPlate(data.plate_no), vehicle_type, notes, personnel_id || null, id);
     }
 
     static async deleteVehicle(id) {

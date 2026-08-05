@@ -18,7 +18,7 @@ exports.getMetadata = (req, res) => {
         const companies = db.prepare('SELECT id, name FROM companies ORDER BY name').all();
         const locations = db.prepare('SELECT id, name FROM locations ORDER BY name').all();
         const personnel = db.prepare("SELECT id, first_name || ' ' || last_name as name FROM personnel ORDER BY first_name").all();
-        const vehicles = db.prepare('SELECT id, plate_no, vehicle_type FROM vehicles ORDER BY plate_no').all();
+        const vehicles = db.prepare("SELECT v.id, v.plate_no, v.vehicle_type, v.personnel_id, (p.first_name || ' ' || p.last_name) as personnel_name FROM vehicles v LEFT JOIN personnel p ON v.personnel_id = p.id ORDER BY v.plate_no").all();
         const departments = db.prepare('SELECT id, name FROM departments ORDER BY name').all();
         const costCenters = db.prepare('SELECT id, code, name FROM cost_centers ORDER BY name').all();
         const operators = db.prepare('SELECT id, name FROM operators ORDER BY name').all();

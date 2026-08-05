@@ -455,11 +455,21 @@ const initDb = () => {
     )
   `).run();
 
+  // Vehicles table migration
+  try {
+    const columns = db.prepare("PRAGMA table_info(vehicles)").all();
+    if (columns.length > 0 && !columns.some(c => c.name === 'personnel_id')) {
+        console.log("Adding personnel_id to vehicles table...");
+        db.prepare("ALTER TABLE vehicles ADD COLUMN personnel_id INTEGER REFERENCES personnel(id)").run();
+    }
+  } catch (e) { console.log("Vehicles table migration skipped:", e.message); }
+
   db.prepare(`
     CREATE TABLE IF NOT EXISTS vehicles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         plate_no TEXT UNIQUE NOT NULL,
         vehicle_type TEXT,
+        personnel_id INTEGER REFERENCES personnel(id),
         notes TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )

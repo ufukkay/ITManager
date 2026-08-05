@@ -9,7 +9,7 @@ const {
   fetchData, openAddModal, openEditModal, saveItem: saveItemBase, handleDelete
 } = useMasterDataListPage({
   type: 'vehicles',
-  defaultForm: { plate_no: '', vehicle_type: 'Binek', notes: '' },
+  defaultForm: { plate_no: '', vehicle_type: 'Binek', personnel_id: '', notes: '' },
   deleteMessage: {
     title: 'Aracı Sil',
     message: (row) => `"${row.plate_no}" plakalı aracı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
@@ -20,9 +20,10 @@ const {
 const saveItem = () => saveItemBase({ update: 'Araç başarıyla güncellendi', create: 'Yeni araç başarıyla eklendi' })
 
 const columns = [
-  { key: 'plate_no',     label: 'Plaka',     width: '150px', sortable: true },
-  { key: 'vehicle_type', label: 'Araç Tipi', width: '160px', sortable: true },
-  { key: 'notes',        label: 'Notlar',    sortable: false, nowrap: false, filterable: false },
+  { key: 'plate_no',       label: 'Plaka',                   width: '150px', sortable: true },
+  { key: 'vehicle_type',   label: 'Araç Tipi',               width: '160px', sortable: true },
+  { key: 'personnel_name', label: 'Atanan Sürücü / Personel', width: '220px', sortable: true },
+  { key: 'notes',          label: 'Notlar',                  sortable: false, nowrap: false, filterable: false },
 ]
 
 const quickFilters = [
@@ -80,7 +81,10 @@ const handleExcelImport = (e) => {
   reader.readAsBinaryString(file)
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  fetchData()
+  masterData.fetchPersonnel()
+})
 </script>
 
 <template>
@@ -89,7 +93,7 @@ onMounted(fetchData)
     <div class="flex items-center justify-between shrink-0">
       <div>
         <h1 class="text-xl font-semibold text-gray-800 dark:text-slate-100">Araç Envanteri</h1>
-        <p class="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Sistem Genelindeki Tüm Kayıtlı Araçların Listesi</p>
+        <p class="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Sistem Genelindeki Tüm Kayıtlı Araçlar ve Sürücü Zimmetleri</p>
       </div>
     </div>
 
@@ -134,6 +138,14 @@ onMounted(fetchData)
           {{ value || '—' }}
         </span>
       </template>
+
+      <!-- Personel / Sürücü -->
+      <template #cell-personnel_name="{ value }">
+        <span v-if="value" class="inline-flex items-center gap-1.5 font-semibold text-blue-600 dark:text-blue-400">
+          <i class="fas fa-user text-xs"></i> {{ value }}
+        </span>
+        <span v-else class="text-gray-400 dark:text-slate-500 italic">Atanmamış (Boşta)</span>
+      </template>
     </AppTable>
 
     <!-- Modal -->
@@ -161,6 +173,16 @@ onMounted(fetchData)
               <option value="Dorse">Dorse</option>
               <option value="Binek">Binek</option>
               <option value="Hafif Ticari">Hafif Ticari</option>
+            </select>
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase">Atanan Sürücü / Personel</label>
+            <select v-model="form.personnel_id"
+              class="w-full h-11 px-4 border border-gray-200 dark:border-slate-700 rounded-xl outline-none focus:border-[#1a73e8] bg-white dark:bg-slate-900 dark:text-slate-100">
+              <option value="">Atanmamış (Boşta)</option>
+              <option v-for="p in masterData.personnel" :key="p.id" :value="p.id">
+                {{ p.first_name ? `${p.first_name} ${p.last_name}` : (p.name || `Personel #${p.id}`) }}
+              </option>
             </select>
           </div>
           <div class="space-y-1">
