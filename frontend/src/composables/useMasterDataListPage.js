@@ -47,7 +47,7 @@ export function useMasterDataListPage({ type, defaultForm, deleteMessage }) {
       }
       isModalOpen.value = false
     } catch (err) {
-      showToast('Hata: ' + err.message, 'error')
+      showToast('Hata: ' + (err.response?.data?.error || err.message), 'error')
     }
   }
 

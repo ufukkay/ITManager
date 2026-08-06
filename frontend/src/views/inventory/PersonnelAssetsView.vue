@@ -177,9 +177,15 @@
                   class="hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors"
                 >
                   <td class="px-5 py-3">
-                    <div class="font-bold text-gray-900 dark:text-slate-100">{{ asset.serial_no }}</div>
+                    <div class="font-bold text-gray-900 dark:text-slate-100">{{ asset.phone_no || asset.serial_no }}</div>
+                    <div v-if="asset.phone_no && asset.serial_no" class="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">
+                      <i class="fas fa-hashtag mr-1"></i>{{ asset.serial_no }}
+                    </div>
                     <div v-if="asset.barcode" class="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">
                       <i class="fas fa-barcode mr-1"></i>{{ asset.barcode }}
+                    </div>
+                    <div v-if="asset.is_via_vehicle" class="text-[10px] text-indigo-600 dark:text-indigo-400 mt-0.5 font-semibold">
+                      <i class="fas fa-car mr-1"></i>{{ asset.plate_no || 'Araç' }} üzerinden
                     </div>
                   </td>
                   <td class="px-5 py-3 font-semibold text-gray-700 dark:text-slate-300">
@@ -1094,15 +1100,28 @@ const preloadBadges = async () => {
   if (assetStore.assets.length === 0) {
     await assetStore.fetchAssets()
   }
+  if (masterData.vehicles.length === 0) {
+    await masterData.fetchVehicles()
+  }
+
+  const vehicleDriverMap = {}
+  const vehiclePlateMap = {}
+  masterData.vehicles.forEach(v => {
+    if (v.personnel_id) vehicleDriverMap[v.id] = v.personnel_id
+    vehiclePlateMap[v.id] = v.plate_no
+  })
 
   const map = {}
   assetStore.assets.forEach(a => {
-    if (a.personnel_id) {
-      if (!map[a.personnel_id]) {
-        map[a.personnel_id] = { active: [], history: [], totalValue: 0 }
+    const viaVehicle = !a.personnel_id && !!a.vehicle_id
+    const pId = a.personnel_id || (viaVehicle ? vehicleDriverMap[a.vehicle_id] : null)
+    if (pId) {
+      if (!map[pId]) {
+        map[pId] = { active: [], history: [], totalValue: 0 }
       }
-      map[a.personnel_id].active.push(a)
-      map[a.personnel_id].totalValue += (a.purchase_price || 0)
+      const entry = viaVehicle ? { ...a, is_via_vehicle: 1, plate_no: vehiclePlateMap[a.vehicle_id] } : a
+      map[pId].active.push(entry)
+      map[pId].totalValue += (a.purchase_price || 0)
     }
   })
 

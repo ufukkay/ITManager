@@ -9,7 +9,7 @@ const { logActivity } = require('../middleware/logger');
 
 // Import services
 const { parseInvoicePDF } = require('../services/invoiceParser');
-const { parseInvoiceXML } = require('../services/ublParser');
+const { parseInvoiceXML, detectXmlOperator } = require('../services/ublParser');
 const { findPersonnelByPhone, normalizePhone } = require('../services/invoiceMatcher');
 
 const storage = multer.memoryStorage();
@@ -237,6 +237,12 @@ router.post('/upload', hasPermission('sim:edit'), upload.array('file'), async (r
       let operator = fallbackOperator;
       if (originalName.toLowerCase().includes('vodafone')) operator = 'Vodafone';
       if (originalName.toLowerCase().includes('turkcell')) operator = 'Turkcell';
+      // Dosya adı e-arşiv seri numarasıyla adlandırılmış olabilir (Vodafone/Turkcell geçmiyor);
+      // XML içeriğindeki tedarikçi bilgisi dosya adından daha güvenilir.
+      if (isXML) {
+        const detectedOperator = detectXmlOperator(file.buffer);
+        if (detectedOperator) operator = detectedOperator;
+      }
 
       try {
         let extractedRecords = [];

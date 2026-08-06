@@ -1453,7 +1453,7 @@ const saveCheckout = async () => {
     await assetStore.checkoutAsset(selectedAsset.value.id, checkoutForm.value)
     closeCheckoutModal()
   } catch (err) {
-    alert(err)
+    alert(err.response?.data?.error || err.message || 'Zimmet ataması başarısız.')
   }
 }
 
@@ -1463,7 +1463,7 @@ const handleCheckin = async (asset) => {
     try {
       await assetStore.checkinAsset(asset.id, { notes })
     } catch (err) {
-      alert(err)
+      alert(err.response?.data?.error || err.message || 'Zimmet iadesi başarısız.')
     }
   }
 }

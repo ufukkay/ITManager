@@ -419,8 +419,37 @@ class MasterDataService {
 
     static async updateVehicle(id, data) {
         const { vehicle_type, notes, personnel_id } = data;
-        db.prepare("UPDATE vehicles SET plate_no = ?, vehicle_type = ?, notes = ?, personnel_id = ? WHERE id = ?")
-            .run(formatPlate(data.plate_no), vehicle_type, notes, personnel_id || null, id);
+        const pid = personnel_id ? Number(personnel_id) : null;
+
+        let costCenterId = null;
+        if (pid) {
+            const p = db.prepare('SELECT cost_center_id FROM personnel WHERE id = ?').get(pid);
+            costCenterId = p ? p.cost_center_id : null;
+        }
+
+        const transaction = db.transaction(() => {
+            db.prepare("UPDATE vehicles SET plate_no = ?, vehicle_type = ?, notes = ?, personnel_id = ? WHERE id = ?")
+                .run(formatPlate(data.plate_no), vehicle_type, notes, pid, id);
+
+            if (pid) {
+                db.prepare(`
+                    UPDATE invoices
+                    SET personnel_id = ?, cost_center_id = COALESCE(?, cost_center_id)
+                    WHERE phone_no IN (
+                        SELECT phone_no FROM assets WHERE vehicle_id = ? AND phone_no IS NOT NULL
+                    )
+                `).run(pid, costCenterId, id);
+            } else {
+                db.prepare(`
+                    UPDATE invoices
+                    SET personnel_id = NULL
+                    WHERE phone_no IN (
+                        SELECT phone_no FROM assets WHERE vehicle_id = ? AND phone_no IS NOT NULL
+                    )
+                `).run(id);
+            }
+        });
+        transaction();
     }
 
     static async deleteVehicle(id) {

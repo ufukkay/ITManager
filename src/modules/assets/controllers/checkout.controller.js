@@ -14,7 +14,7 @@ exports.checkoutAsset = (req, res) => {
         const asset = db.prepare(`
             SELECT a.*, ast.name as status_name
             FROM assets a
-            JOIN asset_statuses ast ON a.status_id = ast.id
+            LEFT JOIN asset_statuses ast ON a.status_id = ast.id
             WHERE a.id = ?
         `).get(id);
 
@@ -70,7 +70,7 @@ exports.checkoutAsset = (req, res) => {
         res.json({ message: 'Varlık zimmetlendi ve durumu Zimmetli olarak güncellendi.' });
     } catch (err) {
         console.error('checkoutAsset error:', err);
-        res.status(500).json({ error: 'Zimmetleme işlemi sırasında hata oluştu.' });
+        res.status(500).json({ error: err.message || 'Zimmetleme işlemi sırasında hata oluştu.' });
     }
 };
 
