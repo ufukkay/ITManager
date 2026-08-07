@@ -1169,8 +1169,8 @@ function resetPanel() {
 
 /* ── Kart & tablo ────────────────────────────────────────────────────────────── */
 .at-card {
-  background: #fff; border: 1px solid var(--border);
-  border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow);
+  background: #fff; border: none;
+  border-radius: 0; overflow: hidden; box-shadow: none;
   display: flex; flex-direction: column; flex: 1; min-height: 0;
 }
 .at-table-wrap { overflow-x: auto; overflow-y: auto; flex: 1; }
