@@ -82,6 +82,12 @@ export function useTableFilter(rawRowsRef, { perPage: defaultPerPage = 25 } = {}
     currentPage.value = 1
   }
 
+  function applySortDir(key, dir) {
+    sortKey.value = key
+    sortDir.value = dir
+    currentPage.value = 1
+  }
+
   function setColFilter(key, set) {
     const f = { ...colFilters.value }
     const all = uniqueVals(key)
@@ -128,6 +134,7 @@ export function useTableFilter(rawRowsRef, { perPage: defaultPerPage = 25 } = {}
     hasAnyFilter,
     uniqueVals,
     setSort,
+    applySortDir,
     setColFilter,
     removeColFilter,
     clearAll,

@@ -61,6 +61,7 @@ const {
   hasAnyFilter,
   uniqueVals,
   setSort,
+  applySortDir,
   setColFilter,
   removeColFilter,
   clearAll,
@@ -530,6 +531,26 @@ function resetPanel() {
         id="at-filter-panel"
         :style="{ top: panelPos.top + 'px', left: panelPos.left + 'px' }"
       >
+        <!-- A'dan Z'ye / Z'den A'ya Sıralama (Excel Stili) -->
+        <div class="at-panel-sort-section">
+          <button
+            type="button"
+            class="at-panel-sort-btn"
+            :class="{ active: sortKey === openPanelKey && sortDir === 'asc' }"
+            @click="applySortDir(openPanelKey, 'asc')"
+          >
+            <i class="fas fa-arrow-down-a-z text-[11px]"></i> A'dan Z'ye Sırala
+          </button>
+          <button
+            type="button"
+            class="at-panel-sort-btn"
+            :class="{ active: sortKey === openPanelKey && sortDir === 'desc' }"
+            @click="applySortDir(openPanelKey, 'desc')"
+          >
+            <i class="fas fa-arrow-down-z-a text-[11px]"></i> Z'den A'ya Sırala
+          </button>
+        </div>
+
         <!-- Arama -->
         <input
           v-model="panelSearch"
@@ -605,10 +626,41 @@ function resetPanel() {
   max-width: 260px;
   font-family: 'Inter', sans-serif;
 }
+.at-panel-sort-section {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.at-panel-sort-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #374151;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+.at-panel-sort-btn:hover {
+  background: #f3f4f6;
+  color: #1a73e8;
+}
+.at-panel-sort-btn.active {
+  background: #e8f0fe;
+  color: #1a73e8;
+  font-weight: 600;
+}
 .at-panel-search {
   width: 100%; border: none; border-bottom: 1px solid #f0f0f0;
   padding: 8px 12px; font-size: 12px; outline: none;
-  border-radius: 8px 8px 0 0; color: #1f2328; font-family: inherit;
+  border-radius: 0; color: #1f2328; font-family: inherit;
 }
 .at-panel-search:focus { border-bottom-color: #3b82f6; }
 .at-panel-all-row { padding: 6px 12px; border-bottom: 1px solid #f0f0f0; }
