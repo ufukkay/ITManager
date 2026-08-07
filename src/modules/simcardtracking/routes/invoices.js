@@ -8,7 +8,6 @@ const { hasPermission } = require('../../../middleware/auth');
 const { logActivity } = require('../middleware/logger');
 
 // Import services
-const { parseInvoicePDF } = require('../services/invoiceParser');
 const { parseInvoiceXML, detectXmlOperator } = require('../services/ublParser');
 const { findPersonnelByPhone, normalizePhone } = require('../services/invoiceMatcher');
 
@@ -234,28 +233,23 @@ router.post('/upload', hasPermission('sim:edit'), upload.array('file'), async (r
 
     for (const file of req.files) {
       const originalName = file.originalname;
-      const isPDF = originalName.toLowerCase().endsWith('.pdf');
       const isXML = originalName.toLowerCase().endsWith('.xml');
 
-      if (!isPDF && !isXML) continue;
+      if (!isXML) {
+        debugInfo.push({ file: originalName, error: 'Sadece XML dosyaları desteklenir.' });
+        continue;
+      }
 
       let operator = fallbackOperator;
       if (originalName.toLowerCase().includes('vodafone')) operator = 'Vodafone';
       if (originalName.toLowerCase().includes('turkcell')) operator = 'Turkcell';
       // Dosya adı e-arşiv seri numarasıyla adlandırılmış olabilir (Vodafone/Turkcell geçmiyor);
       // XML içeriğindeki tedarikçi bilgisi dosya adından daha güvenilir.
-      if (isXML) {
-        const detectedOperator = detectXmlOperator(file.buffer);
-        if (detectedOperator) operator = detectedOperator;
-      }
+      const detectedOperator = detectXmlOperator(file.buffer);
+      if (detectedOperator) operator = detectedOperator;
 
       try {
-        let extractedRecords = [];
-        if (isPDF) {
-          extractedRecords = await parseInvoicePDF(file.buffer);
-        } else if (isXML) {
-          extractedRecords = await parseInvoiceXML(file.buffer);
-        }
+        const extractedRecords = await parseInvoiceXML(file.buffer);
 
         if (!extractedRecords.length) {
           debugInfo.push({ file: originalName, error: 'Ayrıştırılabilen kayıt bulunamadı.' });

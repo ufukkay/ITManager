@@ -106,11 +106,6 @@ const routes = [
         path: 'voice',
         name: 'sim-voice',
         component: () => import('../views/sim-tracking/VoiceView.vue')
-      },
-      {
-        path: 'transfer',
-        name: 'sim-transfer',
-        component: () => import('../views/sim-tracking/SimTransferView.vue')
       }
     ]
   },
@@ -245,11 +240,6 @@ const routes = [
         component: () => import('../views/master-data/LicensingListView.vue')
       },
       {
-        path: 'sim-cards',
-        name: 'master-sims',
-        component: () => import('../views/master-data/SimCardListView.vue')
-      },
-      {
         path: 'smtp-settings',
         name: 'master-smtp-settings',
         component: () => import('../views/master-data/SmtpSettingsView.vue'),
@@ -289,26 +279,21 @@ const routes = [
       }
     ]
   },
-  // Maliyet Yönetimi (Masraf Yansıtma)
+  // Maliyet Yönetimi (Masraf Yansıtma, Personel Destekleri, Raporlar)
   {
     path: '/cost-management',
-    name: 'cost-management',
-    component: () => import('../views/cost-management/InvoicesView.vue'),
-    meta: { layout: 'main', requiresAuth: true, fullBleed: true, permission: 'invoice:view' }
+    component: () => import('../layouts/CostManagementLayout.vue'),
+    meta: { layout: 'main', requiresAuth: true, fullBleed: true, permission: 'invoice:view' },
+    children: [
+      { path: '', redirect: '/cost-management/invoices' },
+      { path: 'invoices', name: 'cost-management-invoices', component: () => import('../views/cost-management/InvoicesView.vue') },
+      { path: 'personnel-benefits', name: 'cost-management-personnel-benefits', component: () => import('../views/cost-management/PersonnelBenefitsView.vue') },
+      { path: 'reports', name: 'cost-management-reports', component: () => import('../views/reports/ReportsView.vue') }
+    ]
   },
-  // Personel Aylık Destekleri (Teknoloji/Araç-Yakıt Bütçesi)
-  {
-    path: '/cost-management/personnel-benefits',
-    name: 'cost-management-personnel-benefits',
-    component: () => import('../views/cost-management/PersonnelBenefitsView.vue'),
-    meta: { layout: 'main', requiresAuth: true, fullBleed: true, permission: 'invoice:view' }
-  },
-  // Raporlar ve Analitik
   {
     path: '/reports',
-    name: 'reports',
-    component: () => import('../views/reports/ReportsView.vue'),
-    meta: { layout: 'main', requiresAuth: true, adminOnly: true }
+    redirect: '/cost-management/reports'
   },
   {
     path: '/:pathMatch(.*)*',

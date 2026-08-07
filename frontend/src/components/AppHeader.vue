@@ -109,6 +109,62 @@ const markAllRead = async () => {
   } catch (e) { /* sessizce geç */ }
 }
 
+const currentModuleTitle = computed(() => {
+  const path = route.path
+  if (path.startsWith('/inventory')) {
+    if (path.includes('/matrix')) return 'Envanter Kumanda Matrisi'
+    if (path.includes('/assets')) return 'Envanter & Zimmet / Varlık Listesi'
+    if (path.includes('/personnel')) return 'Envanter & Zimmet / Personel Zimmetleri'
+    if (path.includes('/definitions')) return 'Envanter & Zimmet / Varlık Tanımları'
+    if (path.includes('/audit')) return 'Envanter & Zimmet / Saha Sayımı'
+    if (path.includes('/zimmet-designer')) return 'Envanter & Zimmet / Form Tasarımcısı'
+    if (path.includes('/label-designer')) return 'Envanter & Zimmet / Etiket Tasarımcısı'
+    return 'Envanter & Zimmet Yönetimi'
+  }
+  if (path.startsWith('/sim-takip')) {
+    if (path.includes('/m2m')) return 'GSM & M2M / M2M Hatları'
+    if (path.includes('/data')) return 'GSM & M2M / Data Hatları'
+    if (path.includes('/voice')) return 'GSM & M2M / Ses Hatları'
+    if (path.includes('/transfer')) return 'GSM & M2M / Hat Devir & Transfer'
+    return 'GSM & M2M Takibi'
+  }
+  if (path.startsWith('/licensing')) {
+    if (path.includes('/m365')) return 'Lisans Yönetimi / M365 Atamaları'
+    if (path.includes('/itarian')) return 'Lisans Yönetimi / Itarian Lisansları'
+    return 'Lisans Yönetimi'
+  }
+  if (path.startsWith('/monitoring')) {
+    if (path.includes('/cloud')) return 'Sunucu & Altyapı / Bulut Sunucular'
+    if (path.includes('/vodafone')) return 'Sunucu & Altyapı / Vodafone Sunucular'
+    if (path.includes('/local')) return 'Sunucu & Altyapı / Yerel Sunucular'
+    return 'Sunucu & Altyapı İzleme'
+  }
+  if (path.startsWith('/hr-requests')) return 'İnsan Kaynakları Bildirimleri'
+  if (path.startsWith('/helpdesk')) return 'Yardım Masası & Destek'
+  if (path.startsWith('/master-data')) {
+    if (path.includes('/companies')) return 'Ana Veri / Şirketler'
+    if (path.includes('/departments')) return 'Ana Veri / Departmanlar'
+    if (path.includes('/cost-centers')) return 'Ana Veri / Masraf Merkezleri'
+    if (path.includes('/personnel')) return 'Ana Veri / Personel Listesi'
+    if (path.includes('/vehicles')) return 'Ana Veri / Araç Listesi'
+    if (path.includes('/locations')) return 'Ana Veri / Lokasyon Listesi'
+    if (path.includes('/packages')) return 'Ana Veri / Lisans Paketleri'
+    if (path.includes('/servers')) return 'Ana Veri / Sunucular'
+    if (path.includes('/m365-settings')) return 'Ana Veri / M365 Ayarları'
+    if (path.includes('/smtp')) return 'Ana Veri / E-Posta Ayarları'
+    if (path.includes('/system-update')) return 'Ana Veri / Sistem Güncelleme'
+    return 'Ana Veri & Parametreler'
+  }
+  if (path.startsWith('/cost-management')) {
+    if (path.includes('/invoices')) return 'Fatura & Maliyet Yönetimi / Faturalar & Masraf Yansıtma'
+    if (path.includes('/personnel-benefits')) return 'Fatura & Maliyet Yönetimi / Personel Aylık Destekleri'
+    if (path.includes('/reports')) return 'Fatura & Maliyet Yönetimi / Maliyet & Finans Raporları'
+    return 'Fatura & Maliyet Yönetimi'
+  }
+  if (path.startsWith('/reports')) return 'Raporlar & Analizler'
+  return ''
+})
+
 const handleClickOutside = (e) => {
   if (dropdownRef.value && !dropdownRef.value.contains(e.target)) {
     dropdownOpen.value = false
@@ -138,10 +194,19 @@ onUnmounted(() => {
 <template>
   <header class="h-12 border-b border-gray-200 dark:border-slate-800 flex items-center px-6 gap-6 bg-white dark:bg-slate-900 shrink-0 sticky top-0 z-50">
 
-    <!-- Logo -->
-    <router-link to="/" class="flex items-center gap-2 shrink-0">
-      <span class="text-[17px] font-bold text-gray-900 dark:text-white tracking-tight">ITManager</span>
-    </router-link>
+    <!-- Logo & Active Module Title -->
+    <div class="flex items-center gap-3 shrink-0">
+      <router-link to="/" class="flex items-center gap-2">
+        <span class="text-[17px] font-bold text-gray-900 dark:text-white tracking-tight">ITManager</span>
+      </router-link>
+
+      <template v-if="currentModuleTitle">
+        <span class="h-4 w-[1px] bg-gray-200 dark:bg-slate-700"></span>
+        <span class="text-[12px] font-semibold text-gray-400 dark:text-slate-500 tracking-wide select-none">
+          {{ currentModuleTitle }}
+        </span>
+      </template>
+    </div>
     <div class="flex-1"></div>
 
     <!-- Actions -->

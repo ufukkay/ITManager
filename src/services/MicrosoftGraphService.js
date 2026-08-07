@@ -14,13 +14,14 @@ function parseName(displayName, givenName, surname) {
     return { first_name: givenName.trim(), last_name: surname.trim() };
   }
   if (displayName) {
-    const parts = displayName.trim().split(/\s+/);
+    const cleaned = displayName.replace(/\s*\|.*$/, '').replace(/\s*\(.*\)$/, '').trim();
+    const parts = cleaned.split(/\s+/);
     if (parts.length >= 2) {
       const last = parts[parts.length - 1];
       const first = parts.slice(0, -1).join(' ');
       return { first_name: first, last_name: last };
     }
-    return { first_name: displayName.trim(), last_name: '' };
+    return { first_name: cleaned, last_name: '' };
   }
   return { first_name: '', last_name: '' };
 }
@@ -304,9 +305,15 @@ class MicrosoftGraphService {
 
     // Email ve isim bazlı eşleştirme haritası
     const existingByEmail = {};
+    const existingByEmailPrefix = {};
     const existingByNormName = {};
     existingPersonnel.forEach(p => {
-      if (p.email) existingByEmail[p.email.toLowerCase()] = p;
+      if (p.email) {
+        const em = p.email.toLowerCase();
+        existingByEmail[em] = p;
+        const prefix = em.split('@')[0];
+        if (prefix && !existingByEmailPrefix[prefix]) existingByEmailPrefix[prefix] = p;
+      }
       const normKey = `${normalizeTr(p.first_name)}.${normalizeTr(p.last_name)}`;
       if (!existingByNormName[normKey]) existingByNormName[normKey] = p;
     });
@@ -351,11 +358,18 @@ class MicrosoftGraphService {
       if (azureUser.id) {
         existing = db.prepare("SELECT * FROM personnel WHERE entra_id = ?").get(azureUser.id);
       }
-      // 2. Email ile eşleşme
+      // 2. Email tam eşleşme
       if (!existing && email) {
         existing = existingByEmail[email];
       }
-      // 3. Normalize isim ile eşleşme
+      // 3. Email kullanıcı adı prefix'i (örn. anil.sorlu) ile eşleşme
+      if (!existing && email) {
+        const prefix = email.split('@')[0];
+        if (prefix && existingByEmailPrefix[prefix]) {
+          existing = existingByEmailPrefix[prefix];
+        }
+      }
+      // 4. Normalize isim ile eşleşme
       if (!existing && normKey && normKey !== '.') {
         existing = existingByNormName[normKey];
       }

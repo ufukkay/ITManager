@@ -524,12 +524,12 @@ onMounted(() => {
 
             <div @click="fileInput.click()"
               class="border-2 border-dashed border-gray-200 dark:border-slate-700 rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer hover:border-blue-300 dark:hover:border-blue-500/50 hover:bg-blue-50/20 dark:hover:bg-blue-500/5 transition-all group">
-              <input type="file" ref="fileInput" multiple @change="e => selectedFiles = [...e.target.files]" class="hidden" :accept="uploadType === 'm365' ? '.xlsx,.xls' : '.pdf,.xml'">
+              <input type="file" ref="fileInput" multiple @change="e => selectedFiles = [...e.target.files]" class="hidden" :accept="uploadType === 'm365' ? '.xlsx,.xls' : '.xml'">
               <div class="w-14 h-14 bg-gray-50 dark:bg-slate-900 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                 <i class="fas fa-cloud-upload-alt text-xl text-gray-400 dark:text-slate-500 group-hover:text-blue-500 dark:group-hover:text-blue-400"></i>
               </div>
               <span class="text-[13px] font-bold text-gray-600 dark:text-slate-300 text-center">
-                {{ uploadType === 'm365' ? 'Excel dosyasını seçin' : 'PDF veya XML dosyalarını seçin' }}
+                {{ uploadType === 'm365' ? 'Excel dosyasını seçin' : 'XML dosyalarını seçin' }}
               </span>
 
               <div v-if="selectedFiles.length > 0" class="mt-4 flex flex-wrap gap-2 justify-center">

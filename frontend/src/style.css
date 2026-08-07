@@ -4,6 +4,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Scrollbar Hider Utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
 :root {
   --bg-primary: #f8f9fa;
   --bg-secondary: #ffffff;

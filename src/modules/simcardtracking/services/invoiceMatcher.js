@@ -6,7 +6,14 @@ const normalizePhone = (value) => {
   return digits.length === 10 ? '0' + digits : digits;
 };
 
-const sanitizePhoneSQL = (column) => `'0' || substr(replace(replace(replace(replace(replace(COALESCE(${column}, ''), ' ', ''), '-', ''), '(', ''), ')', ''), '+', ''), -10)`;
+// Bazı personel telefonları "+90 531 881 85 46 / 3111" gibi dahili numarasıyla birlikte
+// kayıtlı — '/' sonrasını atmadan sadece ayraçları temizlemek son 10 haneyi dahili
+// rakamlarıyla karıştırıp yanlış numara üretiyordu. Önce '/' varsa öncesini alıyoruz.
+const sanitizePhoneSQL = (column) => {
+  const base = `COALESCE(${column}, '')`;
+  const beforeSlash = `CASE WHEN instr(${base}, '/') > 0 THEN substr(${base}, 1, instr(${base}, '/') - 1) ELSE ${base} END`;
+  return `'0' || substr(replace(replace(replace(replace(replace(${beforeSlash}, ' ', ''), '-', ''), '(', ''), ')', ''), '+', ''), -10)`;
+};
 const ASSET_PHONE_EXPR = sanitizePhoneSQL('a.phone_no');
 const PERSONNEL_PHONE_EXPR = sanitizePhoneSQL('p.phone');
 

@@ -915,33 +915,40 @@ class MasterDataService {
     }
 
     static async getReportByPersonnel(filters = {}) {
+        // Dönem/operatör faturaya ait filtrelerdir — JOIN koşuluna eklenir ki faturasız
+        // personel de LEFT JOIN sayesinde 0 tutarla listede kalsın (WHERE'e koyulsaydı
+        // eşleşmeyen personel LEFT JOIN'e rağmen sonuçtan tamamen düşerdi).
+        let joinClauses = ['i.personnel_id = p.id'];
         let whereClauses = ['1=1'];
-        const params = [];
+        const joinParams = [];
+        const whereParams = [];
 
         if (filters.period) {
-            whereClauses.push('i.period = ?');
-            params.push(filters.period);
+            joinClauses.push('i.period = ?');
+            joinParams.push(filters.period);
+        }
+        if (filters.operator) {
+            joinClauses.push('i.operator = ?');
+            joinParams.push(filters.operator);
         }
         if (filters.company_id) {
             whereClauses.push('p.company_id = ?');
-            params.push(filters.company_id);
-        }
-        if (filters.operator) {
-            whereClauses.push('i.operator = ?');
-            params.push(filters.operator);
+            whereParams.push(filters.company_id);
         }
         if (filters.cost_center_id) {
             whereClauses.push('p.cost_center_id = ?');
-            params.push(filters.cost_center_id);
+            whereParams.push(filters.cost_center_id);
         }
         if (filters.department_id) {
             whereClauses.push('p.department_id = ?');
-            params.push(filters.department_id);
+            whereParams.push(filters.department_id);
         }
 
+        const joinSQL = joinClauses.join(' AND ');
         const whereSQL = whereClauses.join(' AND ');
+        const params = [...joinParams, ...whereParams];
 
-        // Personel bazlı rapor — masraf kalemi personelden gelir
+        // Personel bazlı rapor — tüm personel listelenir (faturası olmayanlar da 0 tutarla görünür)
         const rows = db.prepare(`
             SELECT 
                 p.id as personnel_id,
@@ -961,27 +968,43 @@ class MasterDataService {
                     FROM m365_allocation_users mau
                     JOIN m365_allocations ma ON mau.allocation_id = ma.id
                     JOIN m365_licenses ml ON ma.license_id = ml.id
-                    WHERE mau.personnel_id = p.id) as m365_live_license_total
-            FROM invoices i
-            LEFT JOIN personnel p ON i.personnel_id = p.id
+                    WHERE mau.personnel_id = p.id) as m365_live_license_total,
+                (SELECT COALESCE(SUM(
+                    CASE 
+                        WHEN a.purchase_price > 0 
+                             AND a.purchase_date IS NOT NULL
+                             AND a.lifetime_months > 0
+                             AND (
+                               (CAST(strftime('%Y', 'now') AS INTEGER) - CAST(strftime('%Y', a.purchase_date) AS INTEGER)) * 12 +
+                               (CAST(strftime('%m', 'now') AS INTEGER) - CAST(strftime('%m', a.purchase_date) AS INTEGER))
+                             ) < a.lifetime_months
+                        THEN ROUND(CAST(a.purchase_price AS REAL) / a.lifetime_months, 2)
+                        ELSE 0
+                    END
+                ), 0)
+                FROM assets a
+                WHERE a.personnel_id = p.id AND a.status_id NOT IN (SELECT id FROM asset_statuses WHERE name IN ('Hurda','Kayıp','Depo'))
+                ) as amortisman_total
+            FROM personnel p
+            LEFT JOIN invoices i ON ${joinSQL}
             LEFT JOIN companies c ON p.company_id = c.id
             LEFT JOIN cost_centers cc ON p.cost_center_id = cc.id
             LEFT JOIN departments d ON p.department_id = d.id
             WHERE ${whereSQL}
-            GROUP BY i.personnel_id
+            GROUP BY p.id
             ORDER BY grand_total DESC
         `).all(...params);
 
         // Toplamlar
         const totals = db.prepare(`
             SELECT
-                COUNT(DISTINCT i.personnel_id) as total_personnel,
+                COUNT(DISTINCT p.id) as total_personnel,
                 SUM(CASE WHEN i.invoice_type = 'gsm' THEN i.total_amount ELSE 0 END) as total_gsm,
                 SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as total_m365,
                 SUM(i.total_amount) as total_amount,
                 COUNT(DISTINCT i.id) as total_invoices
-            FROM invoices i
-            LEFT JOIN personnel p ON i.personnel_id = p.id
+            FROM personnel p
+            LEFT JOIN invoices i ON ${joinSQL}
             WHERE ${whereSQL}
         `).get(...params);
 
@@ -1039,13 +1062,18 @@ class MasterDataService {
 
         // Masraf merkezi kırılımı (personelden gelir)
         const byCostCenter = db.prepare(`
-            SELECT 
+            SELECT
                 COALESCE(cc.code || '-' || cc.name, 'Tanımsız') as cost_center_name,
                 cc.id as cost_center_id,
                 SUM(CASE WHEN i.invoice_type = 'gsm' THEN i.total_amount ELSE 0 END) as gsm_total,
-                SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as m365_total,
                 SUM(i.total_amount) as grand_total,
-                COUNT(DISTINCT i.personnel_id) as personnel_count
+                COUNT(DISTINCT i.personnel_id) as personnel_count,
+                (SELECT COALESCE(SUM(ml.unit_price), 0)
+                    FROM m365_allocation_users mau
+                    JOIN m365_allocations ma ON mau.allocation_id = ma.id
+                    JOIN m365_licenses ml ON ma.license_id = ml.id
+                    JOIN personnel p2 ON mau.personnel_id = p2.id
+                    WHERE p2.cost_center_id = cc.id) as m365_live_license_total
             FROM invoices i
             LEFT JOIN personnel p ON i.personnel_id = p.id
             LEFT JOIN cost_centers cc ON p.cost_center_id = cc.id
@@ -1073,7 +1101,7 @@ class MasterDataService {
 
         // Toplamlar
         const totals = db.prepare(`
-            SELECT 
+            SELECT
                 SUM(i.total_amount) as total_amount,
                 SUM(i.amount) as net_amount,
                 SUM(i.tax_kdv) as total_kdv,
@@ -1084,7 +1112,66 @@ class MasterDataService {
             WHERE ${whereSQL}
         `).get(...params);
 
-        return { byType, byCostCenter, monthlyTrend, totals };
+        // Canlı Microsoft lisansları (Azure atamasından, USD) — lisans planı bazında kırılım.
+        // Faturaya değil güncel atamaya dayandığından dönem/operatör filtresi uygulanmaz.
+        const liveWhere = ['1=1'];
+        const liveParams = [];
+        if (filters.company_id) { liveWhere.push('p.company_id = ?'); liveParams.push(filters.company_id); }
+        if (filters.cost_center_id) { liveWhere.push('p.cost_center_id = ?'); liveParams.push(filters.cost_center_id); }
+        if (filters.department_id) { liveWhere.push('p.department_id = ?'); liveParams.push(filters.department_id); }
+        const m365Live = db.prepare(`
+            SELECT
+                ml.id as license_id,
+                ml.name as license_name,
+                ml.currency,
+                ml.unit_price,
+                COUNT(mau.id) as seat_count,
+                SUM(COALESCE(ml.unit_price, 0)) as monthly_cost
+            FROM m365_allocation_users mau
+            JOIN m365_allocations ma ON mau.allocation_id = ma.id
+            JOIN m365_licenses ml ON ma.license_id = ml.id
+            JOIN personnel p ON mau.personnel_id = p.id
+            WHERE ${liveWhere.join(' AND ')}
+            GROUP BY ml.id
+            ORDER BY monthly_cost DESC
+        `).all(...liveParams);
+        const m365LiveTotal = m365Live.reduce((sum, r) => sum + (r.monthly_cost || 0), 0);
+
+        // Amortisman (aylık, TL) — zimmetli fiziksel varlıklar, kategori bazında kırılım.
+        // SIM Kart hariç (o zaten aylık faturayla geliyor, amortismana tabi değil).
+        const amortisman = db.prepare(`
+            SELECT
+                ac.id as category_id,
+                ac.name as category_name,
+                COUNT(*) as asset_count,
+                SUM(CASE
+                    WHEN a.purchase_price > 0
+                         AND a.purchase_date IS NOT NULL
+                         AND a.lifetime_months > 0
+                         AND (
+                           (CAST(strftime('%Y', 'now') AS INTEGER) - CAST(strftime('%Y', a.purchase_date) AS INTEGER)) * 12 +
+                           (CAST(strftime('%m', 'now') AS INTEGER) - CAST(strftime('%m', a.purchase_date) AS INTEGER))
+                         ) < a.lifetime_months
+                    THEN ROUND(CAST(a.purchase_price AS REAL) / a.lifetime_months, 2)
+                    ELSE 0
+                END) as monthly_amortisman
+            FROM assets a
+            JOIN asset_models am ON a.model_id = am.id
+            JOIN asset_categories ac ON am.category_id = ac.id
+            JOIN personnel p ON a.personnel_id = p.id
+            WHERE ac.name != 'SIM Kart'
+              AND a.status_id NOT IN (SELECT id FROM asset_statuses WHERE name IN ('Hurda','Kayıp','Depo'))
+              AND ${liveWhere.join(' AND ')}
+            GROUP BY ac.id
+            ORDER BY monthly_amortisman DESC
+        `).all(...liveParams);
+        const amortismanTotal = amortisman.reduce((sum, r) => sum + (r.monthly_amortisman || 0), 0);
+
+        return {
+            byType, byCostCenter, monthlyTrend, totals,
+            m365Live, m365LiveTotal: parseFloat(m365LiveTotal.toFixed(2)),
+            amortisman, amortismanTotal: parseFloat(amortismanTotal.toFixed(2))
+        };
     }
 
     static async getReportByCompany(filters = {}) {
@@ -1141,13 +1228,18 @@ class MasterDataService {
         let costCenterDetail = [];
         if (filters.company_id) {
             costCenterDetail = db.prepare(`
-                SELECT 
+                SELECT
                     COALESCE(cc.code || '-' || cc.name, 'Tanımsız') as cost_center_name,
                     cc.id as cost_center_id,
                     SUM(CASE WHEN i.invoice_type = 'gsm' THEN i.total_amount ELSE 0 END) as gsm_total,
-                    SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as m365_total,
                     SUM(i.total_amount) as grand_total,
-                    COUNT(DISTINCT i.personnel_id) as personnel_count
+                    COUNT(DISTINCT i.personnel_id) as personnel_count,
+                    (SELECT COALESCE(SUM(ml.unit_price), 0)
+                        FROM m365_allocation_users mau
+                        JOIN m365_allocations ma ON mau.allocation_id = ma.id
+                        JOIN m365_licenses ml ON ma.license_id = ml.id
+                        JOIN personnel p2 ON mau.personnel_id = p2.id
+                        WHERE p2.cost_center_id = cc.id) as m365_live_license_total
                 FROM invoices i
                 LEFT JOIN personnel p ON i.personnel_id = p.id
                 LEFT JOIN cost_centers cc ON p.cost_center_id = cc.id
@@ -1192,7 +1284,7 @@ class MasterDataService {
 
         // Genel toplam
         const totals = db.prepare(`
-            SELECT 
+            SELECT
                 SUM(i.total_amount) as total_amount,
                 COUNT(DISTINCT p.company_id) as total_companies,
                 COUNT(DISTINCT i.personnel_id) as total_personnel
@@ -1200,6 +1292,23 @@ class MasterDataService {
             LEFT JOIN personnel p ON i.personnel_id = p.id
             WHERE ${whereSQL}
         `).get(...params);
+
+        // Canlı M365 lisans maliyeti (USD) — personel raporundaki aynı mantık, dönem/operatör
+        // filtresi uygulanmaz (faturaya değil güncel Azure atamasına dayanır).
+        const liveWhere = ['1=1'];
+        const liveParams = [];
+        if (filters.company_id) { liveWhere.push('p.company_id = ?'); liveParams.push(filters.company_id); }
+        if (filters.cost_center_id) { liveWhere.push('p.cost_center_id = ?'); liveParams.push(filters.cost_center_id); }
+        if (filters.department_id) { liveWhere.push('p.department_id = ?'); liveParams.push(filters.department_id); }
+        const liveTotal = db.prepare(`
+            SELECT COALESCE(SUM(ml.unit_price), 0) as total
+            FROM m365_allocation_users mau
+            JOIN m365_allocations ma ON mau.allocation_id = ma.id
+            JOIN m365_licenses ml ON ma.license_id = ml.id
+            JOIN personnel p ON mau.personnel_id = p.id
+            WHERE ${liveWhere.join(' AND ')}
+        `).get(...liveParams);
+        totals.total_m365_live = parseFloat((liveTotal.total || 0).toFixed(2));
 
         return { byCompany, costCenterDetail, monthlyTrend, totals };
     }

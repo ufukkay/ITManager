@@ -1,7 +1,7 @@
 <template>
   <div class="h-full flex flex-col bg-white dark:bg-slate-800 dark:bg-slate-900 overflow-hidden">
     <!-- HEADER -->
-    <header class="h-14 border-b border-gray-100 dark:border-slate-800 dark:border-slate-800 flex items-center px-6 justify-between bg-white dark:bg-slate-800 dark:bg-slate-800 shrink-0">
+    <header class="h-14 border-b border-gray-100 dark:border-slate-800 flex items-center px-6 justify-between bg-white dark:bg-slate-800 shrink-0 gap-4">
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-[#1a73e8] dark:text-blue-400 flex items-center justify-center font-bold text-sm">
           <i class="fas fa-boxes"></i>
@@ -11,28 +11,35 @@
         </div>
       </div>
 
-      <!-- ACTIONS (SHRINK-0) -->
-      <div class="flex items-center gap-1.5 shrink-0">
+      <!-- SEARCH & ACTIONS (SHRINK-0) -->
+      <div class="flex items-center gap-2 shrink-0">
+        <!-- Bulk Export Button (Appears left of Search Input) -->
         <button 
           v-if="selectedAssetIds.length > 0"
-          @click="openBatchStickerModal"
-          class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11.5px] rounded-lg transition-colors whitespace-nowrap shadow-sm flex items-center gap-1.5 animate-pulse"
+          @click="exportSelectedToExcel"
+          class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11.5px] rounded-lg transition-colors whitespace-nowrap shadow-sm flex items-center gap-1.5"
         >
-          <i class="fas fa-barcode"></i> Toplu Etiket Yazdır ({{ selectedAssetIds.length }})
+          <i class="fas fa-file-excel"></i> Seçilenleri Excel İndir ({{ selectedAssetIds.length }})
         </button>
-        <input 
-          type="file" 
-          ref="excelInput" 
-          class="hidden" 
-          accept=".xlsx, .xls" 
-          @change="handleExcelImport" 
-        />
-        <button @click="downloadTemplate" class="px-2.5 py-1.5 bg-gray-100 dark:bg-slate-700 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 dark:text-slate-300 font-bold text-[11.5px] rounded-lg transition-colors whitespace-nowrap" v-if="authStore.hasPermission('asset:edit')" title="Excel Şablonu İndir">
-          <i class="fas fa-file-download mr-1"></i>Şablon
-        </button>
-        <button @click="$refs.excelInput.click()" class="px-2.5 py-1.5 bg-gray-100 dark:bg-slate-700 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 dark:text-slate-300 font-bold text-[11.5px] rounded-lg transition-colors whitespace-nowrap" v-if="authStore.hasPermission('asset:edit')" title="Excel ile Yükle">
-          <i class="fas fa-file-import mr-1"></i>Excel Yükle
-        </button>
+
+        <!-- Global Search Input -->
+        <div class="relative w-64 md:w-80">
+          <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Tüm verilerde ara (Seri No, Barkod, Personel, Marka, Model...)"
+            class="w-full h-8 pl-8 pr-7 text-xs bg-gray-50 dark:bg-slate-700/50 border border-gray-200 dark:border-slate-700 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 focus:outline-none focus:border-[#1a73e8] focus:bg-white dark:focus:bg-slate-900 transition-colors"
+          />
+          <button
+            v-if="searchQuery"
+            @click="searchQuery = ''"
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 text-xs p-1"
+            title="Temizle"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
         <button @click="openConfigModal" class="px-2.5 py-1.5 bg-gray-100 dark:bg-slate-700 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 dark:text-slate-300 font-bold text-[11.5px] rounded-lg transition-colors whitespace-nowrap" title="Kategori, Marka & Model Tanımlamaları">
           <i class="fas fa-cog mr-1"></i>Tanımlamalar
         </button>
@@ -68,10 +75,19 @@
           </div>
         </template>
 
-        <!-- Cell: Device / Model -->
-        <template #cell-device_model="{ row }">
-          <div class="font-semibold text-gray-700 dark:text-slate-300">{{ row.brand_name }} {{ row.model_name }}</div>
-          <div class="text-[10.5px] text-gray-400 dark:text-slate-500">{{ row.category_name }}</div>
+        <!-- Cell: Category -->
+        <template #cell-category_name="{ row }">
+          <div class="font-medium text-gray-800 dark:text-slate-200">{{ row.category_name || '-' }}</div>
+        </template>
+
+        <!-- Cell: Brand -->
+        <template #cell-brand_name="{ row }">
+          <div class="font-semibold text-gray-900 dark:text-slate-100">{{ row.brand_name || '-' }}</div>
+        </template>
+
+        <!-- Cell: Model -->
+        <template #cell-model_name="{ row }">
+          <div class="font-semibold text-gray-700 dark:text-slate-300">{{ row.model_name || '-' }}</div>
         </template>
 
         <!-- Cell: Status -->
@@ -733,12 +749,14 @@ const { showToast } = useToast()
 
 // Table Columns for AppTable
 const columns = [
-  { key: 'serial_no', label: 'Seri No / Envanter No', sortable: true, width: '220px' },
-  { key: 'device_model', label: 'Cihaz / Model', sortable: true, width: '200px' },
+  { key: 'serial_no', label: 'Seri No / Envanter No', sortable: true, width: '210px' },
+  { key: 'category_name', label: 'Kategori', sortable: true, width: '130px' },
+  { key: 'brand_name', label: 'Marka', sortable: true, width: '130px' },
+  { key: 'model_name', label: 'Model', sortable: true, width: '170px' },
   { key: 'status_name', label: 'Durum', sortable: true, width: '130px' },
   { key: 'owner_display', label: 'Şirket & Konum / Kullanıcı', sortable: true },
-  { key: 'documents', label: 'Belgeler', sortable: false, width: '140px' },
-  { key: 'monthly_cost', label: 'Aylık Amortisman', sortable: true, align: 'right', width: '170px' },
+  { key: 'documents', label: 'Belgeler', sortable: false, width: '130px' },
+  { key: 'monthly_cost', label: 'Aylık Amortisman', sortable: true, align: 'right', width: '150px' },
 ]
 
 const tableQuickFilters = computed(() => [
@@ -853,6 +871,39 @@ const openBatchStickerModal = () => {
   selectedStickerAsset.value = null
   batchStickerAssets.value = assetStore.assets.filter(a => selectedAssetIds.value.includes(a.id))
   showStickerModal.value = true
+}
+
+const exportSelectedToExcel = () => {
+  if (!selectedAssetIds.value.length) return
+
+  const selectedAssets = (assetStore.assets || []).filter(a => selectedAssetIds.value.includes(a.id))
+  if (!selectedAssets.length) return
+
+  const dataToExport = selectedAssets.map(a => ({
+    'Seri No / Tel No': a.phone_no || a.serial_no || '',
+    'Barkod': a.barcode || '',
+    'Kategori': a.category_name || '',
+    'Marka': a.brand_name || '',
+    'Model': a.model_name || '',
+    'Zimmet Sahibi / Konum': a.personnel_name || a.location_name || a.vehicle_plate_no || a.department_name || a.cost_center_name || 'Depoda (Boşta)',
+    'Zimmet Tipi': a.personnel_id ? 'Personel' : a.location_id ? 'Lokasyon' : a.vehicle_id ? 'Araç' : a.department_id ? 'Departman' : a.cost_center_id ? 'Masraf Yeri' : 'Depo',
+    'Şirket': a.company_name || '',
+    'Departman': a.department_name || '',
+    'Masraf Yeri': a.cost_center_name || '',
+    'Alış Fiyatı (₺)': a.purchase_price || 0,
+    'Alış Tarihi': a.purchase_date ? new Date(a.purchase_date).toLocaleDateString('tr-TR') : '',
+    'Faydalı Ömür (Ay)': a.lifetime_months || 60,
+    'Durum': a.status_name || '',
+    'Açıklama': a.notes || ''
+  }))
+
+  const worksheet = XLSX.utils.json_to_sheet(dataToExport)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Secili Varliklar')
+
+  const dateStr = new Date().toISOString().slice(0, 10)
+  XLSX.writeFile(workbook, `secili-envanter-varliklari-${dateStr}.xlsx`)
+  showToast(`✓ ${selectedAssets.length} adet varlık Excel dosyası olarak indirildi.`, 'success')
 }
 
 // Forms & States

@@ -23,7 +23,6 @@ const menuSections = [
       { name: 'Araç Envanteri', icon: 'fa-truck-moving', path: '/master-data/vehicles' },
       { name: 'Lokasyonlar', icon: 'fa-map-marker-alt', path: '/master-data/locations' },
       { name: 'Sunucu Envanteri', icon: 'fa-server', path: '/master-data/servers' },
-      { name: 'SIM Kart Havuzu', icon: 'fa-sim-card', path: '/master-data/sim-cards' },
       { name: 'Operatör & Paketler', icon: 'fa-hand-holding-heart', path: '/master-data/services' },
       { name: 'Yazılım Lisansları', icon: 'fa-key', path: '/master-data/licensing' },
       { name: 'IT Destek Ayarları', icon: 'fa-headset', path: '/master-data/helpdesk-settings' },
@@ -37,45 +36,27 @@ const isActive = (path) => route.path === path
 </script>
 
 <template>
-  <div class="h-full flex overflow-hidden bg-white dark:bg-slate-900">
-    <!-- Sidebar -->
-    <aside class="w-64 border-r border-gray-100 dark:border-slate-700 flex flex-col shrink-0 bg-[#fbfbfb] dark:bg-slate-800">
-      <div class="p-6 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800">
-        <h2 class="text-[14px] font-bold text-gray-900 dark:text-slate-100 flex items-center gap-2">
-            <i class="fas fa-database text-blue-500"></i>
-            Master Veri Konsolu
-        </h2>
-      </div>
+  <div class="flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900">
+    <!-- Top Horizontal Browser-style Tab Bar -->
+    <div class="px-3 pt-2 bg-[#f8f9fa] dark:bg-slate-900 border-b border-[#dadce0] dark:border-slate-800 shrink-0 flex items-center gap-1.5 overflow-x-auto overflow-y-hidden no-scrollbar">
+      <template v-for="section in menuSections" :key="section.title">
+        <router-link
+          v-for="item in section.items"
+          :key="item.path"
+          :to="item.path"
+          class="flex items-center gap-2 px-4 py-2 text-xs font-semibold transition-all select-none shrink-0 border-t-2"
+          :class="isActive(item.path)
+            ? 'bg-white dark:bg-slate-900 text-[#1a73e8] dark:text-blue-400 border-t-[#1a73e8] border-x border-x-[#dadce0] dark:border-x-slate-800 border-b-transparent shadow-[0_-2px_8px_rgba(0,0,0,0.03)] relative -mb-[1px] z-10 font-bold'
+            : 'border-t-transparent text-[#5f6368] dark:text-slate-400 hover:text-[#202124] dark:hover:text-slate-100 hover:bg-[#e8eaed]/70 dark:hover:bg-slate-800/70'"
+        >
+          <i :class="['fas', item.icon, 'text-[12px]', isActive(item.path) ? 'text-[#1a73e8] dark:text-blue-400' : 'text-gray-400']"></i>
+          <span>{{ item.name }}</span>
+        </router-link>
+      </template>
+    </div>
 
-      <nav class="flex-1 overflow-y-auto p-4 space-y-8">
-        <div v-for="section in menuSections" :key="section.title" class="space-y-2">
-          <div class="px-3 text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">{{ section.title }}</div>
-          <div class="space-y-1">
-            <router-link
-              v-for="item in section.items"
-              :key="item.path"
-              :to="item.path"
-              class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-bold transition-all group"
-              :class="isActive(item.path)
-                ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-blue-100/50 dark:ring-blue-500/20'
-                : 'text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-700/50'"
-            >
-              <i :class="['fas', item.icon, 'w-4 text-center text-[14px]', isActive(item.path) ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500 group-hover:text-gray-600 dark:group-hover:text-slate-300']"></i>
-              {{ item.name }}
-            </router-link>
-          </div>
-        </div>
-      </nav>
-
-      <div class="p-6 border-t border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800">
-          <div class="text-[11px] text-gray-400 dark:text-slate-500 leading-relaxed font-medium">
-              Bu modüldeki değişiklikler tüm platform genelinde etkili olur.
-          </div>
-      </div>
-    </aside>
-
-    <!-- Content Area -->
-    <main class="flex-1 overflow-hidden flex flex-col bg-white dark:bg-slate-900">
+    <!-- Content Area (Full 100% Width) -->
+    <main class="flex-1 overflow-hidden flex flex-col bg-white dark:bg-slate-900 p-0">
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <component :is="Component" />

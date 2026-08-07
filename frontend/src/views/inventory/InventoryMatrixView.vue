@@ -1,22 +1,5 @@
 <template>
   <div class="h-full flex flex-col bg-gray-50/50 dark:bg-slate-900 overflow-hidden">
-    <!-- HEADER -->
-    <header class="h-14 border-b border-gray-100 dark:border-slate-700 flex items-center px-6 gap-4 bg-white dark:bg-slate-800 shrink-0">
-      <div class="flex items-center gap-2 shrink-0">
-        <i class="fas fa-sitemap text-blue-600 dark:text-blue-400"></i>
-        <h1 class="text-[15px] font-bold text-gray-900 dark:text-slate-100">Yapısal Envanter Kumanda Matrisi</h1>
-      </div>
-
-      <div class="ml-auto flex items-center gap-2">
-        <RouterLink to="/inventory/assets" class="px-3 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5">
-          <i class="fas fa-boxes"></i> Envanter Listesine Git
-        </RouterLink>
-        <button @click="fetchMatrix" class="px-3 py-1.5 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5">
-          <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i> Yenile
-        </button>
-      </div>
-    </header>
-
     <!-- MAIN DASHBOARD CONTENT -->
     <main class="flex-1 overflow-y-auto p-6 space-y-6">
       <div v-if="loading" class="flex items-center justify-center h-64 text-gray-300 dark:text-slate-600">
