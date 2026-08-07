@@ -235,6 +235,52 @@ function resetColumnConfig() {
   saveColumnConfig()
 }
 
+// ── Doğrudan Kolon Başlığı Sürükle & Bırak (Header Drag & Drop) ───────────────
+const draggingColKey = ref(null)
+const dragOverColKey = ref(null)
+
+function onThDragStart(colKey, event) {
+  draggingColKey.value = colKey
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', colKey)
+  }
+}
+
+function onThDragOver(colKey) {
+  if (draggingColKey.value && draggingColKey.value !== colKey) {
+    dragOverColKey.value = colKey
+  }
+}
+
+function onThDragLeave(colKey) {
+  if (dragOverColKey.value === colKey) {
+    dragOverColKey.value = null
+  }
+}
+
+function onThDrop(targetColKey) {
+  const srcKey = draggingColKey.value
+  dragOverColKey.value = null
+  draggingColKey.value = null
+
+  if (!srcKey || srcKey === targetColKey) return
+
+  const srcIdx = columnConfig.value.findIndex(c => c.key === srcKey)
+  const targetIdx = columnConfig.value.findIndex(c => c.key === targetColKey)
+
+  if (srcIdx !== -1 && targetIdx !== -1) {
+    const item = columnConfig.value.splice(srcIdx, 1)[0]
+    columnConfig.value.splice(targetIdx, 0, item)
+    saveColumnConfig()
+  }
+}
+
+function onThDragEnd() {
+  draggingColKey.value = null
+  dragOverColKey.value = null
+}
+
 function toggleColConfigMenu(event) {
   if (isColConfigOpen.value) {
     isColConfigOpen.value = false
@@ -486,22 +532,32 @@ function resetPanel() {
                 >
               </th>
 
-              <!-- Veri sütunları -->
+              <!-- Veri sütunları (Başlık üzerinden Sürükle-Bırak ile Taşınabilir) -->
               <th
                 v-for="col in visibleColumns"
                 :key="col.key"
-                class="at-th"
+                class="at-th cursor-grab active:cursor-grabbing select-none transition-all duration-150"
                 :class="{
                   'at-th-sortable': col.sortable !== false,
                   'asc':  sortKey === col.key && sortDir === 'asc',
                   'desc': sortKey === col.key && sortDir === 'desc',
+                  'bg-blue-50/80 dark:bg-blue-900/30 border-l-2 border-l-[#1a73e8]': dragOverColKey === col.key,
+                  'opacity-40 bg-gray-100 dark:bg-slate-800': draggingColKey === col.key
                 }"
                 :style="col.width ? `width:${col.width}` : ''"
                 scope="col"
+                draggable="true"
+                title="Sütunu sürükleyerek yerini değiştirebilirsiniz"
+                @dragstart="onThDragStart(col.key, $event)"
+                @dragover.prevent="onThDragOver(col.key)"
+                @dragleave="onThDragLeave(col.key)"
+                @drop="onThDrop(col.key)"
+                @dragend="onThDragEnd"
               >
                 <div class="at-th-inner" :class="col.align === 'right' ? 'justify-end' : ''">
                   <!-- Etiket -->
-                  <span class="at-th-label">
+                  <span class="at-th-label flex items-center gap-1">
+                    <i class="fas fa-grip-lines-vertical text-[9px] opacity-30 group-hover:opacity-70 mr-0.5"></i>
                     {{ col.label }}
                   </span>
 
