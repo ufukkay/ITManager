@@ -71,11 +71,7 @@ const openHistory = (row) => {
 }
 
 const getOperatorClass = (opName) => {
-  const op = (opName || '').toLowerCase()
-  if (op.includes('vodafone')) return 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'
-  if (op.includes('turkcell')) return 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
-  if (op.includes('telekom')) return 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-500/20'
-  return 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+  return 'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700'
 }
 
 onMounted(() => {
@@ -90,20 +86,20 @@ onMounted(() => {
     <!-- View Header Banner -->
     <div class="flex items-center justify-between shrink-0 px-1 pt-1">
       <div>
-        <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">M2M Hatları Envanteri</h1>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Araç takip, IoT ve M2M veri hattı cihaz takibi</p>
+        <h1 class="text-base font-bold text-gray-900 dark:text-slate-100">M2M Hatları Envanteri</h1>
+        <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Araç takip, IoT ve M2M veri hattı cihaz takibi</p>
       </div>
 
       <div class="flex items-center gap-2">
         <button type="button" @click="exportExcel()"
-          class="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-all">
-          <i class="fas fa-file-excel text-emerald-500"></i> Excel Dışa Aktar
+          class="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 rounded-md text-xs font-medium hover:bg-gray-50 dark:hover:bg-slate-700/60 transition-colors">
+          <i class="fas fa-file-excel text-[#34a853]"></i> Excel Dışa Aktar
         </button>
       </div>
     </div>
 
     <!-- Main Table Container -->
-    <div class="flex-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm flex flex-col">
+    <div class="flex-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm flex flex-col">
       <AppTable
         :columns="columns"
         :rows="tableRows"
@@ -121,10 +117,10 @@ onMounted(() => {
 
         <template #toolbar>
           <template v-if="selectedIds.length > 0">
-            <span class="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-100 dark:border-blue-500/20">
+            <span class="text-xs font-medium text-[#1a73e8] bg-[#e8f0fe] px-2.5 py-1 rounded border border-[#1a73e8]/20">
               {{ selectedIds.length }} Hat Seçildi
             </span>
-            <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded-lg text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all"
+            <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-[#e6f4ea] text-[#137333] border border-[#34a853]/20 rounded text-xs font-medium hover:bg-green-100 transition-colors"
               @click="exportSelected">
               <i class="fas fa-file-excel"></i> Seçilenleri İndir
             </button>
@@ -134,8 +130,8 @@ onMounted(() => {
         <!-- Telefon font-mono + Copy helper -->
         <template #cell-phone_no="{ value }">
           <div class="group/cell flex items-center gap-1.5">
-            <span class="font-mono font-semibold text-slate-800 dark:text-slate-100 text-xs tracking-tight whitespace-nowrap">{{ value || '—' }}</span>
-            <button v-if="value" type="button" @click="copyToClipboard(value, 'Telefon numarası')" title="Kopyala" class="opacity-0 group-hover/cell:opacity-100 text-[10px] text-slate-400 hover:text-blue-500 transition-all">
+            <span class="font-mono font-medium text-gray-900 dark:text-slate-100 text-xs tracking-tight whitespace-nowrap">{{ value || '—' }}</span>
+            <button v-if="value" type="button" @click="copyToClipboard(value, 'Telefon numarası')" title="Kopyala" class="opacity-0 group-hover/cell:opacity-100 text-[10px] text-gray-400 hover:text-[#1a73e8] transition-colors">
               <i class="fas fa-copy"></i>
             </button>
           </div>
@@ -144,8 +140,8 @@ onMounted(() => {
         <!-- ICCID font-mono -->
         <template #cell-iccid="{ value }">
           <div class="group/cell flex items-center gap-1.5">
-            <span class="font-mono text-[11px] font-medium text-slate-500 dark:text-slate-400 block max-w-[170px] truncate" :title="value">{{ value || '—' }}</span>
-            <button v-if="value" type="button" @click="copyToClipboard(value, 'ICCID')" title="Kopyala" class="opacity-0 group-hover/cell:opacity-100 text-[10px] text-slate-400 hover:text-blue-500 transition-all">
+            <span class="font-mono text-[11px] text-gray-500 dark:text-slate-400 block max-w-[170px] truncate" :title="value">{{ value || '—' }}</span>
+            <button v-if="value" type="button" @click="copyToClipboard(value, 'ICCID')" title="Kopyala" class="opacity-0 group-hover/cell:opacity-100 text-[10px] text-gray-400 hover:text-[#1a73e8] transition-colors">
               <i class="fas fa-copy"></i>
             </button>
           </div>
@@ -153,15 +149,15 @@ onMounted(() => {
 
         <!-- Operatör Badge -->
         <template #cell-operator="{ value }">
-          <span :class="['inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold border uppercase tracking-wider', getOperatorClass(value)]">
-            <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+          <span :class="['inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium border uppercase tracking-wide', getOperatorClass(value)]">
+            <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
             {{ value || '—' }}
           </span>
         </template>
 
         <!-- Tip badge -->
         <template #cell-type="{ value }">
-          <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20">
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[#e8f0fe] text-[#1a73e8] border border-[#1a73e8]/20">
             M2M
           </span>
         </template>
@@ -169,26 +165,26 @@ onMounted(() => {
         <!-- Plaka bold -->
         <template #cell-plate_no="{ value }">
           <div v-if="value" class="flex items-center gap-1.5">
-            <i class="fas fa-car text-[11px] text-slate-400"></i>
-            <span class="font-bold text-slate-900 dark:text-slate-100 tracking-tight text-xs">{{ value }}</span>
+            <i class="fas fa-car text-[11px] text-gray-400"></i>
+            <span class="font-medium text-gray-900 dark:text-slate-100 text-xs">{{ value }}</span>
           </div>
-          <span v-else class="text-slate-400 dark:text-slate-600 text-xs">—</span>
+          <span v-else class="text-gray-400 text-xs">—</span>
         </template>
 
-        <!-- Paket limiti (gerçek zamanlı kullanım verisi operatörden entegre değil) -->
+        <!-- Paket limiti -->
         <template #cell-usage="{ row }">
-          <div v-if="row.quota_gb" class="text-[11px] text-slate-600 dark:text-slate-300">
-            <div class="font-semibold">{{ row.quota_gb }} GB / ay</div>
-            <div v-if="fmtDate(row.last_usage_date)" class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+          <div v-if="row.quota_gb" class="text-[11px] text-gray-700 dark:text-slate-300">
+            <div class="font-medium">{{ row.quota_gb }} GB / ay</div>
+            <div v-if="fmtDate(row.last_usage_date)" class="text-[10px] text-gray-400 mt-0.5">
               Son kullanım: {{ fmtDate(row.last_usage_date) }}
             </div>
           </div>
-          <span v-else class="text-slate-400 dark:text-slate-600 text-xs">—</span>
+          <span v-else class="text-gray-400 text-xs">—</span>
         </template>
 
         <!-- Maliyet -->
         <template #cell-cost_try="{ value }">
-          <span class="font-bold text-slate-900 dark:text-white tabular-nums text-xs">
+          <span class="font-medium text-gray-900 dark:text-white tabular-nums text-xs">
             {{ (value || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} ₺
           </span>
         </template>
@@ -196,12 +192,12 @@ onMounted(() => {
         <!-- Durum badge -->
         <template #cell-status="{ value }">
           <span :class="[
-            'inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase',
+            'inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium tracking-wide uppercase',
             (value === 'active' || value === 'Aktif')
-              ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+              ? 'bg-[#e6f4ea] text-[#137333] border border-[#34a853]/20'
+              : 'bg-[#f1f3f4] text-[#5f6368] border border-[#dadce0]'
           ]">
-            <span class="w-1.5 h-1.5 rounded-full" :class="(value === 'active' || value === 'Aktif') ? 'bg-emerald-500' : 'bg-slate-400'"></span>
+            <span class="w-1.5 h-1.5 rounded-full" :class="(value === 'active' || value === 'Aktif') ? 'bg-[#34a853]' : 'bg-[#9aa0a6]'"></span>
             {{ (value === 'active' || value === 'Aktif') ? 'Aktif' : 'Pasif' }}
           </span>
         </template>
