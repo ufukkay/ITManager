@@ -587,7 +587,7 @@ onMounted(fetchData)
               <div class="flex items-center gap-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                 <i class="fas fa-sitemap"></i> Organizasyon Yapısı
               </div>
-              <div class="grid grid-cols-3 gap-5">
+              <div class="grid grid-cols-4 gap-4">
                 <div>
                   <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Şirket</label>
                   <select v-model="editingPersonnel.company_id"
@@ -610,6 +610,15 @@ onMounted(fetchData)
                     class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 rounded-lg outline-none focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-slate-100">
                     <option :value="null">Seçiniz</option>
                     <option v-for="cc in masterData.costCenters" :key="cc.id" :value="cc.id">{{ cc.name }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Durum</label>
+                  <select v-model="editingPersonnel.status"
+                    class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 rounded-lg outline-none focus:border-blue-500 bg-white dark:bg-slate-900 dark:text-slate-100 font-bold"
+                    :class="editingPersonnel.status === 'active' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
+                    <option value="active">🟢 Aktif</option>
+                    <option value="passive">🔴 Pasif / Kapalı</option>
                   </select>
                 </div>
               </div>
