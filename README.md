@@ -1,104 +1,138 @@
-# 🖥️ ITManager
+# 🖥️ ITManager — Kurumsal IT Yönetim Ekosistemi
 
-> Kurumsal IT operasyonlarını, zimmet takibini, teknik destek biletlerini, SIM hatlarını ve M365 lisanslarını tek platformda yöneten modern ve tam kapsamlı **Full-Stack IT Yönetim Ekosistemi**.
+> Kurumsal IT operasyonlarını, cihaz & zimmet takibini, teknik destek biletlerini, SIM hatlarını, M365 lisanslarını ve sunucu sağlık durumlarını tek bir merkezden yöneten modern, modüler ve tam kapsamlı **Full-Stack IT Yönetim Platformu**.
+
+[![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Desktop%20Agent-blue?style=for-the-badge&logo=electron)](https://github.com/ufukkay/ITManager)
+[![Node.js](https://img.shields.io/badge/Node.js-v18+-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Vue.js](https://img.shields.io/badge/Vue.js-v3.x-4FC08D?style=for-the-badge&logo=vuedotjs&logoColor=white)](https://vuejs.org/)
+[![Vite](https://img.shields.io/badge/Vite-v5-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![SQLite](https://img.shields.io/badge/SQLite-v3-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![Microsoft Graph API](https://img.shields.io/badge/Microsoft_Graph-Entra_ID-0078D4?style=for-the-badge&logo=microsoft)](https://learn.microsoft.com/en-us/graph/)
+[![License](https://img.shields.io/badge/Lisans-Private-red?style=for-the-badge)](LICENSE)
+
+---
+
+## 📸 Ekran Görüntüleri & Görsel Önizlemeler
+
+### 🏠 Ana Kumanda Paneli (Dashboard)
+![Dashboard](docs/screenshots/dashboard.png)
+
+<details>
+<summary>🔍 <b>Diğer Modül Ekran Görüntüleri için Tıklayın</b></summary>
+
+<br>
+
+#### 📦 Envanter & Zimmet Yönetimi
+![Inventory](docs/screenshots/inventory.png)
+
+#### 🎫 IT Destek Merkezi (Helpdesk & Tickets)
+![Helpdesk](docs/screenshots/helpdesk.png)
+
+#### 🖥️ Sunucu & Altyapı Canlı İzleme (Monitoring)
+![Monitoring](docs/screenshots/monitoring.png)
+
+#### 🗄️ Master Veri Yönetimi (MDM)
+![Master Data](docs/screenshots/master_data.png)
+
+#### 📊 Raporlama & Maliyet Analitiği
+![Reports](docs/screenshots/reports.png)
+
+</details>
+
+---
+
+## 🏗️ Sistem Mimari Şeması
+
+```mermaid
+graph TD
+    subgraph Client["💻 Kullanıcı & İstemci Katmanı"]
+        WebUI["Vue 3 SPA (Vite + Pinia + TailwindCSS)"]
+        Agent["ITManager Masaüstü Ajanı (Node/Electron)"]
+        MobileScan["Mobil Barkod / Zimmet Doğrulama"]
+    end
+
+    subgraph Server["🚀 Express.js Backend API Engine"]
+        AuthMiddleware["JWT Authentication & RBAC Middleware"]
+        RateLimiter["Rate Limiting & Security Guard"]
+        
+        subgraph Modules["🧩 Modüler İş Mantığı Engine"]
+            MDM["Master Data (Personel, Araç, Şirket)"]
+            Assets["Envanter & Zimmet Motoru"]
+            Helpdesk["Bilet & CSAT Yönetimi"]
+            SIMEngine["SIM Hat & Fatura Parser"]
+            M365Engine["M365 & License Manager"]
+            MonitorEngine["Ping & Health Check Service"]
+        end
+    end
+
+    subgraph Data["💾 Veri depolama & Entegrasyonlar"]
+        SQLite[("SQLite3 Database (better-sqlite3)")]
+        MSGraph["Microsoft Graph API (Entra ID)"]
+        SMTPServer["SMTP Mail Server (Nodemailer)"]
+    end
+
+    WebUI <-->|HTTP REST / JWT| AuthMiddleware
+    Agent <-->|System Telemetry API| AuthMiddleware
+    MobileScan <-->|QR Audit REST| AuthMiddleware
+
+    AuthMiddleware --> RateLimiter
+    RateLimiter --> Modules
+
+    MDM <--> SQLite
+    Assets <--> SQLite
+    Helpdesk <--> SQLite
+    SIMEngine <--> SQLite
+    MonitorEngine <--> SQLite
+
+    M365Engine <-->|Entra ID Sync| MSGraph
+    Helpdesk -->|Mail Notifications| SMTPServer
+```
 
 ---
 
 ## 📋 İçindekiler
 
-- [Genel Bakış](#-genel-bakış)
 - [Öne Çıkan Modüller](#-öne-çıkan-modüller)
 - [Teknoloji Yığını](#%EF%B8%8F-teknoloji-yığını)
 - [Kurulum & Çalıştırma](#-kurulum--çalıştırma)
 - [Proje Yapısı](#-proje-yapısı)
-- [API Dokümantasyonu Summary](#-api-dokümantasyonu-summary)
+- [API Dokümantasyon Özet](#-api-dokümantasyon-özet)
 - [Güvenlik ve Mimari](#-güvenlik-ve-mimari)
 - [Lisans](#-lisans)
 
 ---
 
-## 🌟 Genel Bakış
-
-**ITManager**, kurum içi IT süreçlerini uçtan uca dijitalleştirmek, operasyonel yükü hafifletmek ve maliyet kontrolünü sağlamak amacıyla geliştirilmiş modüler bir web platformudur. 
-
-Personel zimmetlerinden teknik destek biletlerine, operatör SIM kartlarından Microsoft Graph entegreli M365 lisanslarına ve canlı sunucu izlemeye kadar tüm IT varlıkları **"Tek Kaynak Gerçekliği" (Single Source of Truth)** ilkesiyle yönetilir.
-
-![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Desktop-blue?style=flat-square)
-![Node.js](https://img.shields.io/badge/Node.js-v18+-green?style=flat-square&logo=node.js)
-![Vue.js](https://img.shields.io/badge/Vue.js-v3-41B883?style=flat-square&logo=vue.js)
-![SQLite](https://img.shields.io/badge/Database-SQLite3-003B57?style=flat-square&logo=sqlite)
-![License](https://img.shields.io/badge/License-Private-red?style=flat-square)
-
----
-
 ## 📦 Öne Çıkan Modüller
 
-### 🗄️ 1. Master Veri Yönetimi (MDM)
-Merkezi veri mimarisinin temel taşıdır.
-- **Personel Takibi** — İletişim, departman, unvan ve lokasyon tanımları; Excel ile toplu içe/dışa aktarım.
-- **Organizasyon Hiyerarşisi** — Şirket, Departman ve Masraf Merkezi eşleştirmeleri.
-- **Sunucu & Araç Envanteri** — Fiziksel/sanal sunucular, IP, OS detayları ve şirket araç plakaları.
-- **Lokasyonlar & Operatörler** — Genel merkez, saha lokasyonları, GSM operatör ve paket tanımları.
-
-### 💼 2. IT Varlık & Zimmet Yönetimi (Assets & Inventory)
-Şirket envanterinin uçtan uca ömrünü ve personel zimmetlerini takip eder.
-- **Zimmet Takibi** — Personellere donanım (Bilgisayar, Monitör, Telefon vb.) zimmetleme ve zimmet iade süreçleri.
-- **Varlık Envanteri** — Seri no, marka/model, garanti bitişi, durum (Aktif, Tamirde, Hurda) takibi.
-- **Audit Logs (Denetim İzleri)** — Tüm zimmet ve donanım hareketlerinin geçmiş tarihli kayıt ve raporlaması.
-
-### 🎫 3. Teknik Destek & Bilet Yönetimi (Helpdesk)
-IT talep ve arıza yönetim sistemi.
-- **Destek Biletleri (Tickets)** — Kullanıcı taleplerinin oluşturulması, önceliklendirilmesi (Düşük, Orta, Yüksek, Kritik) ve takibi.
-- **Teknisyen Havuzu (Technician Pool)** — IT personelleri arasında otomatik/manuel bilet atama, durum takibi ve çözüm süreçleri.
-
-### 📡 4. SIM Kart Takip & Otomatik Fatura Ayrıştırma
-Operatör faturalarını ve kurumsal SIM hatlarını yönetir.
-- **Hat Kategorizasyonu** — M2M (IoT/Telemetre), Data (Mobil İnternet) ve Ses hatlarının takibi.
-- **Otomatik Fatura Eşleştirici (Invoice Matcher)** — Operatör XML/Excel faturalarının sisteme yüklenerek hat bazlı maliyet dağılımlarının yapılması.
-
-### 🔑 5. M365 & Microsoft Graph Entegrasyonu
-Microsoft 365 lisanslarının ve kullanıcı senkronizasyonunun yönetimi.
-- **Microsoft Graph API Entegrasyonu** — Entra ID (Azure AD) entegrasyonu ile canlı kullanıcı ve lisans senkronizasyonu.
-- **Lisans Analitiği** — Atanmış/Boştaki lisans oranları, maliyet dağılımları ve ITarian/Comodo lisans takibi.
-
-### 🖥️ 6. Sunucu & Altyapı İzleme (Monitoring)
-Altyapı sistemlerinin erişilebilirlik paneli.
-- **Kategorize İzleme** — Cloud, Vodafone altyapısı ve yerel (Local) sunucuların canlı durum kontrolleri (Ping / Port kontrolü).
-
-### 📋 7. İK Bildirimleri (HR Requests) & E-Posta
-- **İşe Giriş / Çıkış Bildirimleri** — İK tarafından başlatılan IT oryantasyon ve ekipman hazırlık talepleri.
-- **Otomatik Bildirimler** — SMTP (Nodemailer) altyapısı üzerinden e-posta bilgilendirmeleri.
-
-### 📊 8. Raporlama & Analitik (Reports)
-- Maliyet dağılımları, zimmet geçmişi, fatura analitiği ve modül bazlı görsel grafik raporları.
-
-### 🤖 9. ITManager Masaüstü Ajanı (Agent)
-- İstemci bilgisayarlara kurularak sistem donanım/yazılım envanterini ve canlı durum bilgilerini merkeze bildiren arka plan servisi.
+| Modül | Simgesi | Açıklama & Yetenekler |
+|---|:---:|---|
+| **Master Veri (MDM)** | 🗄️ | Şirket, Departman, Masraf Merkezi, Personel, Araç ve Sunucu master verilerinin merkezi yönetimi. Excel içe/dışa aktarım desteği. |
+| **Varlık & Zimmet Takibi** | 💼 | Bilgisayar, monitör, telefon ve aksesuar zimmetleme, zimmet formu / etiketi üretici, amortisman hesaplama ve zimmet iade geçmişi. |
+| **IT Destek (Helpdesk)** | 🎫 | Kullanıcı talep biletleri, öncelik sınıflandırması, teknisyen bilet havuzu atama, çözüm takibi ve otomatik CSAT anket bildirimleri. |
+| **SIM Hat & Fatura Parser** | 📡 | M2M, Data ve Ses hatlarının operasyonel takibi. Operatör faturalarının (XML/Excel) otomatik çözümlenmesi ve masraf merkezlerine yansıtılması. |
+| **M365 & Microsoft Graph** | 🔑 | Entra ID (Azure AD) ile canlı kullanıcı ve lisans senkronizasyonu. Atanmış / boştaki lisans maliyet analitiği. |
+| **Sunucu İzleme** | 🖥️ | Cloud, Vodafone ve Yerel (Local) sunucuların ICMP Ping & TCP Port sağlık durumlarının canlı izlenmesi ve alarm paneli. |
+| **İK Bildirimleri (HR)** | 📋 | Yeni işe başlayan veya ayrılan personeller için IT oryantasyon, donanım hazırlık ve hesap kapatma iş akışları. |
+| **Masaüstü Ajan (Agent)** | 🤖 | İstemci cihazlara kurularak donanım/yazılım envanterini ve canlı durum bilgilerini merkeze bildiren arka plan servisi. |
 
 ---
 
 ## 🛠️ Teknoloji Yığını
 
-### Backend
-| Teknoloji | Açıklama |
-|-----------|----------|
-| **Node.js (v18+)** | Sunucu tarafı çalıştırma ortamı |
-| **Express.js (v4)** | RESTful API web framework |
-| **SQLite (better-sqlite3 v9)** | Yüksek performanslı ilişkisel veritabanı |
-| **JWT (JSON Web Token)** | Güvenli kimlik doğrulama & RBAC yetkilendirme |
-| **Microsoft Graph SDK** | Entra ID / M365 doğrudan API entegrasyonu |
-| **Nodemailer** | E-posta bildirim servisi |
-| **Rate-Limiter-Flexible** | Brute-force ve DDoS koruması |
+### 🟢 Backend (API Server)
+* **Runtime:** Node.js (v18+)
+* **Framework:** Express.js (v4.18)
+* **Veritabanı:** SQLite3 (`better-sqlite3` v9) — Yüksek performanslı senkron ilişkisel DB
+* **Güvenlik:** JSON Web Token (JWT), `bcryptjs`, `rate-limiter-flexible`
+* **Entegrasyonlar:** `@microsoft/microsoft-graph-client`, `nodemailer`, `exceljs`, `xml2js`
 
-### Frontend
-| Teknoloji | Açıklama |
-|-----------|----------|
-| **Vue.js 3** | Composition API ile reaktif UI |
-| **Vite (v8)** | Hızlı geliştirme ve derleme aracı |
-| **Pinia** | Merkezi durum yönetimi (State Management) |
-| **Vue Router (v4)** | SPA yönlendirme ve Route Guard güvenliği |
-| **TailwindCSS (v3) & DaisyUI** | Modern, responsive UI tasarım ve bileşen kütüphanesi |
-| **XLSX & Chart.js / ApexCharts** | Excel veri işleme ve analitik grafik gösterimleri |
+### 🔵 Frontend (UI Client)
+* **Framework:** Vue.js 3 (Composition API `<script setup>`)
+* **Build Tool:** Vite (v5)
+* **State Management:** Pinia (v2)
+* **Routing:** Vue Router (v4)
+* **Styling:** Vanilla CSS, TailwindCSS (v3) & DaisyUI
+* **Grafik & Analitik:** ApexCharts, Chart.js, XLSX Export Engine
 
 ---
 
@@ -106,7 +140,7 @@ Altyapı sistemlerinin erişilebilirlik paneli.
 
 ### Ön Gereksinimler
 - **Node.js**: v18.0.0 veya üzeri
-- **npm**: v8.0.0 veya üzeri
+- **npm**: v9.0.0 veya üzeri
 
 ### 1. Depoyu Klonlayın
 ```bash
@@ -142,17 +176,16 @@ cd ..
 
 ### 4. Uygulamayı Başlatın
 
-**Geliştirme Modunda Başlatma:**
+**Backend (Port 3001):**
+```bash
+npm run dev
+```
 
-- **Backend (Port 3001):**
-  ```bash
-  npm run dev
-  ```
-- **Frontend (Port 5173):**
-  ```bash
-  cd frontend
-  npm run dev
-  ```
+**Frontend (Port 5173):**
+```bash
+cd frontend
+npm run dev
+```
 
 Uygulamaya tarayıcınızdan `http://localhost:5173` adresinden erişebilirsiniz.
 
@@ -162,77 +195,49 @@ Uygulamaya tarayıcınızdan `http://localhost:5173` adresinden erişebilirsiniz
 
 ```
 ITManager/
-├── agent/                        # İstemci Masaüstü Ajanı (Node/Electron)
-│   ├── main.js                   # Agent giriş noktası
-│   └── ui/                       # Agent kurulum ve ayar arayüzü
-│
-├── src/                          # Backend Kaynak Kodları
-│   ├── app.js                    # Express uygulama sunucusu
-│   ├── database/                 # SQLite veritabanı bağlantısı ve şemaları
-│   ├── middleware/               # Auth (JWT) ve Rate Limiting middleware'leri
-│   ├── services/                 # Mailer, MicrosoftGraph, vs. servisler
-│   └── modules/                  # Modüler API Mimarisi
-│       ├── admin/                # Kullanıcı & Rol yetkilendirme API
-│       ├── assets/               # Zimmet & Envanter Yönetimi API
-│       ├── auth/                 # Login & Token işlemleri
-│       ├── core/                 # Master Data (Personel, Şirket, Sunucu, Araç)
-│       ├── helpdesk/             # Destek talepleri & Teknisyen havuzu
-│       ├── hr-requests/          # İK talep akışları API
-│       ├── m365/                 # M365 & Microsoft Graph API
-│       ├── monitoring/           # Sunucu ping/durum izleme API
-│       ├── simcardtracking/      # SIM hatları & Fatura eşleştirme API
-│       └── update/               # Sistem ve Ajan güncelleme servisi
-│
-├── frontend/                     # Vue.js Frontend Uygulaması
+├── agent/                        # İstemci Masaüstü Ajanı (Node/Electron Telemetry)
+├── docs/                         # Dokümantasyon ve Ekran Görüntüleri
+│   └── screenshots/              # README UI Ekran Görselleri
+├── frontend/                     # Vue 3 Frontend Uygulaması
 │   ├── src/
-│   │   ├── components/           # Ortak UI bileşenleri (Table, Modal, Header)
-│   │   ├── composables/          # Reusable logic (MasterData, Form helpers)
-│   │   ├── layouts/              # Modül ana yerleşim şablonları
-│   │   ├── router/               # Vue Router guard ve sayfa haritası
-│   │   ├── stores/               # Pinia durum mağazaları
-│   │   └── views/                # Sayfa görünümleri (Modüllere göre gruplu)
-│   │       ├── cost-management/
-│   │       ├── helpdesk/
-│   │       ├── hr-requests/
-│   │       ├── inventory/
-│   │       ├── m365/
-│   │       ├── master-data/
-│   │       ├── reports/
-│   │       └── sim-tracking/
-│   └── vite.config.js
-│
-├── scripts/                      # Veritabanı seeding & migration scriptleri
-├── DESIGN_GUIDE.md               # Tasarım standartları rehberi
+│   │   ├── components/           # Reusable UI Bileşenleri (Table, Modal, Header)
+│   │   ├── composables/          # Reusable Vue Logic
+│   │   ├── layouts/              # Modül Yerleşim Şablonları
+│   │   ├── router/               # Vue Router & Route Guards
+│   │   ├── stores/               # Pinia State Stores
+│   │   └── views/                # Modül Sayfa Görünümleri
+├── scripts/                      # Veritabanı Migration & Test Scriptleri
+├── src/                          # Backend Node.js API Kaynak Kodları
+│   ├── app.js                    # Express Ana Sunucu Girişi
+│   ├── database/                 # SQLite Şeması ve Veritabanı Bağlantısı
+│   ├── middleware/               # Auth, Security & Rate Limiting
+│   ├── services/                 # Mailer, MS Graph API vb. Servisler
+│   └── modules/                  # Modüler API Mimarisi (Assets, Helpdesk, MDM vb.)
 └── README.md
 ```
 
 ---
 
-## 🔌 API Dokümantasyonu Summary
+## 🔌 API Dokümantasyon Özet
 
-| Modül | HTTP Metot & Endpoint | Açıklama |
-|-------|-----------------------|----------|
-| **Auth** | `POST /api/auth/login` | Kullanıcı girişi & JWT alımı |
-| **Auth** | `GET /api/auth/me` | Oturum açmış kullanıcı profili |
-| **Master Data** | `GET/POST /api/master-data/personnel` | Personel listesi & Ekleme |
-| **Master Data** | `GET/POST /api/master-data/companies` | Şirket tanımları |
-| **Assets** | `GET/POST /api/assets` | Envanter kalemi ve zimmet işlemleri |
-| **Assets** | `GET /api/assets/audit` | Zimmet hareket geçmişi |
-| **Helpdesk** | `GET/POST /api/helpdesk/tickets` | Bilet takibi ve destek talepleri |
-| **Helpdesk** | `GET/POST /api/helpdesk/technicians` | Teknisyen havuzu ve bilet atama |
-| **SIM Takip** | `GET/POST /api/sim/m2m`, `/data`, `/voice` | SIM kart yönetimi |
-| **SIM Takip** | `POST /api/sim/import/invoices` | Fatura XML yükleme ve eşleştirme |
-| **M365** | `GET/POST /api/m365/licenses` | M365 lisans ve Graph senkronizasyonu |
-| **Monitoring** | `GET /api/monitoring/status` | Canlı sunucu ping durumları |
+| Modül | Metot | Endpoint | Açıklama |
+|---|:---:|---|---|
+| **Auth** | `POST` | `/api/auth/login` | Oturum açma & JWT alımı |
+| **Master Data** | `GET / POST` | `/api/master-data/personnel` | Personel listeleme & yeni kayıt |
+| **Assets** | `GET / POST` | `/api/assets` | Envanter kalemi ve zimmet işlemleri |
+| **Helpdesk** | `GET / POST` | `/api/helpdesk/tickets` | Bilet takibi ve destek talepleri |
+| **SIM Takip** | `POST` | `/api/sim/import/invoices` | Fatura XML/Excel yükleme ve eşleştirme |
+| **M365** | `GET / POST` | `/api/m365/licenses` | M365 lisans ve Graph senkronizasyonu |
+| **Monitoring** | `GET` | `/api/monitoring/status` | Canlı sunucu ping durumları |
 
 ---
 
 ## 🛡️ Güvenlik ve Mimari
 
-- **JWT Tabanlı Yetkilendirme**: Tüm hassas uç noktalar bearer token ile korunur.
-- **RBAC (Role-Based Access Control)**: Admin ve Kullanıcı rolleri ile modül seviyesinde erişim kısıtlaması.
-- **Rate Limiting**: `rateLimit.js` middleware ile istek sayıları sınırlandırılarak brute-force saldırılarına karşı korunur.
-- **SQL Injection Koruması**: Prepared Statement mimarisine sahip `better-sqlite3` kullanımı.
+* **JWT & RBAC Güvenliği:** Role-Based Access Control ile endpoint seviyesinde modüler erişim kısıtlaması.
+* **Prepared Statements:** `better-sqlite3` ile tam SQL Injection koruması.
+* **Rate Limiting & Brute Force Koruması:** `rate-limiter-flexible` middleware'i ile API katmanı koruması.
+* **Audit Trail:** Tüm zimmet ve envanter değişikliklerinde tarihçe ve işlem yapan kullanıcı kaydı.
 
 ---
 
