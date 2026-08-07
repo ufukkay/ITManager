@@ -82,31 +82,16 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4">
-    <!-- View Header Banner -->
-    <div class="flex items-center justify-between shrink-0 px-1 pt-1">
-      <div>
-        <h1 class="text-xl font-bold text-slate-900 dark:text-slate-100">Ses Hatları Envanteri</h1>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Personel zimmetli GSM ses ve konuşma hat takibi</p>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <button type="button" @click="exportExcel()"
-          class="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-all">
-          <i class="fas fa-file-excel text-emerald-500"></i> Excel Dışa Aktar
-        </button>
-      </div>
-    </div>
-
+  <div class="h-full flex flex-col">
     <!-- Main Table Container -->
-    <div class="flex-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm flex flex-col">
+    <div class="flex-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm flex flex-col">
       <AppTable
         :columns="columns"
         :rows="dataList"
         :loading="loading"
         :quick-filters="quickFilters"
         :selectable="true"
-        empty-text="Kayıtlı ses hattı bulunamadı"
+        empty-text="Kayıtlı Ses hattı bulunamadı"
         @selection-change="onSelectionChange"
       >
         <template #actions="{ row }">
@@ -116,11 +101,15 @@ onMounted(() => {
         </template>
 
         <template #toolbar>
+          <button type="button" @click="exportExcel()"
+            class="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 rounded text-xs font-medium hover:bg-gray-50 dark:hover:bg-slate-700/60 transition-colors">
+            <i class="fas fa-file-excel text-[#34a853]"></i> Excel Dışa Aktar
+          </button>
           <template v-if="selectedIds.length > 0">
-            <span class="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-100 dark:border-blue-500/20">
+            <span class="text-xs font-medium text-[#1a73e8] bg-[#e8f0fe] px-2.5 py-1 rounded border border-[#1a73e8]/20">
               {{ selectedIds.length }} Hat Seçildi
             </span>
-            <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded-lg text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all"
+            <button type="button" class="flex items-center gap-1.5 px-2.5 py-1 bg-[#e6f4ea] text-[#137333] border border-[#34a853]/20 rounded text-xs font-medium hover:bg-green-100 transition-colors"
               @click="exportSelected">
               <i class="fas fa-file-excel"></i> Seçilenleri İndir
             </button>

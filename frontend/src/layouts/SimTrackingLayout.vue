@@ -43,7 +43,6 @@ onMounted(fetchStats)
         </div>
         <div>
           <h1 class="text-base font-bold text-gray-900 dark:text-white tracking-tight">SIM Kart & Hat Yönetimi</h1>
-          <p class="text-xs text-gray-500 dark:text-slate-400">M2M, Data ve Ses hatlarının envanter ve aktarım yönetimi</p>
         </div>
       </div>
     </header>
@@ -83,26 +82,6 @@ onMounted(fetchStats)
                 >
                   {{ item.count }}
                 </span>
-              </router-link>
-            </div>
-          </div>
-
-          <!-- Operasyonel İşlemler -->
-          <div>
-            <p class="px-3 mb-2 text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Operasyonel</p>
-            <div class="flex flex-col gap-1">
-              <router-link
-                to="/sim-takip/transfer"
-                class="flex items-center justify-between px-3 py-2 text-xs font-medium transition-colors rounded-lg border border-gray-200 dark:border-slate-800"
-                :class="isActive('/sim-takip/transfer')
-                  ? 'bg-[#1a73e8] text-white border-[#1a73e8] font-semibold'
-                  : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800'"
-              >
-                <div class="flex items-center gap-2.5">
-                  <i class="fas fa-right-left text-xs w-4 text-center" :class="isActive('/sim-takip/transfer') ? 'text-white' : 'text-gray-500'"></i>
-                  <span>Aktarım Merkezi</span>
-                </div>
-                <i class="fas fa-chevron-right text-[10px] opacity-70"></i>
               </router-link>
             </div>
           </div>

@@ -83,22 +83,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4">
-    <!-- View Header Banner -->
-    <div class="flex items-center justify-between shrink-0 px-1 pt-1">
-      <div>
-        <h1 class="text-base font-bold text-gray-900 dark:text-slate-100">Data Hatları Envanteri</h1>
-        <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Ofis, lokasyon ve mobil modem Data VINN hat takibi</p>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <button type="button" @click="exportExcel()"
-          class="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 rounded-md text-xs font-medium hover:bg-gray-50 dark:hover:bg-slate-700/60 transition-colors">
-          <i class="fas fa-file-excel text-[#34a853]"></i> Excel Dışa Aktar
-        </button>
-      </div>
-    </div>
-
+  <div class="h-full flex flex-col">
     <!-- Main Table Container -->
     <div class="flex-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm flex flex-col">
       <AppTable
@@ -117,11 +102,15 @@ onMounted(() => {
         </template>
 
         <template #toolbar>
+          <button type="button" @click="exportExcel()"
+            class="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 rounded text-xs font-medium hover:bg-gray-50 dark:hover:bg-slate-700/60 transition-colors">
+            <i class="fas fa-file-excel text-[#34a853]"></i> Excel Dışa Aktar
+          </button>
           <template v-if="selectedIds.length > 0">
             <span class="text-xs font-medium text-[#1a73e8] bg-[#e8f0fe] px-2.5 py-1 rounded border border-[#1a73e8]/20">
               {{ selectedIds.length }} Hat Seçildi
             </span>
-            <button type="button" class="flex items-center gap-1.5 px-3 py-1.5 bg-[#e6f4ea] text-[#137333] border border-[#34a853]/20 rounded text-xs font-medium hover:bg-green-100 transition-colors"
+            <button type="button" class="flex items-center gap-1.5 px-2.5 py-1 bg-[#e6f4ea] text-[#137333] border border-[#34a853]/20 rounded text-xs font-medium hover:bg-green-100 transition-colors"
               @click="exportSelected">
               <i class="fas fa-file-excel"></i> Seçilenleri İndir
             </button>
