@@ -3,12 +3,11 @@
     <!-- HEADER -->
     <header class="h-14 border-b border-gray-100 dark:border-slate-800 dark:border-slate-800 flex items-center px-6 justify-between bg-white dark:bg-slate-800 dark:bg-slate-800 shrink-0">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
+        <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-[#1a73e8] dark:text-blue-400 flex items-center justify-center font-bold text-sm">
           <i class="fas fa-boxes"></i>
         </div>
         <div>
-          <h1 class="text-[14px] font-bold text-gray-900 dark:text-slate-100 dark:text-slate-100 leading-tight">Envanter Takibi</h1>
-          <p class="text-[10.5px] text-gray-400 dark:text-slate-500 dark:text-slate-500 font-medium">Tüm donanım, zimmet ve depo varlıklarınızı akıllı filtrelerle süzün</p>
+          <h1 class="text-base font-bold text-gray-900 dark:text-slate-100">Envanter Takibi</h1>
         </div>
       </div>
 
@@ -188,12 +187,13 @@
     </div>
 
     <!-- MAIN TABLE AREA -->
-    <main class="flex-1 overflow-y-auto bg-gray-50/40 dark:bg-slate-900 p-6">
+    <main class="flex-1 overflow-y-auto bg-white dark:bg-slate-900 p-0">
       <AppTable
+        storage-key="envanter-varliklar"
         :columns="columns"
         :rows="tableAssets"
         :loading="assetStore.loading"
-        :quick-filters="tableQuickFilters"
+        :searchable="false"
         :selectable="true"
         empty-text="Hiçbir varlık bulunamadı"
         @selection-change="onTableSelectionChange"
