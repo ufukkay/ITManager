@@ -90,7 +90,7 @@ onMounted(fetchStats)
       </aside>
 
       <!-- Content Area -->
-      <main class="flex-1 overflow-y-auto bg-[#f8f9fa] dark:bg-slate-950 p-4">
+      <main class="flex-1 overflow-y-auto bg-white dark:bg-slate-950 p-0">
         <router-view v-slot="{ Component }">
           <component :is="Component" />
         </router-view>

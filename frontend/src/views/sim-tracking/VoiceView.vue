@@ -78,7 +78,7 @@ onMounted(() => {
 <template>
   <div class="h-full flex flex-col">
     <!-- Main Table Container -->
-    <div class="flex-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm flex flex-col">
+    <div class="flex-1 bg-white dark:bg-slate-900 overflow-hidden flex flex-col">
       <AppTable
         storage-key="ses-hatlari"
         :columns="columns"
