@@ -53,6 +53,35 @@ const saveLicense = async () => {
   finally { stopLoading() }
 }
 
+const selectedRows = ref([])
+
+const onSelectionChange = (rows) => {
+  selectedRows.value = rows
+}
+
+const handleBatchDelete = async () => {
+  if (selectedRows.value.length === 0) return
+  const confirmed = await ask({
+    title: 'Toplu Lisans Silme',
+    message: `Seçili ${selectedRows.value.length} adet lisans paketini silmek istediğinize emin misiniz?`,
+    confirmLabel: 'Evet, Hepsini Sil'
+  })
+  if (confirmed) {
+    try {
+      startLoading()
+      for (const row of selectedRows.value) {
+        await masterData.deleteItem('licenses', row.id)
+      }
+      selectedRows.value = []
+      showToast('Seçili lisanslar başarıyla silindi', 'success')
+    } catch (err) {
+      showToast('Hata: ' + err.message, 'error')
+    } finally {
+      stopLoading()
+    }
+  }
+}
+
 const handleDelete = async (row) => {
   const confirmed = await ask({
     title: 'Lisans Paketini Sil',
@@ -94,13 +123,28 @@ onMounted(fetchData)
     <div class="flex-1 overflow-hidden">
       <!-- Package Table -->
       <AppTable
+        storage-key="lisans-paketleri"
         :columns="licenseColumns"
         :rows="masterData.licenses"
         :loading="loading"
+        :selectable="true"
         empty-text="Henüz tanımlanmış bir lisans paketi bulunamadı"
+        @selection-change="onSelectionChange"
         @row-edit="openLicenseModal"
         @row-delete="handleDelete"
       >
+        <template #toolbar>
+          <template v-if="selectedRows.length > 0">
+            <span class="text-[13px] font-bold text-[#1a73e8]">{{ selectedRows.length }} Seçili</span>
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-3 py-1 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-lg text-xs font-bold hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
+              @click="handleBatchDelete"
+            >
+              <i class="fas fa-trash-alt text-[10px]"></i> Toplu Sil ({{ selectedRows.length }})
+            </button>
+          </template>
+        </template>
         <template #cell-name="{ value }">
           <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400 shrink-0 flex items-center justify-center">

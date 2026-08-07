@@ -115,6 +115,7 @@ onMounted(() => {
   <div class="h-full flex flex-col">
     <!-- Table Section -->
     <AppTable
+      storage-key="itarian-lisanslari"
       :columns="columns"
       :rows="tableRows"
       :loading="loading"

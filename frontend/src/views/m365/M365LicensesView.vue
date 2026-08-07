@@ -48,6 +48,28 @@ const fetchRecommendations = async () => {
   }
 }
 
+const selectedRows = ref([])
+
+const onSelectionChange = (rows) => {
+  selectedRows.value = rows
+}
+
+const exportSelectedToExcel = () => {
+  if (!selectedRows.value.length) return
+  const data = selectedRows.value.map(row => ({
+    'Ad Soyad': row.full_name,
+    'E-Posta': row.work_email || '—',
+    'Şirket': row.company_name || '—',
+    'Departman': row.department_name || '—',
+    'Unvan': row.title || '—',
+    'Atanan Lisanslar': (row.assigned_licenses || []).map(l => l.license_name).join(', ')
+  }))
+  const worksheet = XLSX.utils.json_to_sheet(data)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Seçili Kullanıcılar')
+  XLSX.writeFile(workbook, 'secili_m365_kullanicilari.xlsx')
+}
+
 // Raporlama sekmesi
 const summary = ref({ byCompany: [], byDepartment: [], byLicense: [], totals: null })
 const loadingSummary = ref(false)
@@ -272,11 +294,26 @@ onMounted(async () => {
     <!-- Main List (Assignments Tab) -->
     <div v-if="activeTab === 'assignments'" class="flex-1 overflow-hidden">
       <AppTable
+        storage-key="m365-lisans-atananlar"
         :columns="columns"
         :rows="tableRows"
         :loading="loading"
+        :selectable="true"
         :actions="false"
+        @selection-change="onSelectionChange"
       >
+        <template #toolbar>
+          <template v-if="selectedRows.length > 0">
+            <span class="text-[13px] font-bold text-[#1a73e8]">{{ selectedRows.length }} Kullanıcı Seçildi</span>
+            <button
+              type="button"
+              class="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 rounded-lg text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
+              @click="exportSelectedToExcel"
+            >
+              <i class="fas fa-file-excel text-[10px]"></i> Excel'e Aktar ({{ selectedRows.length }})
+            </button>
+          </template>
+        </template>
         <template #cell-full_name="{ row, value }">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 flex items-center justify-center font-bold text-[11px] border border-gray-200 dark:border-slate-600">
