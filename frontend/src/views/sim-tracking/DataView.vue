@@ -20,12 +20,6 @@ const columns = [
   { key: 'status',        label: 'Durum',            sortable: true, width: '120px' },
 ]
 
-const quickFilters = computed(() => [
-  { key: 'operator',     label: 'Operatör', options: masterData.operators.map(o => o.name) },
-  { key: 'company_name', label: 'Şirket',   options: masterData.companies.map(c => c.name) },
-  { key: 'status',       label: 'Durum', options: ['Aktif', 'Pasif', 'İptal'] },
-])
-
 const selectedIds    = ref([])
 const onSelectionChange = (rows) => { selectedIds.value = rows.map(r => r.id) }
 
@@ -90,7 +84,7 @@ onMounted(() => {
         :columns="columns"
         :rows="dataList"
         :loading="loading"
-        :quick-filters="quickFilters"
+        :searchable="false"
         :selectable="true"
         empty-text="Kayıtlı Data hattı bulunamadı"
         @selection-change="onSelectionChange"
@@ -99,22 +93,6 @@ onMounted(() => {
           <div class="at-row-actions">
             <button type="button" class="at-row-btn" title="Geçmişi Göster" @click="openHistory(row)"><i class="fas fa-clock-rotate-left"></i></button>
           </div>
-        </template>
-
-        <template #toolbar>
-          <button type="button" @click="exportExcel()"
-            class="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 rounded text-xs font-medium hover:bg-gray-50 dark:hover:bg-slate-700/60 transition-colors">
-            <i class="fas fa-file-excel text-[#34a853]"></i> Excel Dışa Aktar
-          </button>
-          <template v-if="selectedIds.length > 0">
-            <span class="text-xs font-medium text-[#1a73e8] bg-[#e8f0fe] px-2.5 py-1 rounded border border-[#1a73e8]/20">
-              {{ selectedIds.length }} Hat Seçildi
-            </span>
-            <button type="button" class="flex items-center gap-1.5 px-2.5 py-1 bg-[#e6f4ea] text-[#137333] border border-[#34a853]/20 rounded text-xs font-medium hover:bg-green-100 transition-colors"
-              @click="exportSelected">
-              <i class="fas fa-file-excel"></i> Seçilenleri İndir
-            </button>
-          </template>
         </template>
 
         <!-- Telefon font-mono + Copy helper -->

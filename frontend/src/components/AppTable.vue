@@ -29,6 +29,9 @@ const props = defineProps({
    */
   quickFilters: { type: Array, default: () => [] },
 
+  /** Global arama kutusu gösterimi */
+  searchable: { type: Boolean, default: true },
+
   /** Sayfa başına satır sayısı */
   perPage: { type: Number, default: 25 },
 
@@ -274,9 +277,9 @@ function resetPanel() {
     <div class="at-card">
 
       <!-- Toolbar (kart başlığı) -->
-      <div class="at-toolbar">
+      <div v-if="searchable || quickFilters.length || hasAnyFilter || activeColFilters.length || $slots.toolbar" class="at-toolbar">
         <!-- Global arama -->
-        <div class="at-search-wrap">
+        <div v-if="searchable" class="at-search-wrap">
           <i class="fas fa-search at-search-icon"></i>
           <input
             v-model="globalSearch"
@@ -369,15 +372,6 @@ function resetPanel() {
                 scope="col"
               >
                 <div class="at-th-inner" :class="col.align === 'right' ? 'justify-end' : ''">
-                  <!-- Filtre butonu — SOLDA -->
-                  <span
-                    v-if="col.filterable !== false"
-                    class="at-fil-btn"
-                    :class="{ active: !!colFilters[col.key] }"
-                    :title="`${col.label} filtrele`"
-                    @click.stop="toggleFilterBtn(col.key, $event.currentTarget)"
-                  ><i class="fas fa-filter" style="font-size:9px"></i></span>
-
                   <!-- Etiket + sıralama oku -->
                   <span
                     class="at-sort-trigger"
@@ -390,6 +384,15 @@ function resetPanel() {
                       <i class="fas fa-caret-down ic-desc"></i>
                     </span>
                   </span>
+
+                  <!-- Filtre butonu — SAĞDA -->
+                  <span
+                    v-if="col.filterable !== false"
+                    class="at-fil-btn"
+                    :class="{ active: !!colFilters[col.key] }"
+                    :title="`${col.label} filtrele`"
+                    @click.stop="toggleFilterBtn(col.key, $event.currentTarget)"
+                  ><i class="fas fa-filter" style="font-size:9px"></i></span>
                 </div>
               </th>
 
