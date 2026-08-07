@@ -80,6 +80,7 @@ onMounted(() => {
     <!-- Main Table Container -->
     <div class="flex-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-md overflow-hidden shadow-sm flex flex-col">
       <AppTable
+        storage-key="m2m-hatlari"
         :columns="columns"
         :rows="tableRows"
         :loading="loading"

@@ -39,7 +39,13 @@ const props = defineProps({
   emptyText: { type: String, default: 'Sonuç bulunamadı' },
 
   /** Başlangıç filtreleri (URL param vb. için) */
-  initialFilters: { type: Object, default: () => ({ search: '', quick: {} }) }
+  initialFilters: { type: Object, default: () => ({ search: '', quick: {} }) },
+
+  /** Sütun gizleme / taşıma kaydedilecek localStorage anahtarı */
+  storageKey: { type: String, default: '' },
+
+  /** Sütun gizleme / taşıma özelliğini aktif et */
+  columnCustomizable: { type: Boolean, default: true }
 })
 
 const emit = defineEmits(['row-history', 'row-edit', 'row-delete', 'selection-change', 'bulk-export'])
@@ -144,11 +150,125 @@ function bulkExport() {
   emit('bulk-export', selectedRows)
 }
 
+// ── Sütun Özelleştirme (Gizleme & Sıralama) ──────────────────────────────────
+const columnConfig = ref([]) // [{ key: string, visible: boolean }]
+const isColConfigOpen = ref(false)
+const colConfigPos = ref({ top: 0, left: 0 })
+const draggedColIndex = ref(null)
+
+function initColumnConfig() {
+  if (props.storageKey) {
+    try {
+      const saved = localStorage.getItem(`app_table_cols_${props.storageKey}`)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const validConfig = []
+        parsed.forEach(item => {
+          if (props.columns.some(c => c.key === item.key)) {
+            validConfig.push({ key: item.key, visible: item.visible !== false })
+          }
+        })
+        props.columns.forEach(c => {
+          if (!validConfig.some(item => item.key === c.key)) {
+            validConfig.push({ key: c.key, visible: true })
+          }
+        })
+        columnConfig.value = validConfig
+        return
+      }
+    } catch (e) {
+      console.error('Column config load error:', e)
+    }
+  }
+
+  columnConfig.value = props.columns.map(c => ({ key: c.key, visible: true }))
+}
+
+watch(() => props.columns, () => {
+  initColumnConfig()
+}, { immediate: true })
+
+function saveColumnConfig() {
+  if (props.storageKey) {
+    try {
+      localStorage.setItem(`app_table_cols_${props.storageKey}`, JSON.stringify(columnConfig.value))
+    } catch (e) {
+      console.error('Column config save error:', e)
+    }
+  }
+}
+
+const visibleColumns = computed(() => {
+  const map = new Map(props.columns.map(c => [c.key, c]))
+  return columnConfig.value
+    .filter(item => item.visible)
+    .map(item => map.get(item.key))
+    .filter(Boolean)
+})
+
+function getColLabel(key) {
+  const col = props.columns.find(c => c.key === key)
+  return col ? col.label : key
+}
+
+function toggleColumnVisibility(key) {
+  const col = columnConfig.value.find(c => c.key === key)
+  if (col) {
+    const visibleCount = columnConfig.value.filter(c => c.visible).length
+    if (col.visible && visibleCount <= 1) return
+    col.visible = !col.visible
+    saveColumnConfig()
+  }
+}
+
+function moveColumn(idx, direction) {
+  const targetIdx = idx + direction
+  if (targetIdx < 0 || targetIdx >= columnConfig.value.length) return
+  const item = columnConfig.value[idx]
+  columnConfig.value.splice(idx, 1)
+  columnConfig.value.splice(targetIdx, 0, item)
+  saveColumnConfig()
+}
+
+function resetColumnConfig() {
+  columnConfig.value = props.columns.map(c => ({ key: c.key, visible: true }))
+  saveColumnConfig()
+}
+
+function toggleColConfigMenu(event) {
+  if (isColConfigOpen.value) {
+    isColConfigOpen.value = false
+    return
+  }
+  const btnEl = event.currentTarget
+  const rect = btnEl.getBoundingClientRect()
+  const panelWidth = 250
+  let left = rect.right - panelWidth
+  if (left < 10) left = 10
+  colConfigPos.value = {
+    top: rect.bottom + window.scrollY + 6,
+    left: Math.max(4, left)
+  }
+  isColConfigOpen.value = true
+}
+
+function onDragStart(idx) {
+  draggedColIndex.value = idx
+}
+
+function onDrop(dropIdx) {
+  if (draggedColIndex.value === null || draggedColIndex.value === dropIdx) return
+  const item = columnConfig.value.splice(draggedColIndex.value, 1)[0]
+  columnConfig.value.splice(dropIdx, 0, item)
+  draggedColIndex.value = null
+  saveColumnConfig()
+}
+
 // ── colspan ───────────────────────────────────────────────────────────────────
 const colSpan = computed(() => {
-  let n = props.columns.length
+  let n = visibleColumns.value.length
   if (props.selectable) n++
-  if (props.actions) n++
+  if (props.actions || props.columnCustomizable) n++
   return n
 })
 
@@ -219,11 +339,18 @@ function toggleFilterBtn(key, el) {
 }
 
 function outsideClick(e) {
-  if (!openPanelKey.value) return
-  const panel = document.getElementById('at-filter-panel')
-  if (panel?.contains(e.target)) return
-  if (e.target.closest('.at-fil-btn')) return
-  closePanel()
+  if (openPanelKey.value) {
+    const panel = document.getElementById('at-filter-panel')
+    if (!panel?.contains(e.target) && !e.target.closest('.at-fil-btn')) {
+      closePanel()
+    }
+  }
+  if (isColConfigOpen.value) {
+    const ccPanel = document.getElementById('at-col-config-panel')
+    if (!ccPanel?.contains(e.target) && !e.target.closest('.at-col-cfg-trigger')) {
+      isColConfigOpen.value = false
+    }
+  }
 }
 
 onMounted(()  => {
@@ -361,7 +488,7 @@ function resetPanel() {
 
               <!-- Veri sütunları -->
               <th
-                v-for="col in columns"
+                v-for="col in visibleColumns"
                 :key="col.key"
                 class="at-th"
                 :class="{
@@ -389,14 +516,27 @@ function resetPanel() {
                 </div>
               </th>
 
-              <!-- Aksiyon sütunu -->
+              <!-- Aksiyon sütunu & Sağ Köşe Sütun Ayarları Butonu -->
               <th
-                v-if="actions"
-                class="at-th"
+                v-if="actions || columnCustomizable"
+                class="at-th at-th-actions"
                 style="width:90px"
                 scope="col"
-                aria-label="İşlemler"
-              ></th>
+                aria-label="İşlemler ve Sütun Ayarları"
+              >
+                <div class="flex items-center justify-end gap-1.5 px-1">
+                  <span v-if="actions" class="text-[11px] font-medium text-gray-500">İşlem</span>
+                  <button
+                    v-if="columnCustomizable"
+                    type="button"
+                    class="at-col-cfg-trigger flex items-center justify-center w-5 h-5 rounded text-gray-400 hover:text-[#1a73e8] hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+                    title="Sütunları Göster/Gizle ve Taşı"
+                    @click.stop="toggleColConfigMenu($event)"
+                  >
+                    <i class="fas fa-sliders text-[11px]"></i>
+                  </button>
+                </div>
+              </th>
             </tr>
           </thead>
 
@@ -430,7 +570,7 @@ function resetPanel() {
                   </td>
 
                   <td
-                    v-for="col in columns"
+                    v-for="col in visibleColumns"
                     :key="col.key"
                     class="at-td"
                     :class="{
@@ -602,10 +742,241 @@ function resetPanel() {
       </div>
     </Teleport>
 
+    <!-- ── Sütun Özelleştirme paneli (body'e teleport) ────────────────────── -->
+    <Teleport to="body">
+      <div
+        v-if="isColConfigOpen"
+        id="at-col-config-panel"
+        :style="{ top: colConfigPos.top + 'px', left: colConfigPos.left + 'px' }"
+      >
+        <div class="at-cc-header">
+          <span class="at-cc-title"><i class="fas fa-sliders text-[#1a73e8] mr-1.5"></i>Sütun Ayarları</span>
+          <button type="button" class="at-cc-close" @click="isColConfigOpen = false">&times;</button>
+        </div>
+
+        <div class="at-cc-sub">
+          Gösterilecek sütunları seçin ve sıralamayı ayarlayın:
+        </div>
+
+        <div class="at-cc-list">
+          <div
+            v-for="(c, idx) in columnConfig"
+            :key="c.key"
+            class="at-cc-item group"
+            draggable="true"
+            @dragstart="onDragStart(idx)"
+            @dragover.prevent
+            @drop="onDrop(idx)"
+          >
+            <span class="at-cc-drag-handle" title="Sürükle bırak ile taşı">
+              <i class="fas fa-grip-vertical"></i>
+            </span>
+            <label class="at-cc-label">
+              <input
+                type="checkbox"
+                class="accent-blue-600"
+                :checked="c.visible"
+                @change="toggleColumnVisibility(c.key)"
+              >
+              <span class="truncate">{{ getColLabel(c.key) }}</span>
+            </label>
+
+            <!-- Yukarı / Aşağı taşıma butonları -->
+            <div class="at-cc-arrows opacity-60 group-hover:opacity-100">
+              <button
+                type="button"
+                :disabled="idx === 0"
+                class="at-cc-arrow-btn"
+                title="Yukarı Taşı"
+                @click="moveColumn(idx, -1)"
+              >
+                <i class="fas fa-chevron-up"></i>
+              </button>
+              <button
+                type="button"
+                :disabled="idx === columnConfig.length - 1"
+                class="at-cc-arrow-btn"
+                title="Aşağı Taşı"
+                @click="moveColumn(idx, 1)"
+              >
+                <i class="fas fa-chevron-down"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="at-cc-footer">
+          <button type="button" class="at-cc-reset-btn" @click="resetColumnConfig">
+            <i class="fas fa-rotate-left mr-1"></i>Sıfırla
+          </button>
+          <button type="button" class="at-cc-done-btn" @click="isColConfigOpen = false">
+            Tamam
+          </button>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
 <style>
+/* ── Sütun Özelleştirme paneli ────────────────────────────────────────────── */
+#at-col-config-panel {
+  position: fixed;
+  z-index: 9999;
+  background: #fff;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.15);
+  width: 250px;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+}
+.dark #at-col-config-panel {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+.at-cc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+.dark .at-cc-header {
+  background: #0f172a;
+  border-color: #334155;
+}
+.at-cc-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #202124;
+}
+.dark .at-cc-title {
+  color: #f8fafc;
+}
+.at-cc-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #5f6368;
+  cursor: pointer;
+  line-height: 1;
+}
+.at-cc-sub {
+  padding: 6px 14px;
+  font-size: 10.5px;
+  color: #70757a;
+  border-bottom: 1px solid #f0f0f0;
+}
+.dark .at-cc-sub {
+  color: #94a3b8;
+  border-color: #334155;
+}
+.at-cc-list {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.at-cc-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px 5px 12px;
+  gap: 8px;
+  user-select: none;
+}
+.at-cc-item:hover {
+  background: #f8f9fa;
+}
+.dark .at-cc-item:hover {
+  background: #334155/50;
+}
+.at-cc-drag-handle {
+  cursor: grab;
+  color: #bdc1c6;
+  font-size: 11px;
+}
+.at-cc-drag-handle:active {
+  cursor: grabbing;
+}
+.at-cc-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  font-size: 12px;
+  color: #3c4043;
+  cursor: pointer;
+  min-width: 0;
+}
+.dark .at-cc-label {
+  color: #e2e8f0;
+}
+.at-cc-arrows {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.at-cc-arrow-btn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #5f6368;
+  font-size: 9px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.at-cc-arrow-btn:hover:not(:disabled) {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+.at-cc-arrow-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+.at-cc-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+.dark .at-cc-footer {
+  background: #0f172a;
+  border-color: #334155;
+}
+.at-cc-reset-btn {
+  font-size: 11px;
+  color: #5f6368;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.at-cc-reset-btn:hover {
+  color: #ea4335;
+}
+.at-cc-done-btn {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 14px;
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.at-cc-done-btn:hover {
+  background: #1557b0;
+}
+
 /* ── Filtre paneli (teleport → body, scoped değil) ─────────────────────────── */
 #at-filter-panel {
   position: fixed;
