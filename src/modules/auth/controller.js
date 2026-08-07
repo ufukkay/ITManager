@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 
 exports.postLogin = (req, res) => {
     const { email, password } = req.body;
-    console.log(`Login attempt for email: ${email}`);
+    console.log(`Login attempt for email: ${email} from IP: ${req.ip}`);
 
     try {
         const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
@@ -60,14 +60,14 @@ exports.forgotPassword = async (req, res) => {
     if (!email) return res.status(400).json({ success: false, message: 'E-posta gerekli.' });
 
     try {
-        const user = db.prepare('SELECT id, full_name, email FROM users WHERE email = ?').get(email);
-        if (!user) {
-            // Güvenlik açısından "Kullanıcı bulunamadı" demek yerine başarılı mesajı veriyoruz
+        const user = db.prepare('SELECT id, full_name, email, is_active FROM users WHERE email = ?').get(email);
+        if (!user || user.is_active === 0) {
+            // Güvenlik açısından "Kullanıcı bulunamadı/pasif" demek yerine başarılı mesajı veriyoruz
             return res.json({ success: true, message: 'Eğer sistemde kayıtlıysa, e-posta adresinize sıfırlama linki gönderildi.' });
         }
 
         const MailerService = require('../../services/MailerService');
-        const result = await MailerService.sendPasswordResetEmail(user.email, user.full_name, false);
+        const result = await MailerService.sendPasswordResetEmail(user.email, user.full_name, false, user.id);
 
         if (result.success) {
             return res.json({ success: true, message: 'Eğer sistemde kayıtlıysa, e-posta adresinize sıfırlama linki gönderildi.' });
@@ -85,25 +85,24 @@ exports.resetPassword = (req, res) => {
     if (!token || !newPassword) return res.status(400).json({ success: false, message: 'Eksik parametre.' });
 
     try {
-        const jwt = require('jsonwebtoken');
-        const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'itmanager-dev-secret';
-        
-        let decoded;
-        try {
-            decoded = jwt.verify(token, secret);
-        } catch (e) {
+        const crypto = require('crypto');
+        const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+        const user = db.prepare(`
+            SELECT id, is_active FROM users
+            WHERE reset_token = ? AND reset_expires IS NOT NULL AND reset_expires > datetime('now')
+        `).get(hashedToken);
+
+        if (!user) {
             return res.status(400).json({ success: false, message: 'Geçersiz veya süresi dolmuş bağlantı.' });
         }
-
-        const email = decoded.email;
-        const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-        
-        if (!user) {
-            return res.status(404).json({ success: false, message: 'Kullanıcı bulunamadı.' });
+        if (user.is_active === 0) {
+            return res.status(403).json({ success: false, message: 'Hesabınız dondurulmuş (Pasif). Lütfen yöneticinizle iletişime geçin.' });
         }
 
         const hashedPass = bcrypt.hashSync(newPassword, 10);
-        db.prepare('UPDATE users SET password = ? WHERE email = ?').run(hashedPass, email);
+        // Şifreyi güncelle ve token'ı tüket (tek kullanımlık) — aynı bağlantı bir daha kullanılamaz.
+        db.prepare('UPDATE users SET password = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?').run(hashedPass, user.id);
 
         return res.json({ success: true, message: 'Şifreniz başarıyla güncellendi. Artık giriş yapabilirsiniz.' });
 

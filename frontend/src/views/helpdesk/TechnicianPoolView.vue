@@ -162,7 +162,9 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import api from '../../api'
+import { useToast } from '../../composables/useToast'
 
+const { showToast } = useToast()
 const loading = ref(true)
 const tickets = ref([])
 const categories = ref([])
@@ -271,6 +273,7 @@ const claimTicket = async (ticketId, event) => {
     }
   } catch (err) {
     console.error('Claim error:', err)
+    showToast(err.response?.data?.error || 'Bilet üzerinize alınamadı.', 'error')
   }
 }
 
@@ -286,6 +289,7 @@ const reassignTicket = async (ticketId, targetTechId, event) => {
     }
   } catch (err) {
     console.error('Reassign error:', err)
+    showToast(err.response?.data?.error || 'Bilet devredilemedi.', 'error')
   }
 }
 

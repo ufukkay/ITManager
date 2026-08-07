@@ -44,8 +44,19 @@ class MasterDataService {
     }
 
     static async deleteCompany(id) {
+        // assets.company_id NOT NULL kısıtlıdır — bu şirkete bağlı varlık varken silme,
+        // "hayalet" şirkete sahip bir varlık bırakır (dangling FK). Önce varlıklar taşınmalı.
+        const assetCount = db.prepare("SELECT COUNT(*) as c FROM assets WHERE company_id = ?").get(id).c;
+        if (assetCount > 0) {
+            throw new Error(`Bu şirkete bağlı ${assetCount} envanter kaydı var. Silmeden önce bu varlıkları başka bir şirkete taşıyın.`);
+        }
+
         const transaction = db.transaction(() => {
             db.prepare("UPDATE personnel SET company_id = NULL WHERE company_id = ?").run(id);
+            db.prepare("UPDATE invoices SET company_id = NULL WHERE company_id = ?").run(id);
+            db.prepare("UPDATE m365_allocations SET company_id = NULL WHERE company_id = ?").run(id);
+            db.prepare("UPDATE hr_requests SET company_id = NULL WHERE company_id = ?").run(id);
+            db.prepare("DELETE FROM server_companies WHERE company_id = ?").run(id);
             db.prepare("DELETE FROM companies WHERE id = ?").run(id);
         });
         transaction();
@@ -86,6 +97,9 @@ class MasterDataService {
     static async deleteDepartment(id) {
         const transaction = db.transaction(() => {
             db.prepare("UPDATE personnel SET department_id = NULL WHERE department_id = ?").run(id);
+            db.prepare("UPDATE assets SET department_id = NULL WHERE department_id = ?").run(id);
+            db.prepare("UPDATE hr_requests SET department_id = NULL WHERE department_id = ?").run(id);
+            db.prepare("UPDATE helpdesk_tickets SET related_dep_id = NULL WHERE related_dep_id = ?").run(id);
             db.prepare("DELETE FROM departments WHERE id = ?").run(id);
         });
         transaction();
@@ -122,6 +136,8 @@ class MasterDataService {
     static async deleteCostCenter(id) {
         const transaction = db.transaction(() => {
             db.prepare("UPDATE personnel SET cost_center_id = NULL WHERE cost_center_id = ?").run(id);
+            db.prepare("UPDATE invoices SET cost_center_id = NULL WHERE cost_center_id = ?").run(id);
+            db.prepare("UPDATE assets SET cost_center_id = NULL WHERE cost_center_id = ?").run(id);
             db.prepare("DELETE FROM cost_centers WHERE id = ?").run(id);
         });
         transaction();
@@ -194,7 +210,7 @@ class MasterDataService {
                 if (existingUser) throw new Error("Bu e-posta ile zaten bir sistem hesabı mevcut.");
                 
                 const bcrypt = require('bcryptjs');
-                const userPass = (data.password && data.password.trim()) ? data.password.trim() : '123456';
+                const userPass = (data.password && data.password.trim()) ? data.password.trim() : require('crypto').randomBytes(32).toString('hex');
                 const hashedPass = bcrypt.hashSync(userPass, 10);
                 const username = email.split('@')[0];
 
@@ -212,7 +228,7 @@ class MasterDataService {
                 // Send welcome email (asynchronous)
                 try {
                     const MailerService = require('../../services/MailerService');
-                    MailerService.sendPasswordResetEmail(email, `${first_name} ${last_name}`, true).catch(err => {
+                    MailerService.sendPasswordResetEmail(email, `${first_name} ${last_name}`, true, userId).catch(err => {
                         console.error("Welcome email failed:", err);
                     });
                 } catch (e) {
@@ -257,7 +273,7 @@ class MasterDataService {
                     const existingUser = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
                     if (existingUser) throw new Error("Bu e-posta ile zaten bir sistem hesabı mevcut.");
                     
-                    const userPass = (data.password && data.password.trim()) ? data.password.trim() : '123456';
+                    const userPass = (data.password && data.password.trim()) ? data.password.trim() : require('crypto').randomBytes(32).toString('hex');
                     const hashedPass = bcrypt.hashSync(userPass, 10);
                     const username = email.split('@')[0];
 
@@ -269,7 +285,7 @@ class MasterDataService {
 
                     try {
                         const MailerService = require('../../services/MailerService');
-                        MailerService.sendPasswordResetEmail(email, `${first_name} ${last_name}`, true).catch(err => {
+                        MailerService.sendPasswordResetEmail(email, `${first_name} ${last_name}`, true, userId).catch(err => {
                             console.error("Welcome email failed:", err);
                         });
                     } catch (e) {
@@ -332,11 +348,13 @@ class MasterDataService {
 
     static async bulkUpdatePersonnel(ids, data) {
         if (!Array.isArray(ids) || ids.length === 0) return;
-        const keys = Object.keys(data);
+
+        const ALLOWED_COLUMNS = ['company_id', 'department_id', 'cost_center_id', 'status', 'title', 'title_tr', 'title_en'];
+        const keys = Object.keys(data || {}).filter(k => ALLOWED_COLUMNS.includes(k));
         if (keys.length === 0) return;
 
         const setClause = keys.map(k => `${k} = ?`).join(', ');
-        const values = Object.values(data);
+        const values = keys.map(k => data[k]);
 
         const transaction = db.transaction((ids, vals) => {
             const stmt = db.prepare(`UPDATE personnel SET ${setClause} WHERE id = ?`);
@@ -389,7 +407,7 @@ class MasterDataService {
         try {
             const MailerService = require('../../services/MailerService');
             // asenkron olarak gönder (bekletmeye gerek yok)
-            MailerService.sendPasswordResetEmail(personnel.email, `${personnel.first_name} ${personnel.last_name}`, true).catch(err => {
+            MailerService.sendPasswordResetEmail(personnel.email, `${personnel.first_name} ${personnel.last_name}`, true, info.lastInsertRowid).catch(err => {
                 console.error("Welcome email failed:", err);
             });
         } catch (e) {
@@ -453,7 +471,21 @@ class MasterDataService {
     }
 
     static async deleteVehicle(id) {
-        db.prepare("DELETE FROM vehicles WHERE id = ?").run(id);
+        const transaction = db.transaction(() => {
+            // updateVehicle'daki şoför-kaldırma mantığıyla tutarlı: araca bağlı SIM hatlarının
+            // faturalarındaki personel ataması da temizlenmeli, aksi halde artık var olmayan
+            // bir araca bağlı personel maliyeti raporlarda görünmeye devam eder.
+            db.prepare(`
+                UPDATE invoices
+                SET personnel_id = NULL
+                WHERE phone_no IN (
+                    SELECT phone_no FROM assets WHERE vehicle_id = ? AND phone_no IS NOT NULL
+                )
+            `).run(id);
+            db.prepare("UPDATE assets SET vehicle_id = NULL WHERE vehicle_id = ?").run(id);
+            db.prepare("DELETE FROM vehicles WHERE id = ?").run(id);
+        });
+        transaction();
     }
 
     // --- LOCATIONS ---
@@ -475,7 +507,12 @@ class MasterDataService {
     }
 
     static async deleteLocation(id) {
-        db.prepare("DELETE FROM locations WHERE id = ?").run(id);
+        const transaction = db.transaction(() => {
+            db.prepare("UPDATE assets SET location_id = NULL WHERE location_id = ?").run(id);
+            db.prepare("UPDATE hr_requests SET location_id = NULL WHERE location_id = ?").run(id);
+            db.prepare("DELETE FROM locations WHERE id = ?").run(id);
+        });
+        transaction();
     }
 
     // --- OPERATORS ---
@@ -509,7 +546,18 @@ class MasterDataService {
     }
 
     static async deleteOperator(id) {
-        db.prepare("DELETE FROM operators WHERE id = ?").run(id);
+        // packages.operator_id NOT NULL kısıtlıdır — bu operatöre bağlı paket varken silme,
+        // "hayalet" operatöre sahip bir paket bırakır. Önce paketler silinmeli/taşınmalı.
+        const packageCount = db.prepare("SELECT COUNT(*) as c FROM packages WHERE operator_id = ?").get(id).c;
+        if (packageCount > 0) {
+            throw new Error(`Bu operatöre bağlı ${packageCount} paket var. Silmeden önce bu paketleri silin veya başka bir operatöre taşıyın.`);
+        }
+
+        const transaction = db.transaction(() => {
+            db.prepare("UPDATE assets SET operator_id = NULL WHERE operator_id = ?").run(id);
+            db.prepare("DELETE FROM operators WHERE id = ?").run(id);
+        });
+        transaction();
     }
 
     // --- PACKAGES ---
@@ -540,7 +588,11 @@ class MasterDataService {
     }
 
     static async deletePackage(id) {
-        db.prepare("DELETE FROM packages WHERE id = ?").run(id);
+        const transaction = db.transaction(() => {
+            db.prepare("UPDATE assets SET package_id = NULL WHERE package_id = ?").run(id);
+            db.prepare("DELETE FROM packages WHERE id = ?").run(id);
+        });
+        transaction();
     }
 
     // --- LICENSES ---
@@ -562,7 +614,18 @@ class MasterDataService {
     }
 
     static async deleteLicense(id) {
-        db.prepare("DELETE FROM m365_licenses WHERE id = ?").run(id);
+        const transaction = db.transaction(() => {
+            // Bir lisans-atama kaydı ("allocation") lisans olmadan anlamsızdır — null'lamak yerine
+            // kaskad siliyoruz (önce ona bağlı kullanıcı atamaları, sonra allocation'ın kendisi).
+            const allocationIds = db.prepare("SELECT id FROM m365_allocations WHERE license_id = ?").all(id).map(a => a.id);
+            if (allocationIds.length > 0) {
+                const placeholders = allocationIds.map(() => '?').join(',');
+                db.prepare(`DELETE FROM m365_allocation_users WHERE allocation_id IN (${placeholders})`).run(...allocationIds);
+                db.prepare(`DELETE FROM m365_allocations WHERE id IN (${placeholders})`).run(...allocationIds);
+            }
+            db.prepare("DELETE FROM m365_licenses WHERE id = ?").run(id);
+        });
+        transaction();
     }
 
     // --- SERVERS ---
@@ -694,7 +757,13 @@ class MasterDataService {
             'locations': 'Lokasyonlar'
         };
 
-        const targetTable = tableMap[type] || type;
+        // type, URL path parametresinden geliyor (istemci kontrollü) — bilinmeyen bir değeri
+        // sessizce ham tablo adı olarak kullanmak yerine (targetTable hiçbir tabloyla eşleşmeyip
+        // yanıltıcı şekilde "etki yok" dönerdi) burada reddediyoruz.
+        if (!tableMap[type]) {
+            throw new Error(`Bilinmeyen kayıt tipi: ${type}`);
+        }
+        const targetTable = tableMap[type];
         const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name != 'sqlite_sequence'").all();
         const results = [];
 
@@ -820,10 +889,29 @@ class MasterDataService {
 
     static async getAvailablePeriods() {
         return db.prepare(`
-            SELECT DISTINCT period 
-            FROM invoices 
+            SELECT DISTINCT period
+            FROM invoices
             ORDER BY period DESC
         `).all().map(r => r.period);
+    }
+
+    // Rapor ekranındaki personel detay modalı için — sim-takip modülüne (sim:view yetkisi)
+    // bağımlı olmadan, reports ile aynı masterdata:view yetkisiyle erişilebilir salt-okunur liste.
+    static async getPersonnelInvoices(personnelId, filters = {}) {
+        const whereClauses = ['i.personnel_id = ?'];
+        const params = [personnelId];
+
+        if (filters.period) {
+            whereClauses.push('i.period = ?');
+            params.push(filters.period);
+        }
+
+        return db.prepare(`
+            SELECT i.id, i.period, i.invoice_type, i.operator, i.phone_no, i.tariff, i.total_amount
+            FROM invoices i
+            WHERE ${whereClauses.join(' AND ')}
+            ORDER BY i.period DESC, i.total_amount DESC
+        `).all(...params);
     }
 
     static async getReportByPersonnel(filters = {}) {
@@ -845,6 +933,10 @@ class MasterDataService {
         if (filters.cost_center_id) {
             whereClauses.push('p.cost_center_id = ?');
             params.push(filters.cost_center_id);
+        }
+        if (filters.department_id) {
+            whereClauses.push('p.department_id = ?');
+            params.push(filters.department_id);
         }
 
         const whereSQL = whereClauses.join(' AND ');
@@ -899,6 +991,7 @@ class MasterDataService {
         const liveParams = [];
         if (filters.company_id) { liveWhere.push('p.company_id = ?'); liveParams.push(filters.company_id); }
         if (filters.cost_center_id) { liveWhere.push('p.cost_center_id = ?'); liveParams.push(filters.cost_center_id); }
+        if (filters.department_id) { liveWhere.push('p.department_id = ?'); liveParams.push(filters.department_id); }
         const liveTotal = db.prepare(`
             SELECT COALESCE(SUM(ml.unit_price), 0) as total
             FROM m365_allocation_users mau
@@ -913,23 +1006,18 @@ class MasterDataService {
     }
 
     static async getReportByService(filters = {}) {
-        let whereClauses = ['1=1'];
-        const params = [];
+        // clause+param'ı bir arada tutuyoruz ki "period hariç" filtrelemesi (monthlyTrend)
+        // clause sırasından bağımsız ve güvenilir olsun (params dizisini index'e göre
+        // filtrelemek, filtre sırası değişince yanlış parametreyi çıkarma riski taşıyordu).
+        const conditions = [];
+        if (filters.period) conditions.push({ clause: 'i.period = ?', param: filters.period, isPeriod: true });
+        if (filters.company_id) conditions.push({ clause: 'p.company_id = ?', param: filters.company_id });
+        if (filters.operator) conditions.push({ clause: 'i.operator = ?', param: filters.operator });
+        if (filters.cost_center_id) conditions.push({ clause: 'p.cost_center_id = ?', param: filters.cost_center_id });
+        if (filters.department_id) conditions.push({ clause: 'p.department_id = ?', param: filters.department_id });
 
-        if (filters.period) {
-            whereClauses.push('i.period = ?');
-            params.push(filters.period);
-        }
-        if (filters.company_id) {
-            whereClauses.push('p.company_id = ?');
-            params.push(filters.company_id);
-        }
-        if (filters.operator) {
-            whereClauses.push('i.operator = ?');
-            params.push(filters.operator);
-        }
-
-        const whereSQL = whereClauses.join(' AND ');
+        const whereSQL = ['1=1', ...conditions.map(c => c.clause)].join(' AND ');
+        const params = conditions.map(c => c.param);
 
         // Hizmet tipi (GSM/M365) ve operatör kırılımı
         const byType = db.prepare(`
@@ -966,23 +1054,22 @@ class MasterDataService {
             ORDER BY grand_total DESC
         `).all(...params);
 
-        // Dönem trendi
+        // Dönem trendi — period filtresi hariç tüm diğer filtreler uygulanır (aksi halde
+        // tek bir dönem seçiliyken trend grafiği anlamsız kalırdı).
+        const trendConditions = conditions.filter(c => !c.isPeriod);
+        const trendWhereSQL = ['1=1', ...trendConditions.map(c => c.clause)].join(' AND ');
         const monthlyTrend = db.prepare(`
-            SELECT 
+            SELECT
                 i.period,
                 SUM(CASE WHEN i.invoice_type = 'gsm' THEN i.total_amount ELSE 0 END) as gsm,
                 SUM(CASE WHEN i.invoice_type = 'm365' THEN i.total_amount ELSE 0 END) as m365,
                 SUM(i.total_amount) as total
             FROM invoices i
             LEFT JOIN personnel p ON i.personnel_id = p.id
-            WHERE ${whereClauses.filter(c => !c.includes('i.period')).join(' AND ')}
+            WHERE ${trendWhereSQL}
             GROUP BY i.period
             ORDER BY i.period ASC
-        `).all(...params.filter((_, idx) => {
-            // period parametresini trend sorgusundan çıkar
-            const periodIdx = filters.period ? 0 : -1;
-            return idx !== periodIdx;
-        }));
+        `).all(...trendConditions.map(c => c.param));
 
         // Toplamlar
         const totals = db.prepare(`
@@ -1015,6 +1102,14 @@ class MasterDataService {
         if (filters.operator) {
             whereClauses.push('i.operator = ?');
             params.push(filters.operator);
+        }
+        if (filters.cost_center_id) {
+            whereClauses.push('p.cost_center_id = ?');
+            params.push(filters.cost_center_id);
+        }
+        if (filters.department_id) {
+            whereClauses.push('p.department_id = ?');
+            params.push(filters.department_id);
         }
 
         const whereSQL = whereClauses.join(' AND ');
@@ -1072,6 +1167,14 @@ class MasterDataService {
         if (filters.operator) {
             trendWhere += ' AND i.operator = ?';
             trendParams.push(filters.operator);
+        }
+        if (filters.cost_center_id) {
+            trendWhere += ' AND p.cost_center_id = ?';
+            trendParams.push(filters.cost_center_id);
+        }
+        if (filters.department_id) {
+            trendWhere += ' AND p.department_id = ?';
+            trendParams.push(filters.department_id);
         }
 
         const monthlyTrend = db.prepare(`

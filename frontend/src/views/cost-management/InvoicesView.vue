@@ -4,7 +4,10 @@ import api from '../../api'
 import { useMasterDataStore } from '../../stores/masterData'
 import AppTable from '../../components/AppTable.vue'
 import { useConfirm } from '../../composables/useConfirm'
+import { useToast } from '../../composables/useToast'
 import * as XLSX from 'xlsx'
+
+const { showToast } = useToast()
 
 const { ask, startLoading, stopLoading } = useConfirm()
 const masterData = useMasterDataStore()
@@ -90,7 +93,10 @@ const fetchSummaries = async () => {
     summaries.value = res.data
     if (!selectedPeriod.value && summaries.value.length > 0)
       selectedPeriod.value = summaries.value[0].period
-  } catch (err) { console.error('Özetler yüklenemedi:', err) }
+  } catch (err) {
+    console.error('Özetler yüklenemedi:', err)
+    showToast(err.response?.data?.message || 'Fatura özetleri yüklenemedi.', 'error')
+  }
   finally { loading.value = false }
 }
 
@@ -106,7 +112,10 @@ const fetchInvoices = async () => {
       }
     })
     invoices.value = res.data
-  } catch (err) { console.error('Faturalar yüklenemedi:', err) }
+  } catch (err) {
+    console.error('Faturalar yüklenemedi:', err)
+    showToast(err.response?.data?.message || 'Faturalar yüklenemedi.', 'error')
+  }
   finally { loading.value = false }
 }
 

@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { db } = require('../database/db');
 
 class MailerService {
@@ -31,21 +31,28 @@ class MailerService {
   }
 
   /**
-   * Sends a password reset or welcome email with a reset link
+   * Sends a password reset or welcome email with a reset link.
+   * Token tek kullanımlıktır: rastgele üretilir, hash'i users.reset_token'a yazılır,
+   * resetPassword bu token'ı tüketince (veya süresi dolunca) geçersiz hale gelir.
    * @param {string} toEmail User's email address
    * @param {string} fullName User's full name
    * @param {boolean} isWelcome If true, sends welcome message. Otherwise, sends reset message.
+   * @param {number} userId Reset token'ın yazılacağı users.id
    */
-  static async sendPasswordResetEmail(toEmail, fullName, isWelcome = false) {
+  static async sendPasswordResetEmail(toEmail, fullName, isWelcome = false, userId) {
     try {
+      if (!userId) throw new Error('sendPasswordResetEmail: userId zorunludur.');
+
       const transporter = this.createTransporter();
       const settings = this.getSmtpSettings();
       const fromEmail = settings.from_email || settings.user;
 
-      const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET || 'itmanager-dev-secret';
-      const token = jwt.sign({ email: toEmail }, secret, { expiresIn: '2h' });
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+      db.prepare(`UPDATE users SET reset_token = ?, reset_expires = datetime('now', '+2 hours') WHERE id = ?`).run(hashedToken, userId);
+
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      const resetUrl = `${frontendUrl.replace(/\/$/, '')}/reset-password?token=${token}`;
+      const resetUrl = `${frontendUrl.replace(/\/$/, '')}/reset-password?token=${rawToken}`;
 
       const subject = isWelcome 
           ? 'IT Manager - Hesabınız Oluşturuldu: Parola Belirleyin'

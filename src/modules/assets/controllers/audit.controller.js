@@ -144,17 +144,30 @@ exports.submitPersonnelAuditSession = (req, res) => {
         const auditorName = (req.session?.user?.full_name) || 'Mobil Saha Teknisyeni';
         const auditorId = req.session?.user?.id || null;
 
+        // Gönderilen id'lerin gerçekten bu personele zimmetli olduğunu doğrula —
+        // aksi halde herhangi bir kullanıcı rastgele asset id'lerin sayım tarihini güncelleyebilir.
+        const placeholders = audited_asset_ids.map(() => '?').join(',');
+        const ownedAssets = audited_asset_ids.length
+            ? db.prepare(`SELECT id FROM assets WHERE personnel_id = ? AND id IN (${placeholders})`).all(personnel_id, ...audited_asset_ids)
+            : [];
+        const ownedIds = new Set(ownedAssets.map(a => a.id));
+        const skippedCount = audited_asset_ids.length - ownedIds.size;
+
         const updateAssetStmt = db.prepare("UPDATE assets SET last_audit_date = CURRENT_TIMESTAMP WHERE id = ?");
         const auditLogStmt = db.prepare("INSERT INTO asset_audits (asset_id, audited_by, audited_by_name, notes) VALUES (?, ?, ?, ?)");
         const actionLogStmt = db.prepare("INSERT INTO asset_logs (asset_id, action, target_type, notes) VALUES (?, 'AUDIT', 'NONE', ?)");
 
         audited_asset_ids.forEach(assetId => {
+            if (!ownedIds.has(assetId)) return;
             updateAssetStmt.run(assetId);
             auditLogStmt.run(assetId, auditorId, auditorName, notes || 'Saha Personel Zimmet Sayımı Tamamlandı - Onaylandı');
             actionLogStmt.run(assetId, `Saha Zimmet Kontrolü Onaylandı: ${auditorName}`);
         });
 
-        res.json({ success: true, message: `${audited_asset_ids.length} cihaz için zimmet sayımı tescillendi.` });
+        const message = skippedCount > 0
+            ? `${ownedIds.size} cihaz için zimmet sayımı tescillendi. ${skippedCount} cihaz bu personele ait olmadığı için atlandı.`
+            : `${ownedIds.size} cihaz için zimmet sayımı tescillendi.`;
+        res.json({ success: true, message });
     } catch (err) {
         console.error('submitPersonnelAuditSession error:', err);
         res.status(500).json({ error: 'Saha zimmet sayımı kaydedilemedi.' });
@@ -274,7 +287,7 @@ exports.submitAuditItemResult = (req, res) => {
     try {
         const { asset_id, campaign_id, status, discrepancy_note } = req.body;
         const userId = req.session?.user?.id || null;
-        const userName = req.session?.user?.name || 'Saha Görevlisi';
+        const userName = req.session?.user?.full_name || 'Saha Görevlisi';
 
         if (!asset_id || !status) {
             return res.status(400).json({ error: 'Varlık ID ve sayım durumu gereklidir.' });
@@ -354,7 +367,7 @@ exports.getAuditCampaigns = (req, res) => {
         const campaigns = db.prepare(`
             SELECT
                 ac.*,
-                u.name as creator_name,
+                u.full_name as creator_name,
                 (SELECT COUNT(DISTINCT asset_id) FROM audit_session_items WHERE campaign_id = ac.id AND status = 'COUNTED') as counted_count,
                 (SELECT COUNT(DISTINCT asset_id) FROM audit_session_items WHERE campaign_id = ac.id AND status = 'DATA_ERROR') as error_count,
                 (SELECT COUNT(*) FROM assets WHERE status_id NOT IN (SELECT id FROM asset_statuses WHERE name LIKE '%Hurda%' OR name LIKE '%Kayıp%')) as total_assets
@@ -397,7 +410,7 @@ exports.getAuditLiveStats = (req, res) => {
                 am.name as model_name,
                 ab.name as brand_name,
                 p.first_name || ' ' || p.last_name as personnel_name,
-                u.name as scanned_by_name
+                u.full_name as scanned_by_name
             FROM audit_session_items asi
             JOIN assets a ON asi.asset_id = a.id
             LEFT JOIN asset_models am ON a.model_id = am.id

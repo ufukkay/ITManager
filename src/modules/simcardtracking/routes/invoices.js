@@ -18,7 +18,7 @@ const upload = multer({ storage: storage });
 /**
  * Helper to fetch and sync invoices with current SIM/Personnel data
  */
-function fetchInvoices({ period, operator, source_file, isMatched, phoneNo, personnelName, companyName, costCenter, search } = {}) {
+function fetchInvoices({ period, operator, source_file, isMatched, phoneNo, personnelName, companyName, costCenter, search, personnel_id } = {}) {
   let query = `
     SELECT 
       i.*, 
@@ -54,7 +54,12 @@ function fetchInvoices({ period, operator, source_file, isMatched, phoneNo, pers
     query += ' AND i.phone_no LIKE ?';
     params.push(`%${phoneNo}%`);
   }
-  
+
+  if (personnel_id) {
+    query += ' AND i.personnel_id = ?';
+    params.push(personnel_id);
+  }
+
   if (search) {
     query += ' AND (i.phone_no LIKE ? OR p.first_name LIKE ? OR p.last_name LIKE ? OR c.name LIKE ? OR cc.name LIKE ? OR i.tariff LIKE ?)';
     const searchParam = `%${search}%`;

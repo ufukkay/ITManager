@@ -160,14 +160,14 @@ const list = (type, filters = {}) => {
   if (filters.search) {
     const s = `%${filters.search}%`;
     if (type === 'm2m') {
-      query += ' AND (v.plate_no LIKE ? OR a.phone_no LIKE ? OR a.serial_no LIKE ? OR pers.first_name LIKE ?)';
-      params.push(s, s, s, s);
+      query += ' AND (v.plate_no LIKE ? OR a.phone_no LIKE ? OR a.serial_no LIKE ? OR pers.first_name LIKE ? OR pers.last_name LIKE ? OR d.name LIKE ?)';
+      params.push(s, s, s, s, s, s);
     } else if (type === 'data') {
-      query += ' AND (a.phone_no LIKE ? OR a.serial_no LIKE ? OR l.name LIKE ?)';
-      params.push(s, s, s);
-    } else {
-      query += ' AND (a.phone_no LIKE ? OR a.serial_no LIKE ? OR pers.first_name LIKE ? OR pers.last_name LIKE ?)';
+      query += ' AND (a.phone_no LIKE ? OR a.serial_no LIKE ? OR l.name LIKE ? OR d.name LIKE ?)';
       params.push(s, s, s, s);
+    } else {
+      query += ' AND (a.phone_no LIKE ? OR a.serial_no LIKE ? OR pers.first_name LIKE ? OR pers.last_name LIKE ? OR d.name LIKE ?)';
+      params.push(s, s, s, s, s);
     }
   }
   query += ' ORDER BY a.id DESC';

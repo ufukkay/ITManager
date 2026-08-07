@@ -31,6 +31,14 @@
           <option value="Türk Telekom">Türk Telekom</option>
           <option value="Microsoft">Microsoft (M365)</option>
         </select>
+        <select v-model="filters.department_id" @change="load" class="filter-select">
+          <option value="">Tüm Departmanlar</option>
+          <option v-for="d in departments" :key="d.id" :value="d.id">{{ d.name }}</option>
+        </select>
+        <select v-model="filters.cost_center_id" @change="load" class="filter-select">
+          <option value="">Tüm Masraf Kalemleri</option>
+          <option v-for="cc in costCenters" :key="cc.id" :value="cc.id">{{ cc.code ? cc.code + ' - ' + cc.name : cc.name }}</option>
+        </select>
       </div>
       <div class="ml-auto flex items-center gap-2">
         <button @click="load" class="btn-icon" :disabled="loading"><i class="fas fa-sync-alt" :class="{'fa-spin':loading}"></i></button>
@@ -81,7 +89,7 @@
                 <tr v-if="!personnelData.rows?.length">
                   <td colspan="7" class="text-center py-8 text-gray-300 dark:text-slate-600 text-sm">Veri bulunamadı</td>
                 </tr>
-                <tr v-for="row in personnelData.rows" :key="row.personnel_id" class="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                <tr v-for="row in personnelData.rows" :key="row.personnel_id" class="hover:bg-blue-50/50 dark:hover:bg-slate-700/50 cursor-pointer" @click="openPersonnelDetail(row)">
                   <td>
                     <div class="font-semibold text-gray-900 dark:text-slate-100 text-[12.5px]">{{ row.personnel_name || 'Eşleşmemiş' }}</div>
                     <div class="text-[10px] text-gray-400 dark:text-slate-500">{{ row.operators }}</div>
@@ -218,6 +226,54 @@
         </div>
       </template>
     </main>
+
+    <!-- PERSONNEL DETAIL MODAL -->
+    <div v-if="detailModal.open" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" @click.self="closePersonnelDetail">
+      <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between shrink-0">
+          <div>
+            <div class="text-[14px] font-black text-gray-900 dark:text-slate-100">{{ detailModal.row?.personnel_name || 'Eşleşmemiş' }}</div>
+            <div class="text-[11px] text-gray-400 dark:text-slate-500">{{ detailModal.row?.company_name }} <span v-if="detailModal.row?.cost_center_name">· {{ detailModal.row.cost_center_name }}</span></div>
+          </div>
+          <button @click="closePersonnelDetail" class="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-400 flex items-center justify-center"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+          <AppFinancialHistory v-if="detailModal.row?.personnel_id" :personnel-id="detailModal.row.personnel_id" />
+
+          <div>
+            <div class="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-2">
+              <i class="fas fa-list"></i> Fatura Detayları
+              <span class="text-gray-300 dark:text-slate-600 font-normal normal-case">({{ filters.period || 'seçili dönem filtresi geçerli' }})</span>
+            </div>
+            <div v-if="detailModal.loadingInvoices" class="h-20 flex items-center justify-center text-gray-400 dark:text-slate-500 text-[12px]">
+              <i class="fas fa-spinner fa-spin mr-2"></i> Yükleniyor...
+            </div>
+            <div v-else-if="detailModal.error" class="h-20 flex items-center justify-center bg-red-50 dark:bg-red-500/10 rounded-lg border border-dashed border-red-200 dark:border-red-500/30 text-red-500 dark:text-red-400 text-[12px]">
+              <i class="fas fa-exclamation-triangle mr-2"></i> {{ detailModal.error }}
+            </div>
+            <div v-else-if="!detailModal.invoices.length" class="h-20 flex items-center justify-center bg-gray-50 dark:bg-slate-900 rounded-lg border border-dashed border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500 text-[12px]">
+              Bu dönem için fatura kaydı bulunamadı.
+            </div>
+            <table v-else class="rtable border border-gray-100 dark:border-slate-700 rounded-lg overflow-hidden">
+              <thead>
+                <tr>
+                  <th>Dönem</th><th>Tip</th><th>Operatör</th><th>Telefon / Tarife</th><th class="text-right">Tutar</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="inv in detailModal.invoices" :key="inv.id" class="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                  <td class="text-[12px] text-gray-600 dark:text-slate-400">{{ inv.period }}</td>
+                  <td><span :class="['badge-type', inv.invoice_type === 'gsm' ? 'bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400' : 'bg-emerald-100 dark:bg-green-500/10 text-emerald-700 dark:text-green-400']">{{ inv.invoice_type?.toUpperCase() }}</span></td>
+                  <td class="text-[12px] text-gray-700 dark:text-slate-300">{{ inv.operator }}</td>
+                  <td class="text-[11px] text-gray-500 dark:text-slate-400">{{ inv.phone_no || inv.tariff || '-' }}</td>
+                  <td class="text-right text-[12px] font-bold text-gray-900 dark:text-slate-100">{{ fmt(inv.total_amount) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -228,6 +284,7 @@ import { useMasterDataStore } from '../../stores/masterData'
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from 'chart.js'
 import { Bar } from 'vue-chartjs'
 import * as XLSX from 'xlsx'
+import AppFinancialHistory from '../../components/AppFinancialHistory.vue'
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 
@@ -235,6 +292,8 @@ const store = useMasterDataStore()
 const loading = ref(false)
 const periods = ref([])
 const companies = computed(() => store.companies)
+const departments = computed(() => store.departments)
+const costCenters = computed(() => store.costCenters)
 
 const activeTab = ref('personnel')
 const tabs = [
@@ -243,7 +302,8 @@ const tabs = [
   { key: 'company', label: 'Şirket Bazlı', icon: 'fas fa-building' }
 ]
 
-const filters = ref({ period: '', company_id: '', operator: '' })
+const filters = ref({ period: '', company_id: '', operator: '', department_id: '', cost_center_id: '' })
+const detailModal = ref({ open: false, row: null, invoices: [], loadingInvoices: false })
 const personnelData = ref({ rows: [], totals: null })
 const serviceData = ref({ byType: [], byCostCenter: [], monthlyTrend: [], totals: null })
 const companyData = ref({ byCompany: [], costCenterDetail: [], monthlyTrend: [], totals: null })
@@ -304,6 +364,8 @@ const load = async () => {
     if (filters.value.period) q.set('period', filters.value.period)
     if (filters.value.company_id) q.set('company_id', filters.value.company_id)
     if (filters.value.operator) q.set('operator', filters.value.operator)
+    if (filters.value.department_id) q.set('department_id', filters.value.department_id)
+    if (filters.value.cost_center_id) q.set('cost_center_id', filters.value.cost_center_id)
     const qs = q.toString()
 
     const [pRes, sRes, cRes] = await Promise.all([
@@ -349,8 +411,28 @@ const exportExcel = () => {
   XLSX.writeFile(wb, `ITManager_${sheetName}_${filters.value.period || 'Tum'}.xlsx`)
 }
 
+const openPersonnelDetail = async (row) => {
+  if (!row.personnel_id) return
+  detailModal.value = { open: true, row, invoices: [], loadingInvoices: true, error: '' }
+  try {
+    const q = new URLSearchParams()
+    if (filters.value.period) q.set('period', filters.value.period)
+    const res = await api.get(`/api/master-data/reports/personnel/${row.personnel_id}/invoices?${q.toString()}`)
+    detailModal.value.invoices = res.data || []
+  } catch (e) {
+    console.error('Personnel invoice detail load error:', e)
+    detailModal.value.error = e.response?.data?.error || 'Fatura detayları yüklenemedi.'
+  } finally {
+    detailModal.value.loadingInvoices = false
+  }
+}
+
+const closePersonnelDetail = () => {
+  detailModal.value = { open: false, row: null, invoices: [], loadingInvoices: false }
+}
+
 onMounted(async () => {
-  await Promise.all([store.fetchCompanies()])
+  await Promise.all([store.fetchCompanies(), store.fetchDepartments(), store.fetchCostCenters()])
   const pRes = await api.get('/api/master-data/reports/periods')
   periods.value = pRes.data
   if (periods.value.length) filters.value.period = periods.value[0]

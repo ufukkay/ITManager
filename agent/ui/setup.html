@@ -184,6 +184,11 @@
             <input type="number" id="reportInterval" class="form-control" placeholder="60" value="60" min="10" max="600">
         </div>
 
+        <div class="form-group">
+            <label class="form-label">PAYLAŞILAN ANAHTAR (OPSİYONEL)</label>
+            <input type="password" id="sharedSecret" class="form-control" placeholder="Sunucu AGENT_SHARED_SECRET ile aynı olmalı">
+        </div>
+
         <button class="btn btn-secondary" onclick="testConnection()">🔗 Bağlantıyı Test Et</button>
         <button class="btn btn-primary" onclick="saveAndStart()" style="margin-top: 10px;">💾 Kaydet & Başlat</button>
 
@@ -199,13 +204,15 @@
             if (config.serverIP) document.getElementById('serverIP').value = config.serverIP;
             if (config.serverPort) document.getElementById('serverPort').value = config.serverPort;
             if (config.reportInterval) document.getElementById('reportInterval').value = config.reportInterval;
+            if (config.sharedSecret) document.getElementById('sharedSecret').value = config.sharedSecret;
         });
 
         function getFormData() {
             return {
                 serverIP: document.getElementById('serverIP').value.trim(),
                 serverPort: document.getElementById('serverPort').value.trim(),
-                reportInterval: parseInt(document.getElementById('reportInterval').value) || 60
+                reportInterval: parseInt(document.getElementById('reportInterval').value) || 60,
+                sharedSecret: document.getElementById('sharedSecret').value.trim()
             };
         }
 

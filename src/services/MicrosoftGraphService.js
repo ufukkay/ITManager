@@ -38,6 +38,7 @@ const SKU_NAME_MAP = {
   ENTERPRISEPREMIUM: 'Microsoft 365 E5',
   SPE_E5: 'Microsoft 365 E5',
   SPB: 'Microsoft 365 Business Premium',
+  O365_BUSINESS_PREMIUM: 'Microsoft 365 Business Premium',
   O365_BUSINESS_ESSENTIALS: 'Microsoft 365 Business Basic',
   SMB_BUSINESS_PREMIUM: 'Microsoft 365 Business Standard',
   STANDARDPACK: 'Office 365 E1',
@@ -249,7 +250,11 @@ class MicrosoftGraphService {
     const domainStats = {};
     allUsers.forEach(u => {
       const domain = getEmailDomain(u);
-      if (!domain || domain.includes('#ext#')) return;
+      // #EXT# işareti B2B guest kullanıcılarda UPN'nin @ öncesindeki (yerel) kısmında yer alır,
+      // domain (split('@')[1]) içinde asla görünmez — bu yüzden UPN'nin kendisi kontrol edilmeli
+      // (bkz. fullPersonnelSync'teki aynı kontrol, satır ~292).
+      const upn = u.userPrincipalName || '';
+      if (!domain || upn.toUpperCase().includes('#EXT#')) return;
       if (!domainStats[domain]) {
         domainStats[domain] = { domain, total: 0, licensed: 0, enabled: 0 };
       }
@@ -482,12 +487,11 @@ class MicrosoftGraphService {
     if (isMock) {
       result = await this.runSimulatedSync();
     } else {
-      try {
-        result = await this.runRealSync(settings);
-      } catch (err) {
-        console.error('Real AD Sync failed, running simulated fallback:', err.message);
-        result = await this.runSimulatedSync(true);
-      }
+      // Gerçek tenant yapılandırılmışken senkronizasyon hata verirse (ağ/izin/throttle),
+      // sessizce sahte/rastgele veriye düşmüyoruz — bu, gerçek lisans/atama verisini
+      // fark edilmeden bozardı. Hata olduğu gibi çağırana (admin route / scheduler) iletilir,
+      // last_sync GÜNCELLENMEZ ki bir sonraki kontrolde tekrar denensin.
+      result = await this.runRealSync(settings);
     }
 
     db.prepare("UPDATE entra_settings SET last_sync = CURRENT_TIMESTAMP WHERE id = ?").run(settings.id);
@@ -635,6 +639,11 @@ class MicrosoftGraphService {
 
     const currentPeriod = new Date().toISOString().slice(0, 7);
     let matchedUsersCount = 0;
+    // Eşleşen personel olduğu halde Graph'ın assignedLicenses döndürmediği kullanıcı sayısı —
+    // önceden bu sessizce atlanıyordu (bkz. cross-tenant/guest tipi hesaplar, ör. Sinan Ozpolat
+    // vakası: assignedLicenses alanı hiç dönmüyor). Artık loglanıp sonuç mesajında da gösteriliyor.
+    let skippedNoLicenseCount = 0;
+    let skippedUnknownSkuCount = 0;
 
     for (const gUser of allUsers) {
       const email = gUser.mail || gUser.userPrincipalName;
@@ -643,6 +652,10 @@ class MicrosoftGraphService {
       const person = db.prepare("SELECT id, company_id FROM personnel WHERE email = ? AND status = 'active'").get(email)
         || db.prepare("SELECT id, company_id FROM personnel WHERE entra_id = ? AND status = 'active'").get(gUser.id);
       if (!person) continue;
+
+      if (!gUser.assignedLicenses || gUser.assignedLicenses.length === 0) {
+        skippedNoLicenseCount++;
+      }
 
       if (gUser.assignedLicenses && gUser.assignedLicenses.length > 0) {
         const upnKey = (gUser.userPrincipalName || '').toLowerCase();
@@ -654,7 +667,7 @@ class MicrosoftGraphService {
 
         for (const licInfo of gUser.assignedLicenses) {
           const licId = idMap[licInfo.skuId];
-          if (!licId) continue;
+          if (!licId) { skippedUnknownSkuCount++; continue; }
 
           let allocation = db.prepare("SELECT id FROM m365_allocations WHERE company_id = ? AND license_id = ?").get(person.company_id, licId);
           if (!allocation) {
@@ -670,10 +683,22 @@ class MicrosoftGraphService {
 
     db.prepare('UPDATE m365_allocations SET quantity = (SELECT COUNT(*) FROM m365_allocation_users WHERE m365_allocation_users.allocation_id = m365_allocations.id)').run();
 
+    if (skippedNoLicenseCount > 0) {
+      console.warn(`M365 sync: ${skippedNoLicenseCount} eşleşen personel için Azure'dan lisans bilgisi alınamadı (assignedLicenses boş/erişilemez — cross-tenant/guest hesap olabilir).`);
+    }
+    if (skippedUnknownSkuCount > 0) {
+      console.warn(`M365 sync: ${skippedUnknownSkuCount} lisans ataması bilinmeyen SKU nedeniyle atlandı.`);
+    }
+
+    let message = "Microsoft Graph (Entra ID) üzerinden gerçek senkronizasyon başarıyla tamamlandı.";
+    if (skippedNoLicenseCount > 0) {
+      message += ` ${skippedNoLicenseCount} eşleşen personelin lisans bilgisi Azure'dan okunamadı (bkz. sunucu logu).`;
+    }
+
     return {
       success: true,
-      message: "Microsoft Graph (Entra ID) üzerinden gerçek senkronizasyon başarıyla tamamlandı.",
-      details: { licensesSynced: Object.keys(idMap).length, usersSynced: matchedUsersCount }
+      message,
+      details: { licensesSynced: Object.keys(idMap).length, usersSynced: matchedUsersCount, skippedNoLicenseCount, skippedUnknownSkuCount }
     };
   }
 

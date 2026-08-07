@@ -1089,16 +1089,20 @@ const filteredAssets = computed(() => {
       const inCompany = (a.company_name || '').toLowerCase().includes(q)
       const inPersonnel = (a.personnel_name || '').toLowerCase().includes(q)
       const inLocation = (a.location_name || '').toLowerCase().includes(q)
+      const inVehicle = (a.vehicle_plate_no || '').toLowerCase().includes(q)
+      const inDepartment = (a.department_name || '').toLowerCase().includes(q)
+      const inCostCenter = (a.cost_center_name || '').toLowerCase().includes(q)
       const inNotes = (a.notes || '').toLowerCase().includes(q)
 
-      if (!inSerial && !inBarcode && !inPhone && !inBrand && !inModel && !inCategory && !inCompany && !inPersonnel && !inLocation && !inNotes) {
+      if (!inSerial && !inBarcode && !inPhone && !inBrand && !inModel && !inCategory && !inCompany && !inPersonnel && !inLocation && !inVehicle && !inDepartment && !inCostCenter && !inNotes) {
         return false
       }
     }
 
     // 2. Dynamic assignment filter tab (ALL, ASSIGNED, UNASSIGNED)
-    if (assignmentFilter.value === 'ASSIGNED' && !a.personnel_id && !a.location_id) return false
-    if (assignmentFilter.value === 'UNASSIGNED' && (a.personnel_id || a.location_id)) return false
+    const isAssigned = a.personnel_id || a.location_id || a.vehicle_id || a.department_id || a.cost_center_id
+    if (assignmentFilter.value === 'ASSIGNED' && !isAssigned) return false
+    if (assignmentFilter.value === 'UNASSIGNED' && isAssigned) return false
 
     // 3. Dropdown field filter matches
     if (filters.value.category_id && a.category_id !== Number(filters.value.category_id)) return false
@@ -1121,7 +1125,7 @@ const tableAssets = computed(() => {
 
 const inUseCount = computed(() => {
   const list = assetStore.assets || []
-  return list.filter(a => a.personnel_id || a.location_id).length
+  return list.filter(a => a.personnel_id || a.location_id || a.vehicle_id || a.department_id || a.cost_center_id).length
 })
 
 const warehouseCount = computed(() => {

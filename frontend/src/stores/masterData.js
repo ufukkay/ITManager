@@ -23,18 +23,18 @@ export const useMasterDataStore = defineStore('masterData', {
       } catch (err) { console.error('Fetch companies error:', err) }
     },
 
-    async fetchDepartments(companyId = null) {
+    // Departmanlar ve masraf yerleri şirkete göre filtrelenmez — tüm şirketlerde ortak,
+    // global listelerdir (backend'de company_id sütunu yok).
+    async fetchDepartments() {
       try {
-        const url = companyId ? `/api/master-data/departments?companyId=${companyId}` : '/api/master-data/departments'
-        const response = await api.get(url)
+        const response = await api.get('/api/master-data/departments')
         this.departments = response.data
       } catch (err) { console.error('Fetch departments error:', err) }
     },
 
-    async fetchCostCenters(companyId = null) {
+    async fetchCostCenters() {
       try {
-        const url = companyId ? `/api/master-data/cost-centers?companyId=${companyId}` : '/api/master-data/cost-centers'
-        const response = await api.get(url)
+        const response = await api.get('/api/master-data/cost-centers')
         this.costCenters = response.data
       } catch (err) { console.error('Fetch cost centers error:', err) }
     },

@@ -347,7 +347,7 @@ onMounted(async () => {
               </div>
 
               <div class="text-right">
-                <span class="text-[13px] font-black text-gray-900 dark:text-slate-100">${{ rec.monthlyCost.toFixed(2) }}</span>
+                <span class="text-[13px] font-black text-gray-900 dark:text-slate-100">{{ fmtMoney(rec.monthlyCost, rec.currency) }}</span>
                 <p class="text-[9px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-wider">Aylık Maliyet</p>
               </div>
             </div>

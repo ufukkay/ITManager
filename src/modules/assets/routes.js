@@ -66,7 +66,7 @@ router.post('/audit/campaigns', hasPermission('asset:edit'), assetController.cre
 router.get('/audit/live-stats', assetController.getAuditLiveStats);
 router.get('/audit/summary', assetController.getAuditSummary);
 router.get('/audit/personnel-session/:personnelId', assetController.getPersonnelAuditSession);
-router.post('/audit/personnel-submit', assetController.submitPersonnelAuditSession);
+router.post('/audit/personnel-submit', hasPermission('asset:edit'), assetController.submitPersonnelAuditSession);
 router.get('/audit/period-settings', assetController.getAuditPeriodSettings);
 router.put('/audit/period-settings', hasPermission('asset:edit'), assetController.updateAuditPeriodSettings);
 

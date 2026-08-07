@@ -220,6 +220,21 @@ const applyUpdate = async (req, res) => {
   exec(`powershell.exe -ExecutionPolicy Bypass -File "${UPDATE_SCRIPT}"`, { cwd: ROOT_DIR }, (err, stdout, stderr) => {
     if (err) console.error('[UPDATE] update.ps1 hata ile sonlandı:', stderr || err.message)
     else console.log('[UPDATE] update.ps1 tamamlandı.')
+
+    // Güvenlik ağı: update.ps1 kendi try/catch'i içinde her zaman inProgress=false yazar,
+    // ANCAK powershell.exe hiç başlayamazsa/parse edilemezse (bulunamadı, exec policy,
+    // syntax hatası) script'in try bloğuna hiç girilmez ve status dosyası hiç güncellenmez —
+    // arayüz sonsuza kadar "güncelleniyor" gösterir. Script çıktıktan sonra dosya hâlâ
+    // inProgress:true ise (script kendi hata durumunu yazamamış demektir) burada zorla kapatılır.
+    const finalStatus = readStatusFile()
+    if (err && finalStatus.inProgress) {
+      fs.writeFileSync(STATUS_FILE, JSON.stringify({
+        ...finalStatus,
+        inProgress: false,
+        success: false,
+        error: `Güncelleme script'i başlatılamadı veya beklenmedik şekilde sonlandı: ${(stderr || err.message || '').slice(0, 500)}`
+      }, null, 2))
+    }
   })
 }
 

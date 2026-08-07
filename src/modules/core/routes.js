@@ -85,6 +85,7 @@ router.get('/reports/periods', MasterDataController.getAvailablePeriods);
 router.get('/reports/financial/personnel/:id', MasterDataController.getPersonnelFinancialHistory);
 router.get('/reports/financial/stats', MasterDataController.getFinancialStats);
 router.get('/reports/personnel', MasterDataController.getReportByPersonnel);
+router.get('/reports/personnel/:id/invoices', MasterDataController.getPersonnelInvoices);
 router.get('/reports/service', MasterDataController.getReportByService);
 router.get('/reports/company', MasterDataController.getReportByCompany);
 router.get('/reports/personnel-benefits', MasterDataController.getPersonnelBenefitsReport);

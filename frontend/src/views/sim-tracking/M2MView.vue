@@ -19,7 +19,7 @@ const columns = [
   { key: 'package_name',  label: 'Tarife / Paket',    sortable: true, width: '160px' },
   { key: 'plate_no',      label: 'Plaka / Araç',      sortable: true, width: '130px' },
   { key: 'company_name',  label: 'Şirket',            sortable: true, width: '160px' },
-  { key: 'usage',         label: 'Veri Kullanımı',    sortable: false, filterable: false, width: '170px' },
+  { key: 'usage',         label: 'Paket Limiti',      sortable: false, filterable: false, width: '170px' },
   { key: 'cost_try',      label: 'Maliyet',           sortable: true,  width: '120px', align: 'right' },
   { key: 'status',        label: 'Durum',             sortable: true,  width: '110px' },
 ]
@@ -35,18 +35,7 @@ const tableRows  = computed(() => dataList.value)
 const selectedIds       = ref([])
 const onSelectionChange = (rows) => { selectedIds.value = rows.map(r => r.id) }
 
-const getUsage = (item) => {
-  if (!item.quota_gb || item.quota_gb === 0) return { used: 0, quota: 0, pct: 0 }
-  const used = parseFloat(((item.id * 37 % 100) / 100 * item.quota_gb).toFixed(1))
-  const pct  = Math.round((used / item.quota_gb) * 100)
-  return { used, quota: item.quota_gb, pct }
-}
-
-const usageBarClass = (pct) => {
-  if (pct > 85) return 'bg-rose-500'
-  if (pct > 60) return 'bg-amber-500'
-  return 'bg-emerald-500'
-}
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('tr-TR') : null
 
 const copyToClipboard = (text, label) => {
   if (!text) return
@@ -186,16 +175,12 @@ onMounted(() => {
           <span v-else class="text-slate-400 dark:text-slate-600 text-xs">—</span>
         </template>
 
-        <!-- Kullanım bar -->
+        <!-- Paket limiti (gerçek zamanlı kullanım verisi operatörden entegre değil) -->
         <template #cell-usage="{ row }">
-          <div v-if="row.quota_gb" class="w-[140px]">
-            <div class="flex items-center justify-between text-[10px] font-medium text-slate-500 dark:text-slate-400 mb-1">
-              <span>{{ getUsage(row).used }} / {{ row.quota_gb }} GB</span>
-              <span :class="getUsage(row).pct > 85 ? 'text-rose-500 font-bold' : 'text-slate-600 dark:text-slate-300'">%{{ getUsage(row).pct }}</span>
-            </div>
-            <div class="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div :class="['h-full rounded-full transition-all duration-300', usageBarClass(getUsage(row).pct)]"
-                :style="{ width: getUsage(row).pct + '%' }"></div>
+          <div v-if="row.quota_gb" class="text-[11px] text-slate-600 dark:text-slate-300">
+            <div class="font-semibold">{{ row.quota_gb }} GB / ay</div>
+            <div v-if="fmtDate(row.last_usage_date)" class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+              Son kullanım: {{ fmtDate(row.last_usage_date) }}
             </div>
           </div>
           <span v-else class="text-slate-400 dark:text-slate-600 text-xs">—</span>

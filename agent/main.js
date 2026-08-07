@@ -15,7 +15,8 @@ const configPath = path.join(app.getPath('userData'), 'config.json');
 let config = {
     serverIP: '',
     serverPort: '3000',
-    reportInterval: 60
+    reportInterval: 60,
+    sharedSecret: ''
 };
 
 // Config dosyasını oku
@@ -78,6 +79,8 @@ async function sendReport() {
             pending_updates: updates,
             os_version: os.type() + ' ' + os.release(),
             status: 'online'
+        }, {
+            headers: config.sharedSecret ? { 'x-agent-secret': config.sharedSecret } : {}
         });
 
         if (tray) tray.setToolTip(`ITManager Agent - CPU: ${cpu.toFixed(1)}% | RAM: ${ram.toFixed(1)}%`);

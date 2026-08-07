@@ -19,12 +19,13 @@ router.get('/search', hasPermission('sim:view'), (req, res) => {
 
     // Search M2M
     const m2m = db.prepare(`
-      SELECT 'm2m' as type, a.*, a.line_status as status, v.plate_no
+      SELECT 'm2m' as type, a.*, a.line_status as status, v.plate_no, (p.first_name || ' ' || p.last_name) as personnel_name
       FROM assets a
       JOIN asset_models am ON a.model_id = am.id
       LEFT JOIN vehicles v ON a.vehicle_id = v.id
-      WHERE am.name = 'M2M Hattı' AND (a.phone_no LIKE ? OR a.serial_no LIKE ? OR v.plate_no LIKE ?)${activeClause}
-    `).all(queryTerm, queryTerm, queryTerm);
+      LEFT JOIN personnel p ON a.personnel_id = p.id
+      WHERE am.name = 'M2M Hattı' AND (a.phone_no LIKE ? OR a.serial_no LIKE ? OR v.plate_no LIKE ? OR (p.first_name || ' ' || p.last_name) LIKE ?)${activeClause}
+    `).all(queryTerm, queryTerm, queryTerm, queryTerm);
     results.push(...m2m);
 
     // Search Data

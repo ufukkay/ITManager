@@ -1,9 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('./controller');
+const { createRateLimiter } = require('../../middleware/rateLimit');
+
+// Brute-force koruması: 15 dakikada IP başına en fazla 10 giriş denemesi,
+// şifre sıfırlama taleplerinde ise 15 dakikada 5 deneme.
+const loginLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, message: 'Çok fazla giriş denemesi yaptınız. Lütfen 15 dakika sonra tekrar deneyin.' });
+const passwordResetLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 5, message: 'Çok fazla şifre sıfırlama denemesi yaptınız. Lütfen 15 dakika sonra tekrar deneyin.' });
 
 // router.get('/login', authController.getLogin); // EJS versiyonu kaldırıldı
-router.post('/login', authController.postLogin);
+router.post('/login', loginLimiter, authController.postLogin);
 router.get('/logout', authController.logout);
 
 // Frontend API Rotaları
@@ -67,15 +73,15 @@ router.get('/api/dashboard/stats', (req, res) => {
         res.status(500).json({ error: 'Dashboard verileri alınamadı.' });
     }
 });
-router.post('/api/login', authController.postLogin);
+router.post('/api/login', loginLimiter, authController.postLogin);
 router.post('/api/logout', (req, res) => {
     req.session.destroy(() => {
         res.clearCookie('connect.sid'); // Varsayılan oturum çerezi isminin kullanıldığı varsayılıyor
         res.json({ success: true, message: 'Logged out successfully' });
     });
 });
-router.post('/api/forgot-password', authController.forgotPassword);
-router.post('/api/reset-password', authController.resetPassword);
+router.post('/api/forgot-password', passwordResetLimiter, authController.forgotPassword);
+router.post('/api/reset-password', passwordResetLimiter, authController.resetPassword);
 
 module.exports = router;
 

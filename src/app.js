@@ -37,12 +37,20 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+if (!process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET .env dosyasında tanımlı değil.');
+}
+
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'itmanager-secret-key',
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { 
-        secure: false, // HTTPS kullanılıyorsa true yapılmalı
+    cookie: {
+        // HTTPS arkasında çalışıyorsanız .env'e COOKIE_SECURE=true ekleyin.
+        // Varsayılan false: yanlışlıkla HTTP ortamında girişi kırmamak için.
+        secure: process.env.COOKIE_SECURE === 'true',
+        httpOnly: true,
+        sameSite: 'lax',
         maxAge: 24 * 60 * 60 * 1000 // 1 gün
     }
 }));

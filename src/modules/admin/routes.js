@@ -348,7 +348,10 @@ router.get('/api/settings/entra', async (req, res) => {
     try {
         const MicrosoftGraphService = require('../../services/MicrosoftGraphService');
         const settings = await MicrosoftGraphService.getSettings();
-        res.json({ success: true, settings });
+        // client_secret istemciye asla düz metin olarak gönderilmez. Kaydetme akışı,
+        // bu alan boş bırakılırsa mevcut secret'ı koruyacak şekilde zaten tasarlanmış.
+        const safeSettings = { ...settings, client_secret: '', client_secret_set: !!settings.client_secret };
+        res.json({ success: true, settings: safeSettings });
     } catch (err) {
         console.error('Get Entra settings error:', err);
         res.status(500).json({ success: false, message: 'Entra ID ayarları alınırken hata oluştu.' });
@@ -360,7 +363,8 @@ router.post('/api/settings/entra', async (req, res) => {
     try {
         const MicrosoftGraphService = require('../../services/MicrosoftGraphService');
         const updated = await MicrosoftGraphService.saveSettings(req.body);
-        res.json({ success: true, settings: updated, message: 'Entra ID ayarları kaydedildi.' });
+        const safeSettings = { ...updated, client_secret: '', client_secret_set: !!updated.client_secret };
+        res.json({ success: true, settings: safeSettings, message: 'Entra ID ayarları kaydedildi.' });
     } catch (err) {
         console.error('Save Entra settings error:', err);
         res.status(500).json({ success: false, message: 'Entra ID ayarları kaydedilirken hata oluştu.' });

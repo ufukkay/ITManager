@@ -63,11 +63,11 @@ class MasterDataController {
         }
     }
 
-    // Departmanlar
+    // Departmanlar — şirket bazlı değil, tüm şirketlerde ortak/global bir listedir
+    // (departments tablosunda company_id sütunu yoktur).
     static async getDepartments(req, res) {
         try {
-            const { companyId } = req.query;
-            const data = await MasterDataService.getAllDepartments(companyId);
+            const data = await MasterDataService.getAllDepartments();
             res.json(data);
         } catch (e) {
             res.status(500).json({ error: e.message });
@@ -109,11 +109,10 @@ class MasterDataController {
         }
     }
 
-    // Masraf Yerleri
+    // Masraf Yerleri — departmanlar gibi global bir listedir (cost_centers'da company_id yok).
     static async getCostCenters(req, res) {
         try {
-            const { companyId } = req.query;
-            const data = await MasterDataService.getAllCostCenters(companyId);
+            const data = await MasterDataService.getAllCostCenters();
             res.json(data);
         } catch (e) {
             res.status(500).json({ error: e.message });
@@ -579,6 +578,15 @@ class MasterDataController {
     static async getReportByPersonnel(req, res) {
         try {
             const data = await MasterDataService.getReportByPersonnel(req.query);
+            res.json(data);
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    }
+
+    static async getPersonnelInvoices(req, res) {
+        try {
+            const data = await MasterDataService.getPersonnelInvoices(req.params.id, req.query);
             res.json(data);
         } catch (e) {
             res.status(500).json({ error: e.message });

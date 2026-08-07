@@ -11,28 +11,34 @@ const alertCache = {};
 
 const sendAlertEmail = async (serverName, subject, message) => {
     try {
-        const adminEmail = 'admin@itmanager.com';
-        const html = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #c5221f; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                <div style="background-color: #c5221f; padding: 18px; color: white; font-weight: bold; text-align: center; font-size: 18px; letter-spacing: 0.5px;">
-                    🚨 Sunucu Alarm Bildirimi
-                </div>
-                <div style="padding: 24px; color: #202124; font-size: 14px; line-height: 1.6; background-color: #ffffff;">
-                    <p style="margin-top: 0;">Sayın Yetkili,</p>
-                    <p>Sistem izleme servisi tarafından aşağıdaki kritik durum tespit edilmiştir:</p>
-                    <div style="background-color: #fce8e6; border-left: 4px solid #c5221f; padding: 12px 16px; margin: 18px 0; border-radius: 4px;">
-                        <p style="margin: 0 0 6px 0;"><b>Sunucu Adı:</b> ${serverName}</p>
-                        <p style="margin: 0 0 6px 0;"><b>Durum/Kategori:</b> ${subject}</p>
-                        <p style="margin: 0;"><b>Alarm Detayı:</b> ${message}</p>
+        // Sabit/uydurma bir adres yerine, sistemdeki gerçek aktif admin kullanıcılarının
+        // e-posta adreslerine gönderilir (notificationService.getAdminUserIds ile aynı rol tanımı).
+        const adminEmails = db.prepare("SELECT email FROM users WHERE role_id = 1 AND (is_active IS NULL OR is_active = 1) AND email IS NOT NULL").all().map(r => r.email);
+        if (adminEmails.length === 0) {
+            console.warn('sendAlertEmail: aktif admin e-postası bulunamadı, alarm e-postası gönderilemedi.');
+        } else {
+            const html = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #c5221f; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <div style="background-color: #c5221f; padding: 18px; color: white; font-weight: bold; text-align: center; font-size: 18px; letter-spacing: 0.5px;">
+                        🚨 Sunucu Alarm Bildirimi
                     </div>
-                    <p style="margin-bottom: 0; font-size: 13px; color: #5f6368;"><b>Tespit Zamanı:</b> ${new Date().toLocaleString('tr-TR')}</p>
-                    <hr style="border: none; border-top: 1px solid #e8eaed; margin: 24px 0;" />
-                    <p style="font-size: 11px; color: #7f8c8d; text-align: center; margin: 0;">Bu otomatik bir bildirimdir, lütfen bu e-postayı yanıtlamayınız.</p>
+                    <div style="padding: 24px; color: #202124; font-size: 14px; line-height: 1.6; background-color: #ffffff;">
+                        <p style="margin-top: 0;">Sayın Yetkili,</p>
+                        <p>Sistem izleme servisi tarafından aşağıdaki kritik durum tespit edilmiştir:</p>
+                        <div style="background-color: #fce8e6; border-left: 4px solid #c5221f; padding: 12px 16px; margin: 18px 0; border-radius: 4px;">
+                            <p style="margin: 0 0 6px 0;"><b>Sunucu Adı:</b> ${serverName}</p>
+                            <p style="margin: 0 0 6px 0;"><b>Durum/Kategori:</b> ${subject}</p>
+                            <p style="margin: 0;"><b>Alarm Detayı:</b> ${message}</p>
+                        </div>
+                        <p style="margin-bottom: 0; font-size: 13px; color: #5f6368;"><b>Tespit Zamanı:</b> ${new Date().toLocaleString('tr-TR')}</p>
+                        <hr style="border: none; border-top: 1px solid #e8eaed; margin: 24px 0;" />
+                        <p style="font-size: 11px; color: #7f8c8d; text-align: center; margin: 0;">Bu otomatik bir bildirimdir, lütfen bu e-postayı yanıtlamayınız.</p>
+                    </div>
                 </div>
-            </div>
-        `;
-        await MailerService.sendMail(adminEmail, `[ITManager Alarm] ${serverName} - ${subject}`, html);
-        console.log(`Alert email sent for ${serverName}: ${subject}`);
+            `;
+            await MailerService.sendMail(adminEmails.join(','), `[ITManager Alarm] ${serverName} - ${subject}`, html);
+            console.log(`Alert email sent for ${serverName}: ${subject}`);
+        }
     } catch (err) {
         console.error('Failed to send alert email:', err.message);
     }
@@ -219,6 +225,22 @@ exports.getServerDetail = (req, res) => {
     } catch (err) {
         res.status(500).json({ error: 'Detay alınamadı' });
     }
+};
+
+// Agent isteklerini paylaşılan bir secret ile doğrular. AGENT_SHARED_SECRET .env'de
+// tanımlı değilse (henüz hiçbir agent'a dağıtılmadıysa) isteği geçirir ama uyarı loglar,
+// böylece zaten kurulu agent'lar bir gecede kırılmaz.
+exports.verifyAgentSecret = (req, res, next) => {
+    const expected = process.env.AGENT_SHARED_SECRET;
+    if (!expected) {
+        console.warn('AGENT_SHARED_SECRET tanımlı değil — /api/agent/report kimlik doğrulamasız kabul ediliyor. Üretimde bu değeri .env dosyasına ekleyin.');
+        return next();
+    }
+    const provided = req.header('x-agent-secret');
+    if (provided !== expected) {
+        return res.status(401).json({ error: 'Geçersiz agent anahtarı.' });
+    }
+    next();
 };
 
 exports.reportAgentData = (req, res) => {

@@ -165,6 +165,20 @@ exports.updateAsset = (req, res) => {
             return res.status(404).json({ error: 'Varlık bulunamadı.' });
         }
 
+        // Seri No ve Barkod çakışma kontrolü (kendisi hariç)
+        if (serial_no && serial_no.trim()) {
+            const existingSerial = db.prepare('SELECT id FROM assets WHERE serial_no = ? AND id != ?').get(serial_no.trim(), id);
+            if (existingSerial) {
+                return res.status(400).json({ error: `"${serial_no}" seri numarasına sahip başka bir varlık zaten mevcut!` });
+            }
+        }
+        if (barcode && barcode.trim()) {
+            const existingBarcode = db.prepare('SELECT id FROM assets WHERE barcode = ? AND id != ?').get(barcode.trim(), id);
+            if (existingBarcode) {
+                return res.status(400).json({ error: `"${barcode}" barkod numarasına sahip başka bir varlık zaten mevcut!` });
+            }
+        }
+
         // Amortisman süresi geçmediyse alış bedeli 0 girilemez
         const pPrice = parseFloat(purchase_price) || 0;
         const pLifetime = parseInt(lifetime_months) || 60;

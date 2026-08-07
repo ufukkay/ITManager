@@ -202,11 +202,20 @@ exports.createTicket = (req, res) => {
         const userId = req.session.user.id;
         const { category_id, subcategory_id, related_dep_id, ticket_type, title, description, priority } = req.body;
         
-        // Generate ticket number
+        // Bilet numarası oluştur — ticket_no UNIQUE kısıtlı olduğundan çakışma ihtimaline
+        // karşı (düşük ama sıfır olmayan) birkaç deneme ile benzersizliği garanti altına al.
         const dt = new Date();
         const year = dt.getFullYear().toString().substr(-2);
-        const rand = Math.floor(100000 + Math.random() * 900000); // 6 basamaklı bilet no
-        const ticketNo = `TCK-${year}${rand}`;
+        let ticketNo;
+        for (let attempt = 0; attempt < 5; attempt++) {
+            const rand = Math.floor(100000 + Math.random() * 900000); // 6 basamaklı bilet no
+            const candidate = `TCK-${year}${rand}`;
+            const exists = db.prepare('SELECT 1 FROM helpdesk_tickets WHERE ticket_no = ?').get(candidate);
+            if (!exists) { ticketNo = candidate; break; }
+        }
+        if (!ticketNo) {
+            return res.status(500).json({ error: 'Bilet numarası oluşturulamadı, lütfen tekrar deneyin.' });
+        }
 
         // Get personnel_id
         const pRow = db.prepare('SELECT personnel_id FROM users WHERE id = ?').get(userId);
@@ -464,8 +473,14 @@ exports.emailAttachments = async (req, res) => {
     try {
         const { id } = req.params;
         const { attachmentIds } = req.body;
+        const userId = req.session.user.id;
         const userEmail = req.session.user.email;
         const userName = req.session.user.full_name;
+        const isAdminOrTech = req.session.user.permissions.includes('helpdesk:manage');
+
+        const ticket = db.prepare('SELECT user_id FROM helpdesk_tickets WHERE id = ?').get(id);
+        if (!ticket) return res.status(404).json({ error: 'Talep bulunamadı.' });
+        if (!isAdminOrTech && ticket.user_id !== userId) return res.status(403).json({ error: 'Yetkisiz erişim.' });
 
         if (!attachmentIds || attachmentIds.length === 0) {
             return res.status(400).json({ error: 'E-posta ile gönderilecek dosya seçilmedi.' });
@@ -525,6 +540,12 @@ exports.emailAttachments = async (req, res) => {
 exports.deleteAttachment = (req, res) => {
     try {
         const { id, attachmentId } = req.params;
+        const userId = req.session.user.id;
+        const isAdminOrTech = req.session.user.permissions.includes('helpdesk:manage');
+
+        const ticket = db.prepare('SELECT user_id FROM helpdesk_tickets WHERE id = ?').get(id);
+        if (!ticket) return res.status(404).json({ error: 'Talep bulunamadı.' });
+        if (!isAdminOrTech && ticket.user_id !== userId) return res.status(403).json({ error: 'Yetkisiz erişim.' });
 
         const attachment = db.prepare('SELECT * FROM helpdesk_attachments WHERE ticket_id = ? AND id = ?').get(id, attachmentId);
         if (!attachment) {
@@ -978,11 +999,23 @@ exports.getPublicTicketInfo = (req, res) => {
 
 exports.getTechnicians = (req, res) => {
     try {
+        // "Teknisyen" sabit rol id'leriyle değil, middleware/auth.js'teki hasPermission ile
+        // AYNI yetkilendirme mantığıyla tanımlanır: role_id=1 (admin) her zaman dahildir,
+        // diğerleri için rolüne helpdesk:manage yetkisi tanımlı olması gerekir. Böylece yeni
+        // bir "teknisyen" rolü eklendiğinde kod değişikliği gerekmez.
         const technicians = db.prepare(`
             SELECT u.id, u.email, u.full_name, u.role_id, r.name as role_name
             FROM users u
             JOIN roles r ON u.role_id = r.id
-            WHERE u.role_id IN (1, 2) AND u.is_active = 1
+            WHERE u.is_active = 1
+              AND (
+                  u.role_id = 1
+                  OR u.role_id IN (
+                      SELECT rp.role_id FROM role_permissions rp
+                      JOIN permissions p ON rp.permission_id = p.id
+                      WHERE p.permission_key = 'helpdesk:manage'
+                  )
+              )
             ORDER BY u.full_name ASC
         `).all();
         res.json({ success: true, technicians });

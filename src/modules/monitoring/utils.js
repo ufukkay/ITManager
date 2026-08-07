@@ -1,5 +1,9 @@
-const { exec } = require('child_process');
+const { exec, execFile } = require('child_process');
 const path = require('path');
+
+// Sadece geçerli IPv4 veya hostname karakterlerine izin verir (harf, rakam, nokta, tire).
+// ping komutuna geçmeden önceki savunma katmanı; asıl koruma execFile'ın shell kullanmamasıdır.
+const isSafeHost = (value) => /^[a-zA-Z0-9.-]+$/.test(value);
 
 /**
  * Windows makinelerde bekleyen güncelleme sayısını döner.
@@ -35,7 +39,12 @@ exports.getPendingUpdateCount = () => {
 exports.checkOnline = (ip) => {
     return new Promise((resolve) => {
         if (!ip || ip === '127.0.0.1') return resolve(true);
-        exec(`ping -n 1 -w 1000 ${ip}`, (error) => {
+        if (!isSafeHost(ip)) {
+            console.error('checkOnline: geçersiz host/IP formatı, ping atlanıyor:', ip);
+            return resolve(false);
+        }
+        // execFile shell kullanmadığı için ip_address içine komut enjekte edilemez.
+        execFile('ping', ['-n', '1', '-w', '1000', ip], (error) => {
             resolve(!error);
         });
     });

@@ -270,7 +270,10 @@ onMounted(() => {
                             <input v-model="entraSettings.client_id" type="text" class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-500/20 transition-all font-mono" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
                         </div>
                         <div>
-                            <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Client Secret (İstemci Sırrı)</label>
+                            <label class="block text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">
+                                Client Secret (İstemci Sırrı)
+                                <span v-if="entraSettings.client_secret_set" class="ml-1 text-emerald-500 dark:text-emerald-400 normal-case font-medium">— kayıtlı, güvenlik nedeniyle gösterilmiyor</span>
+                            </label>
                             <input v-model="entraSettings.client_secret" type="password" class="w-full h-10 px-3 text-[13px] border border-gray-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 rounded-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-500/20 transition-all font-mono" placeholder="Değiştirmek için girin">
                         </div>
                         <div>

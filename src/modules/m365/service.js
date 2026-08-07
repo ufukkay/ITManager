@@ -71,7 +71,10 @@ class M365Service {
         db.prepare("DELETE FROM m365_allocation_users").run();
 
         const insertAlloc = db.prepare("INSERT INTO m365_allocations (company_id, license_id, quantity, period) VALUES (?, ?, ?, ?)");
-        const insertUser = db.prepare("INSERT INTO m365_allocation_users (allocation_id, personnel_id) VALUES (?, ?)");
+        // Manuel atamada gerçek kullanım verisi yok; mail_active/teams_active NULL bırakılırsa
+        // getOptimizationRecommendations bunu "30+ gündür pasif" sayıp yanlış tasarruf önerisi üretiyordu.
+        // Güvenli varsayılan: şimdi aktif kabul edilir (MicrosoftGraphService'teki aynı yaklaşım).
+        const insertUser = db.prepare("INSERT INTO m365_allocation_users (allocation_id, personnel_id, last_activity_date, mail_active, teams_active) VALUES (?, ?, CURRENT_TIMESTAMP, 1, 1)");
 
         allocations.forEach(alloc => {
           const info = insertAlloc.run(alloc.companyId, alloc.licenseId, alloc.quantity, alloc.period || new Date().toISOString().slice(0, 7));
