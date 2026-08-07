@@ -62,6 +62,7 @@ const exportSelectedToExcel = () => {
     'Şirket': row.company_name || '—',
     'Departman': row.department_name || '—',
     'Unvan': row.title || '—',
+    'Hesap Durumu': row.status_label,
     'Atanan Lisanslar': (row.assigned_licenses || []).map(l => l.license_name).join(', ')
   }))
   const worksheet = XLSX.utils.json_to_sheet(data)
@@ -110,18 +111,21 @@ const refreshCurrentTab = async () => {
 }
 
 const columns = [
-  { key: 'full_name',    label: 'Personel', sortable: true },
-  { key: 'company_name', label: 'Şirket',   sortable: true, width: '180px' },
-  { key: 'department_name', label: 'Departman', sortable: true, width: '180px' },
+  { key: 'full_name',         label: 'Personel', sortable: true },
+  { key: 'company_name',      label: 'Şirket',   sortable: true, width: '180px' },
+  { key: 'department_name',   label: 'Departman', sortable: true, width: '180px' },
+  { key: 'status_label',      label: 'Hesap Durumu', sortable: true, width: '130px' },
   { key: 'assigned_licenses', label: 'Atanmış Lisanslar', sortable: false },
 ]
 
 const tableRows = computed(() => {
   return masterData.personnel.map(p => {
     const personAllocations = allocations.value.filter(a => a.personnel_id === p.id)
+    const isPassive = p.status === 'passive' || p.status === 'pasif' || p.status === 'inactive' || !!p.exit_date
     return {
       ...p,
       full_name: `${p.first_name} ${p.last_name}`,
+      status_label: isPassive ? 'Pasif' : 'Aktif',
       assigned_licenses: personAllocations
     }
   })
@@ -136,6 +140,7 @@ const buildDetailRows = () => {
         'Departman': p.department_name || '-',
         'Personel': p.full_name,
         'Ünvan': p.title || '-',
+        'Hesap Durumu': p.status_label,
         'Lisans': '-',
         'Birim Fiyat': 0,
         'Para Birimi': '-'
@@ -149,6 +154,7 @@ const buildDetailRows = () => {
         'Departman': p.department_name || '-',
         'Personel': p.full_name,
         'Ünvan': p.title || '-',
+        'Hesap Durumu': p.status_label,
         'Lisans': a.license_name,
         'Birim Fiyat': lic?.unit_price || 0,
         'Para Birimi': lic?.currency || 'USD'
@@ -324,6 +330,18 @@ onMounted(async () => {
               <span class="text-[10px] text-gray-400 dark:text-slate-500 font-bold uppercase tracking-tight">{{ row.title || '—' }}</span>
             </div>
           </div>
+        </template>
+
+        <template #cell-status_label="{ value }">
+          <span
+            class="px-2.5 py-0.5 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5"
+            :class="value === 'Aktif'
+              ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20'
+              : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20'"
+          >
+            <span class="w-1.5 h-1.5 rounded-full" :class="value === 'Aktif' ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+            {{ value }}
+          </span>
         </template>
 
         <template #cell-assigned_licenses="{ value }">
