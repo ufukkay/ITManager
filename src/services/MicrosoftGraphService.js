@@ -399,7 +399,7 @@ class MicrosoftGraphService {
           first_name = ?, last_name = ?, email = ?, title = ?, title_en = ?, title_tr = ?,
           phone = COALESCE(?, phone),
           company_id = COALESCE(?, company_id), department_id = COALESCE(?, department_id),
-          status = 'active', source = 'azure', entra_id = ?,
+          status = ?, source = 'azure', entra_id = ?,
           employee_id = COALESCE(employee_id, ?)
         WHERE id = ?
       `);
@@ -410,12 +410,14 @@ class MicrosoftGraphService {
         const companyId = getOrCreateCompany(azureUser.companyName);
         const deptId = getOrCreateDepartment(azureUser.department);
         const resolvedEmpId = getCleanEmployeeId(azureUser.employeeId);
+        const statusVal = azureUser.accountEnabled === false ? 'passive' : 'active';
         
         updateStmt.run(
           first_name, last_name, email,
           azureUser.jobTitle || null, azureUser.jobTitle || null, azureUser.jobTitle || null,
           azureUser.mobilePhone || null,
           companyId, deptId,
+          statusVal,
           azureUser.id,
           resolvedEmpId,
           existingPerson.id
@@ -425,7 +427,7 @@ class MicrosoftGraphService {
       // 2. Yeni Azure kullanıcılarını ekle
       const insertStmt = db.prepare(`
         INSERT INTO personnel (employee_id, first_name, last_name, email, title, title_en, title_tr, phone, company_id, department_id, status, source, entra_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'azure', ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'azure', ?)
       `);
 
       for (const azureUser of toInsert) {
@@ -434,13 +436,14 @@ class MicrosoftGraphService {
         const companyId = getOrCreateCompany(azureUser.companyName);
         const deptId = getOrCreateDepartment(azureUser.department);
         const resolvedEmpId = getCleanEmployeeId(azureUser.employeeId);
+        const statusVal = azureUser.accountEnabled === false ? 'passive' : 'active';
 
         insertStmt.run(
           resolvedEmpId,
           first_name, last_name, email,
           azureUser.jobTitle || null, azureUser.jobTitle || null, azureUser.jobTitle || null,
           azureUser.mobilePhone || null,
-          companyId, deptId, azureUser.id
+          companyId, deptId, statusVal, azureUser.id
         );
       }
 
@@ -793,7 +796,7 @@ class MicrosoftGraphService {
           first_name = ?, last_name = ?, email = ?, title = ?, title_en = ?, title_tr = ?,
           phone = COALESCE(?, phone),
           company_id = COALESCE(?, company_id), department_id = COALESCE(?, department_id),
-          status = 'active', source = 'azure', entra_id = ?,
+          status = ?, source = 'azure', entra_id = ?,
           employee_id = COALESCE(employee_id, ?)
         WHERE id = ?
       `);
@@ -802,11 +805,13 @@ class MicrosoftGraphService {
         const companyId = getOrCreateCompany(azureUser.companyName);
         const deptId = getOrCreateDepartment(azureUser.department);
         const resolvedEmpId = getCleanEmployeeId(azureUser.employeeId);
+        const statusVal = azureUser.accountEnabled === false ? 'passive' : 'active';
         updateStmt.run(
           azureUser.givenName, azureUser.surname, azureUser.mail,
           azureUser.jobTitle || null, azureUser.jobTitle || null, azureUser.jobTitle || null,
           azureUser.mobilePhone || null,
           companyId, deptId,
+          statusVal,
           azureUser.id,
           resolvedEmpId,
           existingPerson.id
@@ -815,19 +820,20 @@ class MicrosoftGraphService {
 
       const insertStmt = db.prepare(`
         INSERT INTO personnel (employee_id, first_name, last_name, email, title, title_en, title_tr, phone, company_id, department_id, status, source, entra_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'azure', ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'azure', ?)
       `);
 
       for (const azureUser of toInsert) {
         const companyId = getOrCreateCompany(azureUser.companyName);
         const deptId = getOrCreateDepartment(azureUser.department);
         const resolvedEmpId = getCleanEmployeeId(azureUser.employeeId);
+        const statusVal = azureUser.accountEnabled === false ? 'passive' : 'active';
         insertStmt.run(
           resolvedEmpId,
           azureUser.givenName, azureUser.surname, azureUser.mail,
           azureUser.jobTitle || null, azureUser.jobTitle || null, azureUser.jobTitle || null,
           azureUser.mobilePhone || null,
-          companyId, deptId, azureUser.id
+          companyId, deptId, statusVal, azureUser.id
         );
       }
 
