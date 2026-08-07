@@ -146,41 +146,41 @@
     </div>
 
     <!-- KPI / FINANCIAL SUMMARY BAR -->
-    <div class="grid grid-cols-4 gap-px bg-gray-100 dark:bg-slate-700 dark:bg-slate-700 border-b border-gray-100 dark:border-slate-800 dark:border-slate-800 shrink-0">
-      <div class="bg-white dark:bg-slate-800 dark:bg-slate-800 px-6 py-3 flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm">
+    <div class="grid grid-cols-4 gap-px bg-gray-200 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-800 shrink-0">
+      <div class="bg-white dark:bg-slate-900 px-5 py-2.5 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 text-xs">
           <i class="fas fa-laptop"></i>
         </div>
         <div>
-          <div class="text-[10px] font-bold text-gray-400 dark:text-slate-500 dark:text-slate-500 uppercase tracking-widest">Toplam Varlık</div>
-          <div class="text-[16px] font-black text-gray-900 dark:text-slate-100 dark:text-slate-100">{{ filteredAssets.length }} / {{ assetStore.assets.length }}</div>
+          <div class="text-[10px] font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">Toplam Varlık</div>
+          <div class="text-[15px] font-bold text-gray-900 dark:text-slate-100">{{ filteredAssets.length }} / {{ assetStore.assets.length }}</div>
         </div>
       </div>
-      <div class="bg-white dark:bg-slate-800 dark:bg-slate-800 px-6 py-3 flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-emerald-50 dark:bg-green-500/10 text-emerald-600 dark:text-green-400 text-sm">
+      <div class="bg-white dark:bg-slate-900 px-5 py-2.5 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 text-xs">
           <i class="fas fa-wallet"></i>
         </div>
         <div>
-          <div class="text-[10px] font-bold text-gray-400 dark:text-slate-500 dark:text-slate-500 uppercase tracking-widest">Envanter Değeri</div>
-          <div class="text-[16px] font-black text-gray-900 dark:text-slate-100 dark:text-slate-100">{{ fmt(assetStore.financialSummary.totalValuation) }}</div>
+          <div class="text-[10px] font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">Envanter Değeri</div>
+          <div class="text-[15px] font-bold text-gray-900 dark:text-slate-100">{{ fmt(assetStore.financialSummary.totalValuation) }}</div>
         </div>
       </div>
-      <div class="bg-white dark:bg-slate-800 dark:bg-slate-800 px-6 py-3 flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 text-sm">
+      <div class="bg-white dark:bg-slate-900 px-5 py-2.5 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 text-xs">
           <i class="fas fa-chart-line"></i>
         </div>
         <div>
-          <div class="text-[10px] font-bold text-gray-400 dark:text-slate-500 dark:text-slate-500 uppercase tracking-widest">Aylık Amortisman/Maliyet</div>
-          <div class="text-[16px] font-black text-gray-900 dark:text-slate-100 dark:text-slate-100">{{ fmt(assetStore.financialSummary.monthlyAmortization) }}</div>
+          <div class="text-[10px] font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">Aylık Amortisman/Maliyet</div>
+          <div class="text-[15px] font-bold text-gray-900 dark:text-slate-100">{{ fmt(assetStore.financialSummary.monthlyAmortization) }}</div>
         </div>
       </div>
-      <div class="bg-white dark:bg-slate-800 dark:bg-slate-800 px-6 py-3 flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-sm">
+      <div class="bg-white dark:bg-slate-900 px-5 py-2.5 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 dark:bg-blue-900/30 text-[#1a73e8] dark:text-blue-400 text-xs">
           <i class="fas fa-user-check"></i>
         </div>
         <div>
-          <div class="text-[10px] font-bold text-gray-400 dark:text-slate-500 dark:text-slate-500 uppercase tracking-widest">Zimmetli / Boşta</div>
-          <div class="text-[16px] font-black text-gray-900 dark:text-slate-100 dark:text-slate-100">
+          <div class="text-[10px] font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">Zimmetli / Boşta</div>
+          <div class="text-[15px] font-bold text-gray-900 dark:text-slate-100">
             {{ inUseCount }} / {{ warehouseCount }}
           </div>
         </div>

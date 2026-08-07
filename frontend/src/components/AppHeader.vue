@@ -136,38 +136,26 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="h-14 border-b border-gray-100 dark:border-slate-700 flex items-center px-6 gap-8 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shrink-0 sticky top-0 z-50 shadow-sm shadow-black/[0.02]">
+  <header class="h-12 border-b border-gray-200 dark:border-slate-800 flex items-center px-6 gap-6 bg-white dark:bg-slate-900 shrink-0 sticky top-0 z-50">
 
     <!-- Logo -->
-    <router-link to="/" class="flex items-center gap-2.5 shrink-0">
-      <div class="w-7 h-7 flex items-center justify-center bg-brand shadow-sm shadow-brand/30">
-        <i class="fas fa-cube text-white text-[13px]"></i>
-      </div>
-      <span class="text-[15px] font-bold text-gray-900 dark:text-white tracking-tight">ITManager <span class="text-brand font-black ml-0.5">.</span></span>
+    <router-link to="/" class="flex items-center gap-2 shrink-0">
+      <span class="text-[17px] font-bold text-gray-900 dark:text-white tracking-tight">ITManager</span>
     </router-link>
     <div class="flex-1"></div>
 
     <!-- Actions -->
     <div class="flex items-center gap-2 shrink-0">
 
-      <!-- Tema seçici -->
-      <button
-        @click="toggleTheme"
-        class="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all"
-        title="Tema Değiştir"
-      >
-        <i :class="[theme === 'dark' ? 'fas fa-sun text-amber-500' : 'far fa-moon', 'text-[15px]']"></i>
-      </button>
-
       <!-- Bildirim zili -->
       <div ref="notifRef" class="relative">
         <button
           @click="toggleNotifDropdown"
-          class="relative w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-all"
+          class="relative w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
           title="Bildirimler"
         >
-          <i class="far fa-bell text-[15px]"></i>
-          <span v-if="unreadCount > 0" class="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900"></span>
+          <i class="fas fa-bell text-sm"></i>
+          <span v-if="unreadCount > 0" class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border-2 border-white dark:border-slate-900"></span>
         </button>
 
         <Transition
@@ -180,7 +168,7 @@ onUnmounted(() => {
         >
           <div
             v-if="notifOpen"
-            class="absolute right-0 top-full mt-1.5 w-80 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg z-50 origin-top-right overflow-hidden"
+            class="absolute right-0 top-full mt-1.5 w-80 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-50 origin-top-right overflow-hidden"
           >
             <div class="px-4 py-2.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
               <span class="text-[13px] font-semibold text-gray-900 dark:text-white">Bildirimler</span>
@@ -226,11 +214,25 @@ onUnmounted(() => {
         </Transition>
       </div>
 
+      <!-- Tema seçici (Toggle Switch) -->
+      <button
+        @click="toggleTheme"
+        class="w-10 h-5 rounded-full bg-gray-200 dark:bg-slate-700 p-0.5 transition-colors relative flex items-center"
+        title="Tema Değiştir"
+      >
+        <span
+          class="w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform flex items-center justify-center text-[9px] text-gray-600"
+          :class="theme === 'dark' ? 'translate-x-5 bg-slate-900 text-amber-400' : 'translate-x-0'"
+        >
+          <i :class="theme === 'dark' ? 'fas fa-moon' : 'fas fa-sun'"></i>
+        </span>
+      </button>
+
       <!-- Avatar + Dropdown -->
       <div ref="dropdownRef" class="relative">
         <button
           @click="dropdownOpen = !dropdownOpen"
-          class="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-semibold text-gray-900 bg-brand hover:brightness-95 transition-all"
+          class="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-[#1a73e8] hover:bg-[#174ea6] transition-colors"
         >
           {{ userInitials }}
         </button>
@@ -245,10 +247,10 @@ onUnmounted(() => {
         >
           <div
             v-if="dropdownOpen"
-            class="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg z-50 py-1 origin-top-right"
+            class="absolute right-0 top-full mt-1.5 w-52 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg z-50 py-1 origin-top-right"
           >
-            <div class="px-4 py-2.5 border-b border-gray-100 dark:border-slate-700">
-              <div class="text-[13px] font-semibold text-gray-900 dark:text-white truncate">{{ authStore.userName }}</div>
+            <div class="px-4 py-2 border-b border-gray-100 dark:border-slate-700">
+              <div class="text-[13px] font-medium text-gray-900 dark:text-white truncate">{{ authStore.userName }}</div>
             </div>
             <button
               @click="handleLogout"

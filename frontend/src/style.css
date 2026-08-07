@@ -5,21 +5,21 @@
 @tailwind utilities;
 
 :root {
-  --bg-primary: #fcfcfc;
+  --bg-primary: #f8f9fa;
   --bg-secondary: #ffffff;
   --bg-card: #ffffff;
-  --bg-hover: #f8f9fa;
-  --border: #f1f3f4;
-  --border-strong: #eef0f2;
+  --bg-hover: #f1f3f4;
+  --border: #dadce0;
+  --border-strong: #bdc1c6;
 
-  --text-primary: #1a1a1a;
+  --text-primary: #202124;
   --text-secondary: #5f6368;
   --text-muted: #9aa0a6;
 
   --accent: #1a73e8; 
   --accent-hover: #174ea6;
   --accent-light: #e8f0fe;
-  --brand: #ffb71b; 
+  --brand: #1a73e8; 
 
   --success: #34a853;
   --success-light: #e6f4ea;
@@ -28,13 +28,13 @@
   --danger: #ea4335;
   --danger-light: #fce8e6;
 
-  --radius: 12px;
-  --radius-xl: 16px;
-  --radius-sm: 8px;
+  --radius: 8px;
+  --radius-xl: 12px;
+  --radius-sm: 4px;
   
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.04), 0 4px 6px -4px rgb(0 0 0 / 0.03);
+  --shadow: 0 1px 3px 0 rgb(60 64 67 / 0.15), 0 1px 2px 0 rgb(60 64 67 / 0.1);
+  --shadow-lg: 0 4px 12px 0 rgb(60 64 67 / 0.15);
 }
 
 .dark {

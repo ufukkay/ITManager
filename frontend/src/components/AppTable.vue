@@ -709,7 +709,7 @@ function resetPanel() {
   background: #fafafa; font-weight: 700;
 }
 .at-th {
-  padding: 14px 12px; white-space: nowrap;
+  padding: 9px 12px; white-space: nowrap;
   -webkit-user-select: none; user-select: none;
 }
 .at-th-check { width: 40px; text-align: center; }
@@ -740,7 +740,7 @@ function resetPanel() {
 .at-tbody { font-size: 12.5px; }
 .at-tbody > tr + tr { border-top: 1px solid #f3f4f6; }
 .at-row:hover { background: #f9fafb; }
-.at-td { padding: 8px 12px; }
+.at-td { padding: 7px 12px; }
 .at-td-check { width: 40px; text-align: center; }
 .at-td-actions { width: 90px; }
 .at-empty-cell {

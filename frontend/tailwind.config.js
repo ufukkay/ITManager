@@ -80,7 +80,7 @@ export default {
           900: '#202124',
         },
         primary: '#1a73e8',
-        brand: '#ffb71b',
+        brand: '#1a73e8',
       },
     },
   },
