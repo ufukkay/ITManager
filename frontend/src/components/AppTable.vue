@@ -373,24 +373,16 @@ function resetPanel() {
                 scope="col"
               >
                 <div class="at-th-inner" :class="col.align === 'right' ? 'justify-end' : ''">
-                  <!-- Etiket + sıralama oku -->
-                  <span
-                    class="at-sort-trigger"
-                    :class="{ 'cursor-pointer': col.sortable !== false }"
-                    @click="col.sortable !== false && setSort(col.key)"
-                  >
+                  <!-- Etiket -->
+                  <span class="at-th-label">
                     {{ col.label }}
-                    <span v-if="col.sortable !== false" class="at-sort-icon">
-                      <i class="fas fa-caret-up ic-asc"></i>
-                      <i class="fas fa-caret-down ic-desc"></i>
-                    </span>
                   </span>
 
                   <!-- Filtre butonu — SAĞDA -->
                   <span
                     v-if="col.filterable !== false"
                     class="at-fil-btn"
-                    :class="{ active: !!colFilters[col.key] }"
+                    :class="{ active: !!colFilters[col.key] || sortKey === col.key }"
                     :title="`${col.label} filtrele`"
                     @click.stop="toggleFilterBtn(col.key, $event.currentTarget)"
                   ><i class="fas fa-filter" style="font-size:9px"></i></span>
