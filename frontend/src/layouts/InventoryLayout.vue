@@ -22,22 +22,22 @@
           <RouterLink
             to="/inventory/matrix"
             class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
-            :class="$route.path.startsWith('/inventory/matrix')
+            :class="$route.path.startsWith('/inventory/matrix') || $route.path === '/inventory'
               ? 'bg-[#1a73e8] text-white font-semibold'
               : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800'"
           >
-            <i class="fas fa-sitemap w-4 text-center text-xs" :class="$route.path.startsWith('/inventory/matrix') ? 'text-white' : 'text-gray-500'"></i>
+            <i class="fas fa-sitemap w-4 text-center text-xs" :class="$route.path.startsWith('/inventory/matrix') || $route.path === '/inventory' ? 'text-white' : 'text-gray-500'"></i>
             <span>Kumanda Matrisi</span>
           </RouterLink>
 
           <RouterLink
             to="/inventory/assets"
             class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
-            :class="$route.path.startsWith('/inventory/assets') || $route.path === '/inventory'
+            :class="$route.path.startsWith('/inventory/assets')
               ? 'bg-[#1a73e8] text-white font-semibold'
               : 'text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800'"
           >
-            <i class="fas fa-laptop w-4 text-center text-xs" :class="$route.path.startsWith('/inventory/assets') || $route.path === '/inventory' ? 'text-white' : 'text-gray-500'"></i>
+            <i class="fas fa-laptop w-4 text-center text-xs" :class="$route.path.startsWith('/inventory/assets') ? 'text-white' : 'text-gray-500'"></i>
             <span>Varlık Listesi</span>
           </RouterLink>
 
@@ -87,7 +87,7 @@
           <RouterLink
             to="/inventory/matrix"
             class="flex flex-col items-center justify-center py-1.5 gap-0.5"
-            :class="$route.path.startsWith('/inventory/matrix') ? 'text-[#1a73e8]' : 'text-gray-500'"
+            :class="$route.path.startsWith('/inventory/matrix') || $route.path === '/inventory' ? 'text-[#1a73e8]' : 'text-gray-500'"
           >
             <i class="fas fa-sitemap text-base"></i>
             <span class="text-[9px] font-medium">Matris</span>
@@ -96,7 +96,7 @@
           <RouterLink
             to="/inventory/assets"
             class="flex flex-col items-center justify-center py-1.5 gap-0.5"
-            :class="$route.path.startsWith('/inventory/assets') || $route.path === '/inventory' ? 'text-[#1a73e8]' : 'text-gray-500'"
+            :class="$route.path.startsWith('/inventory/assets') ? 'text-[#1a73e8]' : 'text-gray-500'"
           >
             <i class="fas fa-laptop text-base"></i>
             <span class="text-[9px] font-medium">Varlıklar</span>

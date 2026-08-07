@@ -144,7 +144,7 @@ const routes = [
     children: [
       {
         path: '',
-        redirect: '/inventory/assets'
+        redirect: '/inventory/matrix'
       },
       {
         path: 'matrix',
